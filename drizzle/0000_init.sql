@@ -30,6 +30,15 @@ CREATE TABLE `audit_logs` (
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `booking_events` (
+	`id` text PRIMARY KEY NOT NULL,
+	`booking_id` text NOT NULL,
+	`type` text NOT NULL,
+	`note` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `bookings` (
 	`id` text PRIMARY KEY NOT NULL,
 	`ref` text NOT NULL,

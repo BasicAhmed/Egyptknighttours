@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { calculateQuote, type Quote } from "./pricing";
 import { z } from "zod";
 import { quoteSchema, bookingSchema } from "./validation";
+import { signRef } from "./booking-token";
 
 export class BookingError extends Error {}
 type QuoteIn = z.infer<typeof quoteSchema>;
@@ -16,8 +17,9 @@ export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; cu
   if (!input.isPrivate && !tour.isGroupAvailable) throw new BookingError("This tour is private only");
   if (input.infants > input.adults) throw new BookingError("Each infant needs an adult");
   if (opts.travelDate) {
-    const days = (new Date(opts.travelDate + "T00:00:00Z").getTime() - Date.now()) / 86400000;
-    if (Number.isNaN(days) || days < 0.5) throw new BookingError("Please choose a date from tomorrow onwards");
+    const todayUTC = new Date().toISOString().slice(0, 10);
+    const days = (new Date(opts.travelDate + "T00:00:00Z").getTime() - new Date(todayUTC + "T00:00:00Z").getTime()) / 86400000;
+    if (Number.isNaN(days) || opts.travelDate < todayUTC) throw new BookingError("Please choose a future date");
     if (days > 730) throw new BookingError("Date is too far ahead");
     if (input.payMode === "PAY_LATER" && days < 7) throw new BookingError("Pay-later is only available 7+ days before travel");
   }
@@ -51,7 +53,11 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const { tour, chosen, coupon, couponMessage, quote } = await buildQuote(input, { travelDate: input.travelDate, customerEmail: email });
   if (input.couponCode && !coupon) throw new BookingError(couponMessage ?? "Coupon not valid");
 
-  const ref = "EGK-" + Array.from(crypto.getRandomValues(new Uint8Array(5))).map((b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const gen = () => "EK-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((b) => alphabet[b % 32]).join("");
+  let ref = gen();
+  for (let i = 0; i < 6; i++) { if (!(await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.ref, ref))).length) break; ref = gen(); }
+  const token = signRef(ref); // fail early if AUTH_SECRET is missing
   return await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: input.name, whatsapp: input.whatsapp, phone: input.whatsapp, country: input.country ?? null }).returning();
@@ -77,12 +83,18 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
     if (coupon) await tx.update(s.coupons).set({ usedCount: sql`${s.coupons.usedCount} + 1` }).where(eq(s.coupons.id, coupon.id));
     await tx.update(s.tours).set({ popularity: sql`${s.tours.popularity} + 1` }).where(eq(s.tours.id, tour.id));
 
-    const [lead] = await tx.insert(s.leads).values({
+    await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
+    const leadValues = {
       name: input.name, email, whatsapp: input.whatsapp, country: input.country ?? null, kind: "INQUIRY", status: "BOOKED", source: input.source ?? "website-booking",
       travelDates: input.travelDate, travelers: input.adults + input.children + input.infants, toursViewed: tour.slug, customerId: cust.id,
-      consentMarketing: !!input.consentMarketing, lastContactAt: new Date(),
-    }).returning();
-    await tx.insert(s.leadEvents).values({ leadId: lead.id, type: "BOOKING_CREATED", note: `${ref} · ${tour.title} · $${quote.total}` });
-    return { ref, total: quote.total, deposit: quote.deposit };
+      consentMarketing: !!input.consentMarketing, lastContactAt: new Date(), nextFollowUpAt: null,
+    };
+    // If they abandoned this checkout earlier, turn that lead into the booked one instead of creating a duplicate.
+    const [prior] = await tx.select().from(s.leads).where(and(eq(s.leads.email, email), eq(s.leads.status, "ABANDONED")));
+    let leadId: string;
+    if (prior) { await tx.update(s.leads).set(leadValues).where(eq(s.leads.id, prior.id)); leadId = prior.id; }
+    else { const [l] = await tx.insert(s.leads).values(leadValues).returning(); leadId = l.id; }
+    await tx.insert(s.leadEvents).values({ leadId, type: "BOOKING_CREATED", note: `${ref} · ${tour.title} · $${quote.total}` });
+    return { ref, token, total: quote.total, deposit: quote.deposit };
   });
 }

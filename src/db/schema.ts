@@ -85,6 +85,12 @@ export const bookings = sqliteTable("bookings", {
   couponId: text("coupon_id").references(() => coupons.id), source: text("source"), createdAt: createdAt(),
 });
 
+export const bookingEvents = sqliteTable("booking_events", {
+  id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // CREATED STATUS_CONFIRMED STATUS_DEPOSIT_PAID STATUS_PAID STATUS_COMPLETED STATUS_CANCELLED
+  note: text("note"), createdAt: createdAt(),
+});
+
 export const travelers = sqliteTable("travelers", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(), type: text("type").notNull(), age: integer("age"),

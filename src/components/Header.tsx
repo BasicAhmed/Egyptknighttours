@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { waLink } from "@/lib/format";
-const nav = [["Tours", "/tours"], ["Destinations", "/destinations"], ["Travel guide", "/egypt-travel-guide"], ["Contact", "/contact"]];
+const nav = [["Tours", "/tours"], ["Destinations", "/destinations"], ["Travel guide", "/egypt-travel-guide"], ["Track booking", "/track"], ["Contact", "/contact"]];
 export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-ink/10 bg-white/95 backdrop-blur">

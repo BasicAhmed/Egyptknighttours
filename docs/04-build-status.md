@@ -8,6 +8,13 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Lead API: honeypot, rate limit, consent-aware follow-up schedule.
 - Admin login, dashboard, tour create (verified end to end: appears on site, listing and sitemap), leads and bookings pages.
 
+## Booking wizard and tracking (built and tested in a browser)
+- `/book/[slug]`: 4-step checkout (trip and calendar, extras and coupon, details and pickup, review and payment choice) with sticky order summary and a mobile action bar.
+- Booking IDs look like `EK-XXXXXX`. The thank-you page (`/booking/confirmation/EK-…`) and tracker (`/track`) open by signed link, or by ID + email lookup (rate limited).
+- Tracker shows a status timeline driven by admin status changes, payment progress, and an "Add to calendar" (.ics) download.
+- Checkout details entered but not finished create one CRM "abandoned" lead (no automated messages); it turns into the booked lead if they finish.
+- Not yet: confirmation emails (needs Resend), online card payment (needs Stripe/Paymob).
+
 ## Needs external services (not connected yet)
 | Feature | Needs |
 |---|---|

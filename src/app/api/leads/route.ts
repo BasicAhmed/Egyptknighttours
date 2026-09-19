@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { leadSchema } from "@/lib/validation";
 import { db, schema as s } from "@/db";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { and, eq } from "drizzle-orm";
 
 const DAY = 86400000;
 export async function POST(req: Request) {
@@ -9,6 +10,15 @@ export async function POST(req: Request) {
   const parsed = leadSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Please check your details" }, { status: 400 });
   const { website: _hp, ...d } = parsed.data; void _hp;
+  if (d.kind === "ABANDONED") {
+    // Contact details were entered during checkout but no booking followed. One CRM task per email, no automated messages.
+    const email = d.email.toLowerCase();
+    const [ex] = await db.select().from(s.leads).where(and(eq(s.leads.email, email), eq(s.leads.status, "ABANDONED")));
+    const vals = { ...d, email, status: "ABANDONED", nextFollowUpAt: new Date(Date.now() + DAY) };
+    if (ex) await db.update(s.leads).set(vals).where(eq(s.leads.id, ex.id));
+    else { const [l] = await db.insert(s.leads).values(vals).returning(); await db.insert(s.leadEvents).values({ leadId: l.id, type: "CHECKOUT_ABANDONED", note: d.toursViewed ?? null }); }
+    return NextResponse.json({ ok: true });
+  }
   const [lead] = await db.insert(s.leads).values({ ...d, email: d.email.toLowerCase(), nextFollowUpAt: new Date(Date.now() + DAY) }).returning();
   await db.insert(s.leadEvents).values({ leadId: lead.id, type: d.kind, note: d.message ?? d.interests ?? null });
   // Day 0 is a direct reply to their request. The longer nurture cadence only runs with marketing consent.

@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="text-sm"><p className="font-semibold text-gold-500">Explore</p><ul className="mt-2 space-y-1 text-white/80">
           <li><Link href="/tours">All tours</Link></li><li><Link href="/destinations">Destinations</Link></li><li><Link href="/egypt-travel-guide">Egypt travel guide</Link></li><li><Link href="/plan-my-trip">Build my Egypt trip</Link></li></ul></div>
         <div className="text-sm"><p className="font-semibold text-gold-500">Help</p><ul className="mt-2 space-y-1 text-white/80">
-          <li><Link href="/contact">Contact</Link></li><li><Link href="/faq">FAQ</Link></li><li><Link href="/admin/login" rel="nofollow">Staff login</Link></li></ul></div>
+          <li><Link href="/track">Track my booking</Link></li><li><Link href="/contact">Contact</Link></li><li><Link href="/faq">FAQ</Link></li><li><Link href="/admin/login" rel="nofollow">Staff login</Link></li></ul></div>
       </div>
       <p className="border-t border-white/10 py-4 text-center text-xs text-white/50">© {new Date().getFullYear()} Egypt Knight Tours</p>
     </footer>

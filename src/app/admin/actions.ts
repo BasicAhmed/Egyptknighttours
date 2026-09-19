@@ -58,6 +58,7 @@ export async function setBooking(id: string, fd: FormData) {
   const status = String(fd.get("status"));
   if (!(BOOKING_STATUS as readonly string[]).includes(status)) return;
   await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, id));
+  await db.insert(s.bookingEvents).values({ bookingId: id, type: "STATUS_" + status });
   if (status === "DEPOSIT_PAID" || status === "PAID") await db.update(s.payments).set({ status: "PAID" }).where(and(eq(s.payments.bookingId, id), eq(s.payments.status, "PENDING")));
   await audit(u.uid, "UPDATE", "booking", id); revalidatePath("/admin/bookings");
 }
