@@ -113,6 +113,37 @@ CREATE TABLE `destinations` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `destinations_slug_unique` ON `destinations` (`slug`);--> statement-breakpoint
+CREATE TABLE `document_events` (
+	`id` text PRIMARY KEY NOT NULL,
+	`document_id` text NOT NULL,
+	`type` text NOT NULL,
+	`note` text,
+	`user_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`document_id`) REFERENCES `documents`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `documents` (
+	`id` text PRIMARY KEY NOT NULL,
+	`kind` text NOT NULL,
+	`number` text NOT NULL,
+	`version` integer DEFAULT 1 NOT NULL,
+	`booking_id` text,
+	`itinerary_id` text,
+	`status` text DEFAULT 'GENERATED' NOT NULL,
+	`currency` text DEFAULT 'USD' NOT NULL,
+	`amount` real,
+	`data` text NOT NULL,
+	`created_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`sent_at` integer,
+	`sent_to` text,
+	`sent_via` text,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`itinerary_id`) REFERENCES `itineraries`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
 CREATE TABLE `follow_ups` (
 	`id` text PRIMARY KEY NOT NULL,
 	`lead_id` text NOT NULL,
@@ -138,6 +169,22 @@ CREATE TABLE `guides` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `guides_slug_unique` ON `guides` (`slug`);--> statement-breakpoint
+CREATE TABLE `itineraries` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`description` text DEFAULT '' NOT NULL,
+	`is_template` integer DEFAULT false NOT NULL,
+	`status` text DEFAULT 'DRAFT' NOT NULL,
+	`booking_id` text,
+	`source_template_id` text,
+	`content` text NOT NULL,
+	`created_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
 CREATE TABLE `lead_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`lead_id` text NOT NULL,
@@ -174,6 +221,25 @@ CREATE TABLE `leads` (
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE TABLE `payment_methods` (
+	`id` text PRIMARY KEY NOT NULL,
+	`kind` text DEFAULT 'BANK' NOT NULL,
+	`label` text NOT NULL,
+	`currency` text DEFAULT '' NOT NULL,
+	`active` integer DEFAULT true NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`bank_name` text DEFAULT '' NOT NULL,
+	`account_name` text DEFAULT '' NOT NULL,
+	`account_number` text DEFAULT '' NOT NULL,
+	`iban` text DEFAULT '' NOT NULL,
+	`swift` text DEFAULT '' NOT NULL,
+	`branch` text DEFAULT '' NOT NULL,
+	`bank_address` text DEFAULT '' NOT NULL,
+	`instructions` text DEFAULT '' NOT NULL,
+	`payment_url` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `payments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`booking_id` text NOT NULL,
@@ -198,6 +264,11 @@ CREATE TABLE `reviews` (
 	`status` text DEFAULT 'PENDING' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE TABLE `settings` (
+	`key` text PRIMARY KEY NOT NULL,
+	`value` text DEFAULT '' NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `tours` (

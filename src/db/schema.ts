@@ -91,6 +91,44 @@ export const bookingEvents = sqliteTable("booking_events", {
   note: text("note"), createdAt: createdAt(),
 });
 
+export const settings = sqliteTable("settings", { key: text("key").primaryKey(), value: text("value").notNull().default("") });
+
+// Where customers send money. Bank details live here (editable in admin), never in code or templates.
+export const paymentMethods = sqliteTable("payment_methods", {
+  id: id(), kind: text("kind").notNull().default("BANK"), // BANK LINK WISE CARD OTHER
+  label: text("label").notNull(), currency: text("currency").notNull().default(""),
+  active: integer("active", { mode: "boolean" }).notNull().default(true), sortOrder: integer("sort_order").notNull().default(0),
+  bankName: text("bank_name").notNull().default(""), accountName: text("account_name").notNull().default(""), accountNumber: text("account_number").notNull().default(""),
+  iban: text("iban").notNull().default(""), swift: text("swift").notNull().default(""), branch: text("branch").notNull().default(""), bankAddress: text("bank_address").notNull().default(""),
+  instructions: text("instructions").notNull().default(""), paymentUrl: text("payment_url").notNull().default(""), createdAt: createdAt(),
+});
+
+// An itinerary is one JSON document (days and blocks). Templates are itineraries with is_template = true.
+export const itineraries = sqliteTable("itineraries", {
+  id: id(), name: text("name").notNull(), description: text("description").notNull().default(""),
+  isTemplate: integer("is_template", { mode: "boolean" }).notNull().default(false),
+  status: text("status").notNull().default("DRAFT"), // DRAFT READY SENT
+  bookingId: text("booking_id").references(() => bookings.id), sourceTemplateId: text("source_template_id"),
+  content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
+  createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+
+// Every generated PDF is stored as a snapshot so history stays exact even when prices or bank details change later.
+export const documents = sqliteTable("documents", {
+  id: id(), kind: text("kind").notNull(), // INVOICE | ITINERARY
+  number: text("number").notNull(), version: integer("version").notNull().default(1),
+  bookingId: text("booking_id").references(() => bookings.id), itineraryId: text("itinerary_id").references(() => itineraries.id),
+  status: text("status").notNull().default("GENERATED"), // GENERATED SENT
+  currency: text("currency").notNull().default("USD"), amount: real("amount"),
+  data: text("data").notNull(), createdById: text("created_by_id").references(() => users.id), createdAt: createdAt(),
+  sentAt: integer("sent_at", { mode: "timestamp" }), sentTo: text("sent_to"), sentVia: text("sent_via"),
+});
+export const documentEvents = sqliteTable("document_events", {
+  id: id(), documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // CREATED EMAILED EMAIL_FAILED MARKED_SENT
+  note: text("note"), userId: text("user_id"), createdAt: createdAt(),
+});
+
 export const travelers = sqliteTable("travelers", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(), type: text("type").notNull(), age: integer("age"),

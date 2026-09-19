@@ -10,6 +10,10 @@ const nice = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en
 const short = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const NEXT: Record<string, string> = {
   PENDING: "We're checking availability for your date. You'll hear from us on WhatsApp or email to confirm.",
+  INVOICED: "We've sent your invoice. Complete your payment by the deadline to lock in your trip.",
+  PARTIALLY_PAID: "We've received part of your payment. The remaining balance is shown below.",
+  QUOTE_SENT: "We've sent you a quote. Reply to us whenever you're ready to go ahead.",
+  INQUIRY: "We've received your inquiry and will be in touch shortly.",
   CONFIRMED: "Your booking is confirmed. We'll send a secure payment link if a payment is still due.",
   DEPOSIT_PAID: "Your deposit is in. The balance is due before your trip and we'll remind you.",
   PAID: "You're all paid up. We'll send pickup details the day before your trip.",
@@ -72,6 +76,9 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
           <p className="mt-3 text-xs text-ink/55">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a 30% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
         </section>
       </div>
+
+      {data.docs.length > 0 && <section className="mt-6 rounded-2xl border border-ink/15 p-5 print:hidden"><h2 className="font-display text-lg font-bold">Your documents</h2>
+        <ul className="mt-3 divide-y divide-ink/10 text-sm">{data.docs.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/55">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul></section>}
 
       <div className="mt-8 flex flex-wrap gap-3 print:hidden">
         <WhatsAppButton href={wa} label="Message us about this booking" />

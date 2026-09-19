@@ -13,7 +13,15 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Booking IDs look like `EK-XXXXXX`. The thank-you page (`/booking/confirmation/EK-…`) and tracker (`/track`) open by signed link, or by ID + email lookup (rate limited).
 - Tracker shows a status timeline driven by admin status changes, payment progress, and an "Add to calendar" (.ics) download.
 - Checkout details entered but not finished create one CRM "abandoned" lead (no automated messages); it turns into the booked lead if they finish.
-- Not yet: confirmation emails (needs Resend), online card payment (needs Stripe/Paymob).
+- Not yet: automatic emails (needs Resend), online card payment (needs Stripe/Paymob), Arabic PDFs (fonts are Latin only).
+
+## Documents: invoices, itineraries, PDFs (built and tested in a browser)
+- Branded PDFs (same fonts, colours and logo as the site) generated on the server. Invoice: "almost confirmed" hero, total due and deadline, clickable pay button, price breakdown, How to Pay, terms, cancellation. Itinerary: cover, overview, one magazine page per day, included/excluded, closing call to action.
+- Bank details and payment methods are edited in `/admin/settings` and stored in the database only. New PDFs use the latest details; old PDFs keep the details they were issued with.
+- Booking page (`/admin/bookings/[id]`): Documents section with preview, download, email, resend, WhatsApp link, mark as sent, history; record partial or full payments (status moves to Partially paid, then Paid / confirmed); invoice generation moves the booking to "Invoiced, awaiting payment" unless another status is chosen.
+- Itinerary builder (`/admin/itineraries`): days and timeline blocks, reorder, duplicate, headlines and hooks, templates (two seeded), save as template, attach to a booking.
+- Customers see documents you marked or emailed as sent on their booking tracker, via signed links.
+- Email sending needs `RESEND_API_KEY` and `EMAIL_FROM`. Without them nothing is sent and the admin says so.
 
 ## Needs external services (not connected yet)
 | Feature | Needs |

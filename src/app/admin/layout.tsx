@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const s = await getSession();
   return <div className="container-x py-6">
     {s && <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 pb-3">
-      <nav aria-label="Admin" className="flex flex-wrap gap-4 text-sm font-semibold">{[["Dashboard", "/admin"], ["Tours", "/admin/tours"], ["Bookings", "/admin/bookings"], ["Leads", "/admin/leads"]].map(([l, h]) => <Link key={h} href={h} className="hover:text-gold-700">{l}</Link>)}</nav>
+      <nav aria-label="Admin" className="flex flex-wrap gap-4 text-sm font-semibold">{[["Dashboard", "/admin"], ["Tours", "/admin/tours"], ["Bookings", "/admin/bookings"], ["Itineraries", "/admin/itineraries"], ["Leads", "/admin/leads"], ["Settings", "/admin/settings"]].map(([l, h]) => <Link key={h} href={h} className="hover:text-gold-700">{l}</Link>)}</nav>
       <form action={logout} className="flex items-center gap-3 text-sm"><span className="text-ink/60">{s.name} · {s.role}</span><button className="btn btn-outline !py-1.5">Log out</button></form></div>}
     {children}</div>;
 }

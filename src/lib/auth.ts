@@ -27,6 +27,9 @@ export const PERMS: Record<string, string[]> = {
   bookings: ["SUPER_ADMIN", "MANAGER", "SALES", "TOUR_OPERATOR"],
   coupons: ["SUPER_ADMIN", "MANAGER"],
   reviews: ["SUPER_ADMIN", "MANAGER", "CONTENT_EDITOR"],
+  settings: ["SUPER_ADMIN", "MANAGER"],
+  documents: ["SUPER_ADMIN", "MANAGER", "SALES"],
+  itineraries: ["SUPER_ADMIN", "MANAGER", "SALES", "CONTENT_EDITOR"],
 };
 export async function requireStaff(resource?: string): Promise<Session> {
   const s = await getSession();
