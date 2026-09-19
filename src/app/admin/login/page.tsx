@@ -12,7 +12,7 @@ async function login(fd: FormData) {
   "use server";
   const ip = clientIp(await headers());
   if (!rateLimit("login:" + ip, 8, 15 * 60_000)) redirect("/admin/login?e=rate");
-  const p = loginSchema.safeParse({ email: fd.get("email"), password: fd.get("password") });
+  const p = loginSchema.safeParse({ email: String(fd.get("email") ?? "").trim(), password: fd.get("password") });
   if (!p.success) redirect("/admin/login?e=bad");
   const [u] = await db.select().from(s.users).where(eq(s.users.email, p.data.email.toLowerCase()));
   const ok = await bcrypt.compare(p.data.password, u?.passwordHash ?? DUMMY);
