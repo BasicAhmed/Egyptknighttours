@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "db:push": "drizzle-kit push --force",
-    "db:seed": "tsx src/db/seed.ts",
-    "db:setup": "drizzle-kit push --force && tsx src/db/seed.ts",
+    "db:seed": "tsx src/db/run-seed.ts",
+    "db:setup": "drizzle-kit push --force && tsx src/db/run-seed.ts",
+    "db:sql": "drizzle-kit generate --name init",
     "test": "tsx --test src/lib/pricing.test.ts"
   },
   "dependencies": {

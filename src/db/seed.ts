@@ -24,12 +24,13 @@ const tours: T[] = [
   { slug: "cairo-airport-transfer", title: "Cairo Airport Private Transfer", dest: "cairo", cat: "TRANSFER", hours: 1, price: 25, model: "PER_GROUP", pop: 80, short: "Meet-and-greet at CAI, fixed price to your hotel.", long: "A driver meets you at arrivals with your name on a sign, helps with bags and drives you to your hotel in Cairo or Giza. Flight tracking means you are not left waiting.", hl: ["Meet and greet", "Flight tracking", "Fixed price"], it: [{ title: "Arrival", text: "Driver meets you at arrivals." }, { title: "Transfer", text: "Direct drive to your hotel." }], inc: ["Driver", "Vehicle", "Waiting time for flight delays"], exc: ["Tips"] },
 ];
 
-async function main() {
-  const adminEmail = process.env.ADMIN_EMAIL ?? "admin@egyptknight.example";
-  const adminPass = process.env.ADMIN_PASSWORD ?? "change-me-now";
-  const hash = await bcrypt.hash(adminPass, 12);
-  const ex = await db.select().from(s.users).where(eq(s.users.email, adminEmail));
-  if (!ex.length) await db.insert(s.users).values({ email: adminEmail, name: "Admin", passwordHash: hash, role: "SUPER_ADMIN" });
+export async function seedDatabase() {
+  const adminEmail = (process.env.ADMIN_EMAIL || "admin@egyptknight.example").toLowerCase();
+  const adminPass = process.env.ADMIN_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "change-me-now");
+  if (adminPass) {
+    const ex = await db.select().from(s.users).where(eq(s.users.email, adminEmail));
+    if (!ex.length) await db.insert(s.users).values({ email: adminEmail, name: "Admin", passwordHash: await bcrypt.hash(adminPass, 12), role: "SUPER_ADMIN" });
+  } else console.warn("ADMIN_PASSWORD not set: no admin user created");
 
   for (const d of dests) {
     if (!(await db.select().from(s.destinations).where(eq(s.destinations.slug, d.slug))).length) await db.insert(s.destinations).values(d);
@@ -66,6 +67,5 @@ async function main() {
     { slug: "egypt-3-day-itinerary", title: "Egypt in 3 Days: A Cairo Itinerary", cluster: "Itineraries", summary: "A realistic first-timer's plan for a short stop in Cairo.", destinationSlug: "cairo", seoTitle: "Egypt 3-Day Itinerary (Cairo and Giza)", seoDescription: "A practical 3-day Egypt itinerary: pyramids, museum time, Old Cairo and the bazaar.", status: "PUBLISHED",
       body: "Day 1: Giza. Pyramids and Sphinx early, museum in the afternoon.\n\nDay 2: Old Cairo. Coptic Cairo, Islamic Cairo and Khan el-Khalili.\n\nDay 3: Choose: Saqqara and Memphis for early pyramids, or Alexandria for a change of scene.\n\nWant Luxor too? A 5-day plan with a short flight fits more in without rushing." },
   ]);
-  console.log("Seeded. Admin:", adminEmail);
+  console.log("Seed complete. Admin:", adminEmail);
 }
-main().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
