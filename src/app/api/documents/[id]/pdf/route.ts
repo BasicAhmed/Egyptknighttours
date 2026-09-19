@@ -5,6 +5,7 @@ import { verifyDoc } from "@/lib/booking-token";
 import { getSession } from "@/lib/auth";
 import { renderDocument } from "@/lib/documents";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { pdfResponse } from "@/lib/pdf-response";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -17,7 +18,5 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const [doc] = await db.select().from(s.documents).where(eq(s.documents.id, id));
   if (!doc) return new NextResponse("Not found", { status: 404 });
   if (!staff && !doc.sentAt) return new NextResponse("Not found", { status: 404 }); // customers only see documents that were sent to them
-  const buf = await renderDocument(doc);
-  const inline = url.searchParams.get("inline") === "1";
-  return new NextResponse(new Uint8Array(buf), { headers: { "Content-Type": "application/pdf", "Content-Disposition": `${inline ? "inline" : "attachment"}; filename="${doc.number}.pdf"`, "Cache-Control": "private, no-store" } });
+  return pdfResponse(() => renderDocument(doc), `${doc.number}.pdf`, url.searchParams.get("inline") === "1");
 }

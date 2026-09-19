@@ -30,7 +30,16 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   }
   const run = (fn: () => Promise<unknown>) => start(async () => { if (await save()) await fn(); });
   const generate = (send: boolean) => run(async () => { const fd = new FormData(); if (send) fd.set("sendNow", "on"); await generateItineraryPdf(id, fd); });
-  const preview = () => start(async () => { if (await save()) window.open(`/api/admin/preview/itinerary/${id}`, "_blank"); });
+  const preview = () => {
+    // Open the tab right away inside the click. Browsers (iPhone Safari especially) block tabs opened after a delay.
+    const w = window.open("", "_blank");
+    try { w?.document.write("<p style='font-family:sans-serif;padding:24px'>Preparing your PDF…</p>"); } catch {}
+    start(async () => {
+      const ok = await save(); const url = `/api/admin/preview/itinerary/${id}`;
+      if (!ok) { w?.close(); return; }
+      if (w) w.location.href = url; else window.location.href = url;
+    });
+  };
 
   return (
     <div className="space-y-5 pb-24">

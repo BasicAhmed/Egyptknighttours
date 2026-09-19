@@ -1,13 +1,12 @@
-import path from "node:path";
+import { FONTS, LOGO_DATA } from "./assets.generated";
 import { Font, Svg, Path, Circle, Rect, Defs, LinearGradient, Stop, G, Ellipse } from "@react-pdf/renderer";
 
-const asset = (f: string) => path.join(process.cwd(), "src/pdf/assets", f);
-export const LOGO = asset("logo.png");
+export const LOGO = LOGO_DATA;
 let registered = false;
 export function registerFonts() {
   if (registered) return; registered = true;
-  Font.register({ family: "Inter", fonts: [{ src: asset("inter-latin-400-normal.woff"), fontWeight: 400 }, { src: asset("inter-latin-600-normal.woff"), fontWeight: 600 }, { src: asset("inter-latin-700-normal.woff"), fontWeight: 700 }] });
-  Font.register({ family: "Bricolage", fonts: [{ src: asset("bricolage-grotesque-latin-700-normal.woff"), fontWeight: 700 }, { src: asset("bricolage-grotesque-latin-800-normal.woff"), fontWeight: 800 }] });
+  Font.register({ family: "Inter", fonts: [{ src: FONTS.inter400, fontWeight: 400 }, { src: FONTS.inter600, fontWeight: 600 }, { src: FONTS.inter700, fontWeight: 700 }] });
+  Font.register({ family: "Bricolage", fonts: [{ src: FONTS.brico700, fontWeight: 700 }, { src: FONTS.brico800, fontWeight: 800 }] });
   Font.registerHyphenationCallback((w) => [w]);
 }
 export const C = { ink: "#141010", gold: "#F0B050", gold600: "#DDA03F", gold700: "#C09040", cream: "#FFF6E0", cream2: "#FBEBC8", white: "#FFFFFF", line: "#EAE4D8", muted: "#6B6560", soft: "#F7F4EC", green: "#1F7A46", nile: "#1F6F78", red: "#B3261E" };
