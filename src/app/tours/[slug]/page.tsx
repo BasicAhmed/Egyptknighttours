@@ -7,6 +7,7 @@ import BookingForm from "@/components/BookingForm";
 import TourCard from "@/components/TourCard";
 import Tracker from "@/components/Tracker";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import SiteImage from "@/components/SiteImage";
 
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ slug: string }> };
@@ -43,10 +44,10 @@ export default async function TourPage({ params }: P) {
       <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/">Home</Link> / <Link href="/tours">Tours</Link> / <Link href={`/destinations/${dest.slug}`}>{dest.name}</Link></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="flex h-56 items-end rounded-xl bg-gradient-to-br from-gold-500 to-ink p-6 sm:h-72"><p className="font-display text-3xl font-extrabold text-white drop-shadow">{dest.name}</p></div>
-          <p className="mt-2 text-xs text-ink/50">Photo gallery coming soon. Add images in the admin.</p>
+          <SiteImage src={t.imageUrl} alt={t.title} destination={dest.slug} className="relative aspect-[16/10] rounded-2xl sm:aspect-[16/9]" />
+          {!t.imageUrl && <p className="mt-2 text-xs text-ink/45">Illustration shown until a real photo is added in the admin.</p>}
           <h1 className="h1 mt-3 !text-3xl sm:!text-4xl">{t.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-2"><span className="badge">{CATEGORY_LABEL[t.category]}</span><span className="badge">{duration(t)}</span><span className="badge">📍 {dest.name}</span>{t.isPrivateAvailable && <span className="badge">Private available</span>}{rating ? <span className="badge">★ {rating.avg.toFixed(1)} ({rating.count} reviews)</span> : <span className="badge">New: be our first review</span>}</div>
+          <p className="mt-3 text-sm font-medium text-ink/70">{[CATEGORY_LABEL[t.category], duration(t), dest.name, t.isPrivateAvailable ? "Private available" : null, rating ? `★ ${rating.avg.toFixed(1)} (${rating.count} reviews)` : "New: no reviews yet"].filter(Boolean).join("  ·  ")}</p>
           <p className="mt-4 text-lg text-ink/80">{t.shortDescription}</p>
           <h2 className="h2 mt-8">Overview</h2><p className="mt-2 whitespace-pre-line text-ink/80">{t.longDescription}</p>
           {hl.length > 0 && <><h2 className="h2 mt-8">Highlights</h2><List items={hl} mark="✓" /></>}

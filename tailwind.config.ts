@@ -10,7 +10,7 @@ export default {
     },
     borderRadius: { xl: "12px" },
     boxShadow: { card: "0 6px 20px rgba(20,16,16,.08)" },
-    fontFamily: { display: ["Sora", "system-ui", "sans-serif"], sans: ["Inter", "system-ui", "sans-serif"] },
+    fontFamily: { display: ["'Bricolage Grotesque Variable'", "system-ui", "sans-serif"], sans: ["'Inter Variable'", "system-ui", "sans-serif"] },
   } },
   plugins: [],
 } satisfies Config;

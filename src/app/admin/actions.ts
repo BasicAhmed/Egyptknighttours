@@ -15,7 +15,7 @@ function tourFromForm(fd: FormData) {
   const parsed = tourSchema.safeParse({ ...raw, discountPrice: raw.discountPrice === "" ? null : raw.discountPrice });
   if (!parsed.success) return { error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
   return { data: {
-    ...parsed.data, discountPrice: parsed.data.discountPrice ?? null,
+    ...parsed.data, discountPrice: parsed.data.discountPrice ?? null, imageUrl: parsed.data.imageUrl || null,
     isPrivateAvailable: fd.get("isPrivateAvailable") === "on", isGroupAvailable: fd.get("isGroupAvailable") === "on",
     highlights: JSON.stringify(lines(fd.get("highlights"))), included: JSON.stringify(lines(fd.get("included"))), excluded: JSON.stringify(lines(fd.get("excluded"))),
     itinerary: JSON.stringify(pairs(fd.get("itinerary"), "title", "text")), faqs: JSON.stringify(pairs(fd.get("faqs"), "q", "a")),

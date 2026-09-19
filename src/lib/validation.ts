@@ -44,6 +44,7 @@ export const tourSchema = z.object({
   price: z.coerce.number().min(0).max(100000), discountPrice: z.coerce.number().min(0).max(100000).optional().nullable(),
   childPercent: z.coerce.number().int().min(0).max(100), privateSurcharge: z.coerce.number().min(0).max(100000),
   maxTravelers: z.coerce.number().int().min(1).max(100),
+  imageUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
   status: z.enum(TOUR_STATUS), seoTitle: z.string().trim().max(70), seoDescription: z.string().trim().max(170),
 });
 export const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1).max(200) });
