@@ -4,6 +4,7 @@ import { desc, eq, and } from "drizzle-orm";
 import { requireStaff, PERMS } from "@/lib/auth";
 import { createItinerary, duplicateItinerary, deleteItinerary } from "../doc-actions";
 import Notice from "@/components/Notice";
+import PdfImport from "@/components/PdfImport";
 import { parseJson } from "@/lib/format";
 import type { ItineraryContent } from "@/pdf/types";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,8 @@ export default async function Itineraries({ searchParams }: { searchParams: Prom
       <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="h2">Itineraries</h1>
         <div className="flex gap-2"><Link href="/admin/itineraries" className={`btn ${tab === "mine" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Itineraries</Link><Link href="/admin/itineraries?tab=templates" className={`btn ${tab === "templates" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Templates</Link></div></div>
       <div className="mt-4"><Notice n={sp.n} e={sp.e} /></div>
-      {can && tab === "mine" && <form action={createItinerary} className="card mt-2 grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto]">
+      {can && <div className="mt-2"><PdfImport defaultTemplate={tab === "templates"} /></div>}
+      {can && tab === "mine" && <form action={createItinerary} className="mt-3 grid gap-3 rounded-2xl border border-ink/10 bg-white p-4 sm:grid-cols-[1fr_1fr_auto]">
         <div><label className="label">Start from</label><select name="templateId" className="input"><option value="">Blank itinerary</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
         <div><label className="label">Name</label><input name="name" placeholder="e.g. Ahmed family, October" className="input" /></div>
         <div className="flex items-end"><button className="btn btn-primary w-full">Create</button></div></form>}

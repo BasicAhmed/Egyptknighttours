@@ -21,6 +21,10 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
 - Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
 
+## Import itineraries from PDF
+- `/admin/itineraries` has **Import from PDF**: select one or many text PDFs (up to 4 MB each). Each becomes an editable itinerary or template with the title, intro, days, timeline items, included/excluded lists, price and payment terms, plus a fresh headline and hook for every day.
+- It is rule-based (looks for lines like "Day 1: Cairo", "The price includes"). Layouts that differ a lot may need review in the editor. Scanned PDFs (images only) aren't supported.
+
 ## Documents: invoices, itineraries, PDFs (built and tested in a browser)
 - Branded PDFs (same fonts, colours and logo as the site) generated on the server. Invoice: "almost confirmed" hero, total due and deadline, clickable pay button, price breakdown, How to Pay, terms, cancellation. Itinerary: cover, overview, one magazine page per day, included/excluded, closing call to action.
 - Bank details and payment methods are edited in `/admin/settings` and stored in the database only. New PDFs use the latest details; old PDFs keep the details they were issued with.

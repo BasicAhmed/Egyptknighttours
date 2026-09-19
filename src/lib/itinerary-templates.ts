@@ -10,6 +10,9 @@ export const blankItinerary = (): ItineraryContent => ({
 
 // Suggests an engaging headline + hook from a location, for the "Suggest" button in the builder.
 const SUGGEST: [RegExp, string, string][] = [
+  [/abu simbel|disembark/i, "One Last Morning on the Nile", "Say goodbye to the ship, and if you like, meet Ramses II at Abu Simbel."],
+  [/grand egyptian museum|gem museum/i, "The Museum of a Lifetime", "Thousands of years of treasures under one roof, with a guide who brings them to life."],
+  [/(flight|fly).{0,40}luxor/i, "Fly South to the Heart of Ancient Egypt", "Leave the capital behind. Luxor's great temples are next."],
   [/giza|pyramid/i, "Stand Before the Great Pyramids", "Walk in the footsteps of ancient kings and discover the story behind one of the world's greatest wonders."],
   [/sakkara|saqqara|memphis/i, "Where the First Pyramids Began", "Step back to the dawn of pyramid building, long before Giza."],
   [/islamic|khan|citadel/i, "Old Cairo, Alive and Loud", "Mosques, markets and centuries of stories in one unforgettable afternoon."],
@@ -21,6 +24,8 @@ const SUGGEST: [RegExp, string, string][] = [
   [/alexandria/i, "Egypt by the Sea", "Sea air, old libraries and fresh seafood on the Mediterranean."],
   [/hurghada|sharm|dahab|red sea/i, "Red Sea, Slow Days", "Clear water, coral and time to simply switch off."],
 ];
+// Every matching headline in priority order, so imports can pick one that has not been used on another day.
+export function suggestHooks(text: string) { return SUGGEST.filter(([re]) => re.test(text)).map(([, title, hook]) => ({ title, hook })); }
 export function suggestHook(location: string, n: number) {
   const m = SUGGEST.find(([re]) => re.test(location));
   return m ? { title: m[1], hook: m[2] } : { title: location ? `Discover ${location}` : `Day ${n}`, hook: "Another day, another chapter of your Egyptian adventure." };
