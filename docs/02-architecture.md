@@ -3,7 +3,7 @@
 ## Stack (and why)
 - **Next.js (App Router) + TypeScript**: server rendering and static generation for SEO, fast Core Web Vitals.
 - **Tailwind CSS**: design tokens from the logo (see design system).
-- **PostgreSQL + Prisma**: relational bookings, CRM and content. Hosted on Neon or Supabase.
+- **Drizzle ORM + libSQL (SQLite locally, Turso in production)**: relational bookings, CRM and content, typed end to end. Chosen over Prisma because it needs no native engine download and runs cleanly on serverless. Postgres remains possible later by porting `src/db/schema.ts` to `pg-core`.
 - **Auth.js (credentials + optional Google)** with role-based permissions; argon2 password hashing.
 - **Zod** validation on every server action and API route; rate limiting via Upstash Redis.
 - **Payments:** Stripe (deposit or full) behind a `PaymentProvider` interface, so Paymob / Fawry can be added. *Needs Stripe keys.*
@@ -53,7 +53,7 @@ Discover → Inspire → Research → Compare → Ask → Book → Prepare → T
 
 **Ethical revenue levers:** deposits, add-ons with clear prices, private upgrade, related tours, multi-day cross-sell, coupons, repeat-customer offer. No fake urgency.
 
-## Database (Prisma, summary)
+## Database (Drizzle schema in `src/db/schema.ts`, summary)
 User(role) · StaffProfile · Customer · Lead(status, source, assignedTo, nextFollowUpAt, budget, interests) · LeadEvent · Message
 Tour(status, pricingModel, seo) · TourTranslation · TourCategory · Destination · DestinationTranslation · TourDestination
 TourAvailability(date, capacity, priceOverride) · TourOption · Upsell · CrossSell · Faq
