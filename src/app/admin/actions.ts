@@ -53,12 +53,3 @@ export async function setLead(id: string, fd: FormData) {
   if (["BOOKED", "LOST"].includes(status)) await db.update(s.followUps).set({ status: "SKIPPED" }).where(and(eq(s.followUps.leadId, id), eq(s.followUps.status, "SCHEDULED")));
   await audit(u.uid, "UPDATE", "lead", id); revalidatePath("/admin/leads");
 }
-export async function setBooking(id: string, fd: FormData) {
-  const u = await requireStaff("bookings");
-  const status = String(fd.get("status"));
-  if (!(BOOKING_STATUS as readonly string[]).includes(status)) return;
-  await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, id));
-  await db.insert(s.bookingEvents).values({ bookingId: id, type: "STATUS_" + status });
-  if (status === "DEPOSIT_PAID" || status === "PAID") await db.update(s.payments).set({ status: "PAID" }).where(and(eq(s.payments.bookingId, id), eq(s.payments.status, "PENDING")));
-  await audit(u.uid, "UPDATE", "booking", id); revalidatePath("/admin/bookings");
-}

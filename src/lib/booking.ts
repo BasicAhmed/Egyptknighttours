@@ -48,15 +48,20 @@ export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; cu
   return { tour, chosen, coupon: quote.discount > 0 ? coupon : null, couponMessage, quote };
 }
 
+export async function newBookingRef() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const gen = () => "EK-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((b) => alphabet[b % 32]).join("");
+  let ref = gen();
+  for (let i = 0; i < 6; i++) { if (!(await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.ref, ref))).length) break; ref = gen(); }
+  return ref;
+}
+
 export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const email = input.email.toLowerCase();
   const { tour, chosen, coupon, couponMessage, quote } = await buildQuote(input, { travelDate: input.travelDate, customerEmail: email });
   if (input.couponCode && !coupon) throw new BookingError(couponMessage ?? "Coupon not valid");
 
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const gen = () => "EK-" + Array.from(crypto.getRandomValues(new Uint8Array(6))).map((b) => alphabet[b % 32]).join("");
-  let ref = gen();
-  for (let i = 0; i < 6; i++) { if (!(await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.ref, ref))).length) break; ref = gen(); }
+  const ref = await newBookingRef();
   const token = signRef(ref); // fail early if AUTH_SECRET is missing
   return await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));

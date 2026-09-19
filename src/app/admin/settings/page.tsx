@@ -27,37 +27,37 @@ function MethodForm({ m }: { m?: M }) {
     </form>
   );
 }
-export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams;
+export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
+  await requireStaff("settings"); const sp = await searchParams; const tab = sp.tab === "company" ? "company" : sp.tab === "wording" ? "wording" : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["wording", "Invoice wording"]];
   return (
-    <div className="space-y-10">
-      <div><h1 className="h2">Settings</h1><p className="text-sm text-ink/60">Everything here feeds the invoice and itinerary PDFs. Changes apply to PDFs you generate from now on.</p></div>
-      <Notice n={sp.n} e={sp.e} />
-      <section>
-        <h2 className="font-display text-xl font-bold">Payment methods and bank details</h2>
-        <p className="mb-4 text-sm text-ink/60">Bank details are stored here only, not in any template. Add a payment link to make the invoice button clickable.</p>
-        <div className="space-y-4">
-          {methods.map((m) => <details key={m.id} className="card p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold">{m.label}<span className="flex gap-2"><span className="badge">{m.kind}</span>{m.currency && <span className="badge">{m.currency}</span>}<span className="badge">{m.active ? "Active" : "Hidden"}</span></span></summary>
+    <div>
+      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Settings</h1><p className="text-sm text-ink/55">These feed your invoices and itineraries. New PDFs use whatever is saved here.</p>
+      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">{tabs.map(([k, l]) => <a key={k} href={`/admin/settings?tab=${k}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70"}`}>{l}</a>)}</div>
+      <div className="mt-4"><Notice n={sp.n} e={sp.e} /></div>
+      {tab === "payment" && <section>
+        <p className="mb-4 text-sm text-ink/60">Bank details are stored here only, never in the code. Add a payment link to make the invoice button clickable.</p>
+        <div className="space-y-3">
+          {methods.map((m) => <details key={m.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold">{m.label}<span className="flex gap-2"><span className="badge">{m.kind}</span>{m.currency && <span className="badge">{m.currency}</span>}<span className="badge">{m.active ? "Active" : "Hidden"}</span></span></summary>
             <div className="mt-4"><MethodForm m={m} /><form action={deletePaymentMethod.bind(null, m.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete this method</button></form></div></details>)}
-          <details className="card p-4" open={methods.length === 0}><summary className="cursor-pointer font-semibold">+ Add a payment method</summary><div className="mt-4"><MethodForm /></div></details>
-        </div>
-      </section>
-      <form action={saveCompanySettings} className="card grid gap-4 p-5 sm:grid-cols-2">
-        <h2 className="font-display text-xl font-bold sm:col-span-2">Company and contact (shown on PDFs)</h2>
-        <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
-        <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
-        <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
-        <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>
-        <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} />
-        <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Invoice rules and wording</h2>
-        <F name="invoice.depositDeadlineDays" label="Days to pay a deposit or full amount" type="number" v={g["invoice.depositDeadlineDays"]} /><F name="invoice.balanceDaysBefore" label="Balance due (days before travel)" type="number" v={g["invoice.balanceDaysBefore"]} />
-        <T k="invoice.paymentTerms" label="Payment terms (one per line)" /><T k="invoice.documents" label="Documents to send (one per line)" rows={3} />
-        <T k="invoice.cancellation" label="Cancellation policy (one per line)" rows={6} /><T k="invoice.note" label="Important payment note" rows={2} />
-        <div className="sm:col-span-2"><button className="btn btn-primary">Save settings</button></div>
-      </form>
+          <details className="rounded-2xl border border-ink/10 bg-white p-4" open={methods.length === 0}><summary className="cursor-pointer font-semibold">+ Add a payment method</summary><div className="mt-4"><MethodForm /></div></details>
+        </div></section>}
+      {tab !== "payment" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+        {tab === "company" && <>
+          <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
+          <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
+          <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
+          <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>
+          <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} /></>}
+        {tab === "wording" && <>
+          <F name="invoice.depositDeadlineDays" label="Days to pay a deposit or full amount" type="number" v={g["invoice.depositDeadlineDays"]} /><F name="invoice.balanceDaysBefore" label="Balance due (days before travel)" type="number" v={g["invoice.balanceDaysBefore"]} />
+          <T k="invoice.paymentTerms" label="Payment terms (one per line)" /><T k="invoice.documents" label="Documents to send (one per line)" rows={3} />
+          <T k="invoice.cancellation" label="Cancellation policy (one per line)" rows={6} /><T k="invoice.note" label="Important payment note" rows={2} /></>}
+        <div className="sm:col-span-2"><button className="btn btn-primary !min-h-[46px]">Save</button></div>
+      </form>}
     </div>
   );
 }

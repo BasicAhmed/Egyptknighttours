@@ -1,0 +1,39 @@
+"use client";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+
+const I = (d: string) => <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={d} /></svg>;
+const ICON = {
+  orders: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 14H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2z",
+  inquiries: "M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z",
+  tours: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+  itineraries: "M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z",
+  reports: "M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z",
+  settings: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
+};
+const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inquiries"], ["Tours", "/admin/tours", "tours"], ["Itineraries", "/admin/itineraries", "itineraries"], ["Reports", "/admin/reports", "reports"], ["Settings", "/admin/settings", "settings"]] as const;
+
+export default function AdminShell({ user, logout, children }: { user: { name: string; role: string }; logout: () => Promise<void>; children: React.ReactNode }) {
+  const path = usePathname() ?? "";
+  const items = NAV.filter(([, , k]) => k !== "settings" || ["SUPER_ADMIN", "MANAGER"].includes(user.role));
+  const on = (h: string) => (h === "/admin" ? path === "/admin" : path.startsWith(h));
+  return (
+    <div className="min-h-screen bg-[#F5F4F0] md:pl-60">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/10 bg-white md:flex">
+        <div className="flex h-16 items-center gap-2 border-b border-ink/10 px-4"><Image src="/logo.webp" alt="" width={56} height={42} className="h-9 w-auto" /><div className="leading-tight"><p className="font-display text-[15px] font-extrabold">Egypt Knight</p><p className="text-[11px] text-ink/50">Staff panel</p></div></div>
+        <nav aria-label="Admin" className="flex-1 space-y-1 p-3">{items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition ${on(h) ? "bg-gold-500 text-ink" : "text-ink/70 hover:bg-ink/5"}`}>{I(ICON[k])}{l}</Link>)}</nav>
+        <div className="border-t border-ink/10 p-3"><p className="truncate px-2 text-sm font-semibold">{user.name}</p><p className="px-2 text-xs text-ink/50">{user.role.replace("_", " ").toLowerCase()}</p>
+          <div className="mt-2 flex gap-2"><a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-outline !min-h-[38px] !flex-1 !py-1.5 !text-[13px]">View site</a><form action={logout}><button className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]">Log out</button></form></div></div>
+      </aside>
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink/10 bg-white px-4 md:hidden">
+        <Link href="/admin" className="flex items-center gap-2"><Image src="/logo.webp" alt="" width={48} height={36} className="h-8 w-auto" /><span className="font-display text-[15px] font-extrabold">Staff panel</span></Link>
+        <form action={logout}><button className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm font-semibold">Log out</button></form>
+      </header>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 md:px-8 md:pb-12 md:pt-8">{children}</main>
+      <nav aria-label="Admin" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-ink/10 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/45"}`}><span className={`flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}</span>{l}</Link>)}
+      </nav>
+    </div>
+  );
+}

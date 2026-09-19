@@ -5,6 +5,7 @@ import { seedItineraryTemplates } from "./seed-templates";
 import { syncAdminFromEnv } from "./admin-sync";
 
 // Creates any missing tables, then seeds demo content if the database is empty. Safe to call repeatedly and on old databases.
+const COLUMNS = [{ table: "bookings", name: "title_override", ddl: "text" }];
 let started: Promise<void> | null = null;
 export function ensureDatabase() {
   started ??= run().catch((e) => { started = null; throw e; });
@@ -16,6 +17,11 @@ async function run() {
     const m = /^CREATE TABLE IF NOT EXISTS [`"]?(\w+)[`"]?/i.exec(stmt);
     if (m && have.has(m[1])) continue;
     try { await client.execute(stmt); } catch (e) { if (!/already exists/i.test(String(e))) throw e; }
+  }
+  // Columns added after the first release: add them to existing databases once.
+  for (const c of COLUMNS) {
+    const cols = (await client.execute(`pragma table_info(${c.table})`)).rows.map((r) => String(r.name));
+    if (!cols.includes(c.name)) { try { await client.execute(`ALTER TABLE ${c.table} ADD COLUMN ${c.name} ${c.ddl}`); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; } }
   }
   const n = await client.execute("select count(*) as n from tours");
   if (Number(n.rows[0].n) === 0) await seedDatabase();

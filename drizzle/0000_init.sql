@@ -64,6 +64,7 @@ CREATE TABLE `bookings` (
 	`currency` text DEFAULT 'USD' NOT NULL,
 	`coupon_id` text,
 	`source` text,
+	`title_override` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,

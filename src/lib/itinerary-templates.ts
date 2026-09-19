@@ -120,3 +120,5 @@ export const TEMPLATES: TemplateSeed[] = [
     },
   },
 ];
+
+export const reid = (c: ItineraryContent): ItineraryContent => ({ ...c, days: c.days.map((d) => ({ ...d, id: uid(), blocks: d.blocks.map((b) => ({ ...b, id: uid() })) })) });

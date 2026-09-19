@@ -82,7 +82,9 @@ export const bookings = sqliteTable("bookings", {
   total: real("total").notNull(), deposit: real("deposit").notNull().default(0),
   payMode: text("pay_mode").notNull().default("DEPOSIT"), // DEPOSIT | FULL | PAY_LATER
   currency: text("currency").notNull().default("USD"),
-  couponId: text("coupon_id").references(() => coupons.id), source: text("source"), createdAt: createdAt(),
+  couponId: text("coupon_id").references(() => coupons.id), source: text("source"),
+  titleOverride: text("title_override"), // custom experiences created by staff (e.g. a specific cruise)
+  createdAt: createdAt(),
 });
 
 export const bookingEvents = sqliteTable("booking_events", {

@@ -15,6 +15,12 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Checkout details entered but not finished create one CRM "abandoned" lead (no automated messages); it turns into the booked lead if they finish.
 - Not yet: automatic emails (needs Resend), online card payment (needs Stripe/Paymob), Arabic PDFs (fonts are Latin only).
 
+## Staff panel (rebuilt for speed and simplicity)
+- One **Orders** workspace: filter tabs (To do, Awaiting payment, Confirmed, Completed, All, Cancelled), search, and a single "next step" button per order. Tapping an order opens a modal with contact buttons, payment, invoice, itinerary and notes.
+- **+ New order** for customers who book by WhatsApp or phone, including custom experiences.
+- Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
+- Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
+
 ## Documents: invoices, itineraries, PDFs (built and tested in a browser)
 - Branded PDFs (same fonts, colours and logo as the site) generated on the server. Invoice: "almost confirmed" hero, total due and deadline, clickable pay button, price breakdown, How to Pay, terms, cancellation. Itinerary: cover, overview, one magazine page per day, included/excluded, closing call to action.
 - Bank details and payment methods are edited in `/admin/settings` and stored in the database only. New PDFs use the latest details; old PDFs keep the details they were issued with.

@@ -43,7 +43,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
 
   return (
     <div className="space-y-5 pb-24">
-      <div className="sticky top-[68px] z-20 -mx-5 border-b border-ink/10 bg-white/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8">
+      <div className="sticky top-14 z-20 -mx-4 border-b border-ink/10 bg-white/95 px-4 py-3 backdrop-blur md:top-0 md:-mx-8 md:px-8">
         <div className="flex flex-wrap items-center gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Itinerary name" className="input !w-64 !py-2 font-semibold" />
           <span className="badge">{isTemplate ? "TEMPLATE" : status}</span>

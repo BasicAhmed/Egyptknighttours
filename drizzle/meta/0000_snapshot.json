@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "dd787311-36af-4650-a78a-e1daea54c78a",
+  "id": "f5429cf4-4928-481a-91cd-defbff0a7ff9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -451,6 +451,13 @@
         },
         "source": {
           "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "title_override": {
+          "name": "title_override",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
