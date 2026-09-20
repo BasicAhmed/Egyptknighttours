@@ -16,7 +16,7 @@ test("addons per person and per booking", () => {
 test("percent coupon", () => assert.equal(calculateQuote({ ...base, coupon: { type: "PERCENT", value: 10, minSubtotal: 0 } }).total, 180));
 test("fixed coupon capped at subtotal", () => assert.equal(calculateQuote({ ...base, coupon: { type: "FIXED", value: 999, minSubtotal: 0 } }).total, 0));
 test("coupon ignored below min subtotal", () => assert.equal(calculateQuote({ ...base, coupon: { type: "PERCENT", value: 10, minSubtotal: 500 } }).total, 200));
-test("deposit 30% and balance", () => { const q = calculateQuote(base); assert.equal(q.deposit, 60); assert.equal(q.dueLater, 140); });
+test("deposit 50% and balance", () => { const q = calculateQuote(base); assert.equal(q.deposit, 100); assert.equal(q.dueLater, 100); });
 test("full pay and pay later", () => {
   assert.equal(calculateQuote({ ...base, payMode: "FULL" }).deposit, 200);
   assert.equal(calculateQuote({ ...base, payMode: "PAY_LATER" }).deposit, 0);

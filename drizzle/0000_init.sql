@@ -272,6 +272,21 @@ CREATE TABLE `settings` (
 	`value` text DEFAULT '' NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `testimonials` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`country` text DEFAULT '' NOT NULL,
+	`rating` integer DEFAULT 5 NOT NULL,
+	`title` text DEFAULT '' NOT NULL,
+	`body` text NOT NULL,
+	`source` text DEFAULT 'Tripadvisor' NOT NULL,
+	`url` text DEFAULT '' NOT NULL,
+	`review_date` text DEFAULT '' NOT NULL,
+	`active` integer DEFAULT true NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `tours` (
 	`id` text PRIMARY KEY NOT NULL,
 	`slug` text NOT NULL,

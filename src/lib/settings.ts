@@ -5,6 +5,9 @@ import type { Company } from "@/pdf/types";
 export const DEFAULTS: Record<string, string> = {
   "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.phone": "+2 01001339220", "company.whatsapp": "+2 01128348803",
   "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "",
+  "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "",
+  "site.instagram": "", "site.facebook": "", "site.tiktok": "", "site.youtube": "",
+  "site.mapQuery": "Aswan, Egypt", "site.mapLink": "", "site.hours": "Every day, 9am to 9pm Egypt time",
   "invoice.depositDeadlineDays": "3", "invoice.balanceDaysBefore": "21",
   "invoice.paymentTerms": "A 50% deposit is required to confirm the reservation.\nThe remaining balance is due 21 days before arrival, or in cash on arrival where agreed.",
   "invoice.documents": "A clear copy of each guest's passport.\nA copy of your payment receipt.\nYour arrival flight details.",

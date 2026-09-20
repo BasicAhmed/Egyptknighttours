@@ -13,7 +13,7 @@ export type Quote = {
   subtotal: number; discount: number; total: number; deposit: number; dueLater: number;
   lines: { label: string; amount: number }[];
 };
-export const DEPOSIT_PERCENT = 30;
+export const DEPOSIT_PERCENT = 50;
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export function calculateQuote(i: QuoteInput): Quote {

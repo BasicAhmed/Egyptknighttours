@@ -19,7 +19,7 @@ const audit = (userId: string, action: string, entity: string, entityId?: string
 export async function saveCompanySettings(fd: FormData) {
   const u = await requireStaff("settings"); const values: Record<string, string> = {};
   for (const k of Object.keys(DEFAULTS)) if (fd.has(k)) values[k] = String(fd.get(k) ?? "").slice(0, 3000);
-  const tab = ["company", "wording"].includes(String(fd.get("tab"))) ? String(fd.get("tab")) : "company";
+  const tab = ["company", "wording", "website"].includes(String(fd.get("tab"))) ? String(fd.get("tab")) : "company";
   await saveSettings(values); await audit(u.uid, "UPDATE", "settings"); revalidatePath("/admin/settings");
   return go(`/admin/settings?tab=${tab}`, "Settings saved. New PDFs use these details.");
 }

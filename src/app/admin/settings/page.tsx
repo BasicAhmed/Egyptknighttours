@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { saveCompanySettings, savePaymentMethod, deletePaymentMethod } from "../doc-actions";
 import Notice from "@/components/Notice";
+import { saveTestimonial, deleteTestimonial, bulkAddTestimonials } from "../site-actions";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -28,11 +29,12 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; const tab = sp.tab === "company" ? "company" : sp.tab === "wording" ? "wording" : "payment";
+  await requireStaff("settings"); const sp = await searchParams; const tab = ["company", "wording", "website", "reviews"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["wording", "Invoice wording"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["wording", "Invoice wording"]];
+  const reviews = tab === "reviews" ? await db.select().from(s.testimonials).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)) : [];
   return (
     <div>
       <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Settings</h1><p className="text-sm text-ink/55">These feed your invoices and itineraries. New PDFs use whatever is saved here.</p>
@@ -45,13 +47,22 @@ export default async function Settings({ searchParams }: { searchParams: Promise
             <div className="mt-4"><MethodForm m={m} /><form action={deletePaymentMethod.bind(null, m.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete this method</button></form></div></details>)}
           <details className="rounded-2xl border border-ink/10 bg-white p-4" open={methods.length === 0}><summary className="cursor-pointer font-semibold">+ Add a payment method</summary><div className="mt-4"><MethodForm /></div></details>
         </div></section>}
-      {tab !== "payment" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+      {tab === "reviews" && <ReviewsAdmin reviews={reviews} />}
+      {tab !== "payment" && tab !== "reviews" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
         {tab === "company" && <>
           <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
           <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
           <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>
           <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} /></>}
+        {tab === "website" && <>
+          <p className="text-sm text-ink/60 sm:col-span-2">These numbers and links appear on the homepage. Only use figures you can back up.</p>
+          <F name="site.years" label="Years of experience (number)" v={g["site.years"]} /><F name="site.tours" label="Tours completed (e.g. 5,000)" v={g["site.tours"]} />
+          <F name="site.reviews" label="Five-star reviews (e.g. 500)" v={g["site.reviews"]} /><F name="site.tripadvisorUrl" label="Tripadvisor page link (https://…)" v={g["site.tripadvisorUrl"]} />
+          <F name="site.instagram" label="Instagram link" v={g["site.instagram"]} /><F name="site.facebook" label="Facebook link" v={g["site.facebook"]} />
+          <F name="site.tiktok" label="TikTok link" v={g["site.tiktok"]} /><F name="site.youtube" label="YouTube link" v={g["site.youtube"]} />
+          <F name="site.mapQuery" label="Map location (address or place name)" v={g["site.mapQuery"]} /><F name="site.mapLink" label="Google Maps link (for the Open in Maps button)" v={g["site.mapLink"]} />
+          <div className="sm:col-span-2"><F name="site.hours" label="Opening hours text" v={g["site.hours"]} /></div></>}
         {tab === "wording" && <>
           <F name="invoice.depositDeadlineDays" label="Days to pay a deposit or full amount" type="number" v={g["invoice.depositDeadlineDays"]} /><F name="invoice.balanceDaysBefore" label="Balance due (days before travel)" type="number" v={g["invoice.balanceDaysBefore"]} />
           <T k="invoice.paymentTerms" label="Payment terms (one per line)" /><T k="invoice.documents" label="Documents to send (one per line)" rows={3} />
@@ -59,5 +70,30 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         <div className="sm:col-span-2"><button className="btn btn-primary !min-h-[46px]">Save</button></div>
       </form>}
     </div>
+  );
+}
+
+function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelect)[] }) {
+  const Form = ({ r }: { r?: typeof s.testimonials.$inferSelect }) => (
+    <form action={saveTestimonial.bind(null, r?.id ?? null)} className="grid gap-3 sm:grid-cols-2">
+      <F name="name" label="Reviewer name (as shown, e.g. Anna M.)" v={r?.name} /><F name="country" label="Country" v={r?.country} />
+      <F name="title" label="Review title" v={r?.title} /><F name="reviewDate" label="Date (e.g. March 2026)" v={r?.reviewDate} />
+      <div className="sm:col-span-2"><label className="label">Review text (exactly as written)</label><textarea name="body" rows={4} defaultValue={r?.body} className="input" required /></div>
+      <F name="source" label="Source" v={r?.source ?? "Tripadvisor"} /><F name="url" label="Link to the review (optional, https://…)" v={r?.url} />
+      <input type="hidden" name="rating" value={r?.rating ?? 5} /><F name="sortOrder" label="Order (0 = first)" type="number" v={r?.sortOrder ?? 0} />
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={r?.active ?? true} className="h-5 w-5 accent-black" />Show on homepage</label>
+      <div className="sm:col-span-2"><button className="btn btn-dark">{r ? "Save review" : "Add review"}</button></div>
+    </form>);
+  return (
+    <section className="space-y-4">
+      <p className="text-sm text-ink/60">Add real reviews (copy them from Tripadvisor exactly as written). They show on the homepage. Only add genuine five-star reviews you are entitled to display.</p>
+      <details className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer font-semibold">Paste many reviews at once</summary>
+        <form action={bulkAddTestimonials} className="mt-3 grid gap-3">
+          <div><label className="label">One review per line: Name | Country | Date | Title | Review text</label><textarea name="bulk" rows={6} className="input" placeholder="Anna M. | Germany | March 2026 | Unforgettable Luxor day | Our guide made the temples come alive…" /></div>
+          <div className="grid gap-3 sm:grid-cols-2"><F name="source" label="Source" v="Tripadvisor" /><F name="url" label="Link (optional)" /></div><button className="btn btn-dark w-fit">Add all</button></form></details>
+      {reviews.map((r) => <details key={r.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{r.name}{r.country ? `, ${r.country}` : ""} <span className="font-normal text-ink/50">· {r.title || r.body.slice(0, 40)}</span></span><span className="badge">{r.active ? "Live" : "Hidden"}</span></summary>
+        <div className="mt-4"><Form r={r} /><form action={deleteTestimonial.bind(null, r.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete</button></form></div></details>)}
+      <details className="rounded-2xl border border-ink/10 bg-white p-4" open={reviews.length === 0}><summary className="cursor-pointer font-semibold">+ Add one review</summary><div className="mt-4"><Form /></div></details>
+    </section>
   );
 }

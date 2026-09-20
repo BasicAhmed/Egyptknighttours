@@ -131,6 +131,14 @@ export const documentEvents = sqliteTable("document_events", {
   note: text("note"), userId: text("user_id"), createdAt: createdAt(),
 });
 
+// Real customer reviews shown on the homepage (for example copied from Tripadvisor). Managed in Settings, never generated.
+export const testimonials = sqliteTable("testimonials", {
+  id: id(), name: text("name").notNull(), country: text("country").notNull().default(""), rating: integer("rating").notNull().default(5),
+  title: text("title").notNull().default(""), body: text("body").notNull(), source: text("source").notNull().default("Tripadvisor"),
+  url: text("url").notNull().default(""), reviewDate: text("review_date").notNull().default(""),
+  active: integer("active", { mode: "boolean" }).notNull().default(true), sortOrder: integer("sort_order").notNull().default(0), createdAt: createdAt(),
+});
+
 export const travelers = sqliteTable("travelers", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(), type: text("type").notNull(), age: integer("age"),

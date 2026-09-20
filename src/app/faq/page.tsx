@@ -3,7 +3,7 @@ import { SITE } from "@/lib/format";
 export const metadata: Metadata = { title: "Egypt Tours FAQ", description: "Answers about booking, payment, cancellation, pickup and what to expect on an Egypt Knight tour.", alternates: { canonical: "/faq" } };
 const faqs = [
   ["How do I book?", "Pick a tour, choose your date and group, and confirm. We contact you on WhatsApp or email to confirm details and send a payment link."],
-  ["Do I pay everything upfront?", "Not necessarily. Most tours let you pay a 30% deposit and the rest later. Some let you reserve now and pay later if you're travelling 7+ days out."],
+  ["Do I pay everything upfront?", "Not necessarily. Pay a 50% deposit to confirm your booking and the rest later. Some let you reserve now and pay later if you're travelling 7+ days out."],
   ["What's your cancellation policy?", "Each tour page states its policy. Our standard is free cancellation up to 24 hours before the start time (to be confirmed by Egypt Knight)."],
   ["Is hotel pickup included?", "For most Cairo, Giza and Luxor tours, yes. Check the inclusions on each tour page."],
   ["Can you build a custom itinerary?", "Yes. Use Build My Egypt Trip and we'll send a plan and a price."],

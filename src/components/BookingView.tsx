@@ -73,7 +73,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
             <div className="flex justify-between"><dt className="text-ink/55">Paid so far</dt><dd>{money(data.paid)}</dd></div>
             <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due)}</dd></div>
           </dl>
-          <p className="mt-3 text-xs text-ink/55">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a 30% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
+          <p className="mt-3 text-xs text-ink/55">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
         </section>
       </div>
 

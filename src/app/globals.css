@@ -21,3 +21,15 @@ body { background: #fff; color: #141010; -webkit-font-smoothing: antialiased; fo
 @keyframes step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .step-in { animation: step-in .22s ease-out backwards; }
 @media (prefers-reduced-motion: reduce) { .step-in { animation: none; } }
+
+/* Hero: slow drifting brand-colour orbs. Transform only, so it stays smooth on phones. */
+@keyframes orb-a { 0% { transform: translate3d(-4%, -3%, 0) scale(1); } 50% { transform: translate3d(8%, 7%, 0) scale(1.12); } 100% { transform: translate3d(-4%, -3%, 0) scale(1); } }
+@keyframes orb-b { 0% { transform: translate3d(5%, 4%, 0) scale(1.05); } 50% { transform: translate3d(-9%, -6%, 0) scale(.94); } 100% { transform: translate3d(5%, 4%, 0) scale(1.05); } }
+@keyframes orb-c { 0% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-6%, 9%, 0) scale(1.18); } 100% { transform: translate3d(0, 0, 0) scale(1); } }
+@keyframes ring-spin { to { transform: rotate(360deg); } }
+.orb { position: absolute; border-radius: 9999px; will-change: transform; pointer-events: none; }
+.orb-a { animation: orb-a 16s ease-in-out infinite; background: radial-gradient(circle at 35% 35%, rgba(240, 176, 80, .68), rgba(240, 176, 80, .22) 45%, rgba(240, 176, 80, 0) 70%); }
+.orb-b { animation: orb-b 20s ease-in-out infinite; background: radial-gradient(circle at 50% 50%, rgba(31, 111, 120, .22), rgba(31, 111, 120, .08) 45%, rgba(31, 111, 120, 0) 70%); }
+.orb-c { animation: orb-c 24s ease-in-out infinite; background: radial-gradient(circle at 50% 50%, rgba(233, 205, 150, .55), rgba(233, 205, 150, 0) 68%); }
+.sun-ring { animation: ring-spin 90s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .orb-a, .orb-b, .orb-c, .sun-ring { animation: none; } }
