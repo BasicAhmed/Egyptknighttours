@@ -5,7 +5,14 @@ import { seedItineraryTemplates } from "./seed-templates";
 import { syncAdminFromEnv } from "./admin-sync";
 
 // Creates any missing tables, then seeds demo content if the database is empty. Safe to call repeatedly and on old databases.
-const COLUMNS = [{ table: "bookings", name: "title_override", ddl: "text" }];
+const COLUMNS = [
+  { table: "bookings", name: "title_override", ddl: "text" }, { table: "bookings", name: "preferred_language", ddl: "text" }, { table: "bookings", name: "guide_id", ddl: "text" },
+  { table: "bookings", name: "driver", ddl: "text" }, { table: "bookings", name: "vehicle", ddl: "text" }, { table: "bookings", name: "flight_arrival", ddl: "text" },
+  { table: "bookings", name: "flight_departure", ddl: "text" }, { table: "bookings", name: "room_type", ddl: "text" }, { table: "bookings", name: "pickup_time", ddl: "text" },
+  { table: "bookings", name: "occasion", ddl: "text" }, { table: "bookings", name: "emergency_contact", ddl: "text" }, { table: "bookings", name: "visa_status", ddl: "text" },
+  { table: "travelers", name: "nationality", ddl: "text" }, { table: "travelers", name: "dob", ddl: "text" }, { table: "travelers", name: "passport_number", ddl: "text" },
+  { table: "travelers", name: "passport_expiry", ddl: "text" }, { table: "travelers", name: "notes", ddl: "text" },
+];
 let started: Promise<void> | null = null;
 export function ensureDatabase() {
   started ??= run().catch((e) => { started = null; throw e; });

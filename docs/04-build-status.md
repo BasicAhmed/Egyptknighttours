@@ -21,6 +21,12 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
 - Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
 
+## Travelers, passports and operations (order modal)
+- **Travelers tab:** one card per person (adult, child, infant) with name, age (required for children), date of birth, nationality, passport number and expiry, notes, and passport/visa upload from a local file (JPG, PNG, WebP or PDF, up to 4 MB). Warns when a passport expires within 6 months of the trip.
+- **Files are encrypted** (AES-256-GCM) before storage in the database, downloadable only by logged-in staff, and every view, upload and delete is written to the audit log. Set `FILE_ENCRYPTION_KEY` in Vercel for a dedicated key; otherwise it derives from `AUTH_SECRET` (changing that would make existing files unreadable). Delete files after the trip.
+- **Operations tab:** assigned tour guide (managed in Settings → Tour guides), preferred language (warns if the guide doesn't list it), driver, vehicle, arrival and departure flights, pickup time, hotel, room type, occasion, visa status, emergency contact, dietary and accessibility needs, plus a WhatsApp button that sends the tour details to the guide.
+- The Overview tab shows what is still to collect; the orders list shows guide and passport progress.
+
 ## Import itineraries from PDF
 - `/admin/itineraries` has **Import from PDF**: select one or many text PDFs (up to 4 MB each). Each becomes an editable itinerary or template with the title, intro, days, timeline items, included/excluded lists, price and payment terms, plus a fresh headline and hook for every day.
 - It is rule-based (looks for lines like "Day 1: Cairo", "The price includes"). Layouts that differ a lot may need review in the editor. Scanned PDFs (images only) aren't supported.

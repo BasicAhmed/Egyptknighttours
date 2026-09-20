@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { saveCompanySettings, savePaymentMethod, deletePaymentMethod } from "../doc-actions";
 import Notice from "@/components/Notice";
-import { saveTestimonial, deleteTestimonial, bulkAddTestimonials } from "../site-actions";
+import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide } from "../site-actions";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -29,11 +29,12 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; const tab = ["company", "wording", "website", "reviews"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
+  await requireStaff("settings"); const sp = await searchParams; const tab = ["company", "wording", "website", "reviews", "guides"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["wording", "Invoice wording"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["wording", "Invoice wording"]];
+  const guidesList = tab === "guides" ? await db.select().from(s.tourGuides).orderBy(asc(s.tourGuides.name)) : [];
   const reviews = tab === "reviews" ? await db.select().from(s.testimonials).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)) : [];
   return (
     <div>
@@ -48,7 +49,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <details className="rounded-2xl border border-ink/10 bg-white p-4" open={methods.length === 0}><summary className="cursor-pointer font-semibold">+ Add a payment method</summary><div className="mt-4"><MethodForm /></div></details>
         </div></section>}
       {tab === "reviews" && <ReviewsAdmin reviews={reviews} />}
-      {tab !== "payment" && tab !== "reviews" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+      {tab === "guides" && <GuidesAdmin guides={guidesList} />}
+      {tab !== "payment" && tab !== "reviews" && tab !== "guides" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
         {tab === "company" && <>
           <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
@@ -94,6 +96,25 @@ function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelec
       {reviews.map((r) => <details key={r.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{r.name}{r.country ? `, ${r.country}` : ""} <span className="font-normal text-ink/50">· {r.title || r.body.slice(0, 40)}</span></span><span className="badge">{r.active ? "Live" : "Hidden"}</span></summary>
         <div className="mt-4"><Form r={r} /><form action={deleteTestimonial.bind(null, r.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete</button></form></div></details>)}
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={reviews.length === 0}><summary className="cursor-pointer font-semibold">+ Add one review</summary><div className="mt-4"><Form /></div></details>
+    </section>
+  );
+}
+
+function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] }) {
+  const Form = ({ g }: { g?: typeof s.tourGuides.$inferSelect }) => (
+    <form action={saveGuide.bind(null, g?.id ?? null)} className="grid gap-3 sm:grid-cols-2">
+      <F name="name" label="Guide name" v={g?.name} /><F name="phone" label="WhatsApp / phone (with country code)" v={g?.phone} />
+      <F name="languages" label="Languages (comma separated)" v={g?.languages} />
+      <F name="notes" label="Notes (private)" v={g?.notes} />
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={g?.active ?? true} className="h-5 w-5 accent-black" />Available for assignment</label>
+      <div className="sm:col-span-2"><button className="btn btn-dark">{g ? "Save guide" : "Add guide"}</button></div>
+    </form>);
+  return (
+    <section className="space-y-3">
+      <p className="text-sm text-ink/60">Your team of tour guides. Staff pick one for each order in the order's Operations tab. Names are only shown to staff.</p>
+      {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/50">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
+        <div className="mt-4"><Form g={g} /><form action={deleteGuide.bind(null, g.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete guide</button></form></div></details>)}
+      <details className="rounded-2xl border border-ink/10 bg-white p-4" open={guides.length === 0}><summary className="cursor-pointer font-semibold">+ Add a guide</summary><div className="mt-4"><Form /></div></details>
     </section>
   );
 }

@@ -65,6 +65,17 @@ CREATE TABLE `bookings` (
 	`coupon_id` text,
 	`source` text,
 	`title_override` text,
+	`preferred_language` text,
+	`guide_id` text,
+	`driver` text,
+	`vehicle` text,
+	`flight_arrival` text,
+	`flight_departure` text,
+	`room_type` text,
+	`pickup_time` text,
+	`occasion` text,
+	`emergency_contact` text,
+	`visa_status` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,
@@ -287,6 +298,16 @@ CREATE TABLE `testimonials` (
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `tour_guides` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`phone` text DEFAULT '' NOT NULL,
+	`languages` text DEFAULT '' NOT NULL,
+	`notes` text DEFAULT '' NOT NULL,
+	`active` integer DEFAULT true NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `tours` (
 	`id` text PRIMARY KEY NOT NULL,
 	`slug` text NOT NULL,
@@ -327,12 +348,32 @@ CREATE TABLE `tours` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `tours_slug_unique` ON `tours` (`slug`);--> statement-breakpoint
+CREATE TABLE `traveler_files` (
+	`id` text PRIMARY KEY NOT NULL,
+	`traveler_id` text NOT NULL,
+	`booking_id` text NOT NULL,
+	`kind` text DEFAULT 'PASSPORT' NOT NULL,
+	`filename` text NOT NULL,
+	`mime` text NOT NULL,
+	`size` integer NOT NULL,
+	`data` blob NOT NULL,
+	`uploaded_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`traveler_id`) REFERENCES `travelers`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `travelers` (
 	`id` text PRIMARY KEY NOT NULL,
 	`booking_id` text NOT NULL,
 	`full_name` text NOT NULL,
 	`type` text NOT NULL,
 	`age` integer,
+	`nationality` text,
+	`dob` text,
+	`passport_number` text,
+	`passport_expiry` text,
+	`notes` text,
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

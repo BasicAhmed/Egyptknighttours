@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, blob } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 
 const id = () => text("id").primaryKey().$defaultFn(() => crypto.randomUUID());
@@ -84,6 +84,9 @@ export const bookings = sqliteTable("bookings", {
   currency: text("currency").notNull().default("USD"),
   couponId: text("coupon_id").references(() => coupons.id), source: text("source"),
   titleOverride: text("title_override"), // custom experiences created by staff (e.g. a specific cruise)
+  preferredLanguage: text("preferred_language"), guideId: text("guide_id"), driver: text("driver"), vehicle: text("vehicle"),
+  flightArrival: text("flight_arrival"), flightDeparture: text("flight_departure"), roomType: text("room_type"), pickupTime: text("pickup_time"),
+  occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"),
   createdAt: createdAt(),
 });
 
@@ -142,7 +145,25 @@ export const testimonials = sqliteTable("testimonials", {
 export const travelers = sqliteTable("travelers", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(), type: text("type").notNull(), age: integer("age"),
+  nationality: text("nationality"), dob: text("dob"), passportNumber: text("passport_number"), // stored encrypted (see lib/crypto)
+  passportExpiry: text("passport_expiry"), notes: text("notes"),
 });
+
+// Passport and visa scans. The bytes are encrypted before they are stored and only staff can download them.
+export const travelerFiles = sqliteTable("traveler_files", {
+  id: id(), travelerId: text("traveler_id").notNull().references(() => travelers.id, { onDelete: "cascade" }),
+  bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull().default("PASSPORT"), // PASSPORT VISA OTHER
+  filename: text("filename").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
+  data: blob("data", { mode: "buffer" }).notNull(), uploadedById: text("uploaded_by_id"), createdAt: createdAt(),
+});
+
+// Tour guides staff can assign to an order.
+export const tourGuides = sqliteTable("tour_guides", {
+  id: id(), name: text("name").notNull(), phone: text("phone").notNull().default(""), languages: text("languages").notNull().default(""),
+  notes: text("notes").notNull().default(""), active: integer("active", { mode: "boolean" }).notNull().default(true), createdAt: createdAt(),
+});
+
 
 export const payments = sqliteTable("payments", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id),

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 
-const go = (msg: string, err = false): never => redirect(`/admin/settings?tab=reviews&${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
+const go = (msg: string, err = false, tab = "reviews"): never => redirect(`/admin/settings?tab=${tab}&${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
 const httpsOrEmpty = z.string().trim().max(500).refine((v) => v === "" || /^https:\/\//i.test(v), "Links must start with https://");
 const schema = z.object({ name: z.string().trim().min(1).max(80), country: z.string().trim().max(60), rating: z.coerce.number().int().min(1).max(5), title: z.string().trim().max(140), body: z.string().trim().min(10).max(1200), source: z.string().trim().max(40), url: httpsOrEmpty, reviewDate: z.string().trim().max(30), sortOrder: z.coerce.number().int().min(0).max(999) });
 const audit = (uid: string, action: string, id?: string) => db.insert(s.auditLogs).values({ userId: uid, action, entity: "testimonial", entityId: id });
@@ -35,4 +35,20 @@ export async function bulkAddTestimonials(fd: FormData) {
   }
   await audit(u.uid, "BULK_CREATE"); revalidatePath("/"); revalidatePath("/admin/settings");
   return go(n ? `${n} review${n > 1 ? "s" : ""} added` : "Nothing added. Use one review per line: Name | Country | Date | Title | Review text", !n);
+}
+
+const guideSchema = z.object({ name: z.string().trim().min(2).max(100), phone: z.string().trim().max(30), languages: z.string().trim().max(120), notes: z.string().trim().max(300) });
+export async function saveGuide(id: string | null, fd: FormData) {
+  const u = await requireStaff("settings");
+  const p = guideSchema.safeParse(Object.fromEntries(fd.entries())); if (!p.success) return go(p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "), true, "guides");
+  const row = { ...p.data, active: fd.get("active") === "on" };
+  if (id) await db.update(s.tourGuides).set(row).where(eq(s.tourGuides.id, id)); else await db.insert(s.tourGuides).values(row);
+  await db.insert(s.auditLogs).values({ userId: u.uid, action: id ? "UPDATE" : "CREATE", entity: "tour_guide", entityId: id ?? undefined }); revalidatePath("/admin/settings");
+  return go("Guide saved", false, "guides");
+}
+export async function deleteGuide(id: string) {
+  const u = await requireStaff("settings");
+  await db.update(s.bookings).set({ guideId: null }).where(eq(s.bookings.guideId, id)); await db.delete(s.tourGuides).where(eq(s.tourGuides.id, id));
+  await db.insert(s.auditLogs).values({ userId: u.uid, action: "DELETE", entity: "tour_guide", entityId: id }); revalidatePath("/admin/settings");
+  return go("Guide removed. Their orders are now unassigned.", false, "guides");
 }

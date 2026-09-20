@@ -1,6 +1,6 @@
 "use server";
 import { db, schema as s } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
@@ -8,6 +8,8 @@ import { loadOrder, type Order } from "@/lib/orders";
 import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus } from "@/lib/documents";
 import { createItineraryRecord } from "@/lib/itineraries";
 import { newBookingRef } from "@/lib/booking";
+import { syncTravelers } from "@/lib/travelers";
+import { encryptText } from "@/lib/crypto";
 import { BOOKING_STATUS } from "@/lib/validation";
 
 type R = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
@@ -73,6 +75,7 @@ export async function orderUpdate(id: string, input: Record<string, unknown>): P
   const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "Order not found" };
   const d = p.data;
   await db.update(s.bookings).set({ travelDate: d.travelDate, adults: d.adults, children: d.children, infants: d.infants, subtotal: Math.round((d.total + b.discount) * 100) / 100, total: d.total, deposit: Math.min(b.deposit, d.total), currency: d.currency, hotel: d.hotel || null, pickupLocation: d.pickupNotes || null, specialRequests: d.requests || null, titleOverride: d.titleOverride || null }).where(eq(s.bookings.id, id));
+  await syncTravelers(id);
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Order details edited` });
   await audit(u.uid, "UPDATE", "booking", id); revalidatePath("/admin");
   return done(id, "Order updated");
@@ -106,6 +109,48 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
     await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
     return b.id;
   });
-  await audit(u.uid, "CREATE", "booking", id); revalidatePath("/admin");
+  await syncTravelers(id); await audit(u.uid, "CREATE", "booking", id); revalidatePath("/admin");
   return { ...(await done(id, `Order ${ref} created`)), id };
+}
+
+// ---------- Travelers, passports and operations ----------
+const dateOrEmpty = z.string().trim().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Use a valid date");
+const travSchema = z.object({ name: z.string().trim().min(1).max(120), type: z.enum(["ADULT", "CHILD", "INFANT"]), age: z.union([z.literal(""), z.coerce.number().int().min(0).max(120)]).optional(), nationality: z.string().trim().max(60), dob: dateOrEmpty, passportNumber: z.string().trim().max(30), passportExpiry: dateOrEmpty, notes: z.string().trim().max(300) });
+export async function orderSaveTraveler(id: string, travelerId: string, input: Record<string, unknown>): Promise<R> {
+  const u = await requireStaff("bookings");
+  const p = travSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
+  const d = p.data;
+  await db.update(s.travelers).set({ fullName: d.name, type: d.type, age: d.age === "" || d.age === undefined ? null : Number(d.age), nationality: d.nationality || null, dob: d.dob || null, passportNumber: d.passportNumber ? encryptText(d.passportNumber) : null, passportExpiry: d.passportExpiry || null, notes: d.notes || null }).where(and(eq(s.travelers.id, travelerId), eq(s.travelers.bookingId, id)));
+  await audit(u.uid, "UPDATE", "traveler", travelerId);
+  return done(id, "Traveler saved");
+}
+export async function orderAddTraveler(id: string, type: string): Promise<R> {
+  const u = await requireStaff("bookings"); if (!["ADULT", "CHILD", "INFANT"].includes(type)) return { ok: false, message: "Invalid type" };
+  const n = (await db.select({ id: s.travelers.id }).from(s.travelers).where(eq(s.travelers.bookingId, id))).length + 1;
+  const col = type === "ADULT" ? "adults" : type === "CHILD" ? "children" : "infants";
+  const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "Order not found" };
+  await db.insert(s.travelers).values({ bookingId: id, fullName: `Traveler ${n}`, type });
+  await db.update(s.bookings).set({ [col]: (b as unknown as Record<string, number>)[col] + 1 }).where(eq(s.bookings.id, id));
+  await audit(u.uid, "CREATE", "traveler", id); return done(id, "Traveler added");
+}
+export async function orderDeleteTraveler(id: string, travelerId: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const [t] = await db.select().from(s.travelers).where(and(eq(s.travelers.id, travelerId), eq(s.travelers.bookingId, id))); if (!t) return { ok: false, message: "Traveler not found" };
+  const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, id));
+  await db.delete(s.travelerFiles).where(eq(s.travelerFiles.travelerId, travelerId)); await db.delete(s.travelers).where(eq(s.travelers.id, travelerId));
+  const col = t.type === "ADULT" ? "adults" : t.type === "CHILD" ? "children" : "infants";
+  if (b) await db.update(s.bookings).set({ [col]: Math.max(t.type === "ADULT" ? 1 : 0, (b as unknown as Record<string, number>)[col] - 1) }).where(eq(s.bookings.id, id));
+  await audit(u.uid, "DELETE", "traveler", travelerId); return done(id, "Traveler removed (and their uploaded files)");
+}
+export async function orderSyncTravelers(id: string): Promise<R> { await requireStaff("bookings"); await syncTravelers(id); return done(id, ""); }
+const opsSchema = z.object({ preferredLanguage: z.string().trim().max(40), guideId: z.string().trim().max(60), driver: z.string().trim().max(120), vehicle: z.string().trim().max(120), flightArrival: z.string().trim().max(160), flightDeparture: z.string().trim().max(160), roomType: z.string().trim().max(80), pickupTime: z.string().trim().max(40), occasion: z.string().trim().max(60), emergencyContact: z.string().trim().max(160), visaStatus: z.string().trim().max(40), dietary: z.string().trim().max(300), accessibility: z.string().trim().max(300), hotel: z.string().trim().max(200), requests: z.string().trim().max(1000) });
+export async function orderSaveOps(id: string, input: Record<string, unknown>): Promise<R> {
+  const u = await requireStaff("bookings");
+  const p = opsSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
+  const d = p.data;
+  if (d.guideId) { const [g] = await db.select({ id: s.tourGuides.id }).from(s.tourGuides).where(eq(s.tourGuides.id, d.guideId)); if (!g) return { ok: false, message: "That guide no longer exists" }; }
+  const [before] = await db.select({ guideId: s.bookings.guideId }).from(s.bookings).where(eq(s.bookings.id, id));
+  await db.update(s.bookings).set({ preferredLanguage: d.preferredLanguage || null, guideId: d.guideId || null, driver: d.driver || null, vehicle: d.vehicle || null, flightArrival: d.flightArrival || null, flightDeparture: d.flightDeparture || null, roomType: d.roomType || null, pickupTime: d.pickupTime || null, occasion: d.occasion || null, emergencyContact: d.emergencyContact || null, visaStatus: d.visaStatus || null, dietary: d.dietary || null, accessibility: d.accessibility || null, hotel: d.hotel || null, specialRequests: d.requests || null }).where(eq(s.bookings.id, id));
+  if ((before?.guideId ?? "") !== d.guideId) { const [g] = d.guideId ? await db.select().from(s.tourGuides).where(eq(s.tourGuides.id, d.guideId)) : []; await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${g ? `Guide assigned: ${g.name}` : "Guide unassigned"}` }); }
+  await audit(u.uid, "UPDATE", "booking_ops", id); return done(id, "Operations details saved");
 }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Modal from "./Modal";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
-import { orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
+import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
+import { orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
 
 const cache = new Map<string, Order>();
@@ -22,6 +23,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
   const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ t: string; ok: boolean; warn?: boolean } | null>(null);
   const [invOpen, setInvOpen] = useState(focus === "invoice"); const [editOpen, setEditOpen] = useState(false);
+  const [tab, setTab] = useState<"overview" | "travelers" | "ops" | "money" | "notes">(focus ? "money" : "overview");
   const refs = { invoice: useRef<HTMLDivElement>(null), payment: useRef<HTMLDivElement>(null), itinerary: useRef<HTMLDivElement>(null) };
 
   useEffect(() => { let alive = true; fetchOrder(row.id).then((x) => alive && setO(x)).catch(() => alive && setErr(true)); return () => { alive = false; }; }, [row.id]);
@@ -32,6 +34,8 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
     try { const r = await fn(); if (r.order) { cache.set(row.id, r.order); setO(r.order); onChanged(r.order); } setToast({ t: r.message, ok: r.ok, warn: r.warn }); return r; }
     catch { setToast({ t: "Something went wrong. Please try again.", ok: false }); return null; } finally { setBusy(false); }
   }
+  const refresh = async () => { const x = await fetchOrder(row.id); setO(x); onChanged(x); };
+  useEffect(() => { if (o && o.travelers.length < o.adults + o.children + o.infants) void orderSyncTravelers(row.id).then((r) => { if (r.order) { cache.set(row.id, r.order); setO(r.order); onChanged(r.order); } }); /* eslint-disable-next-line */ }, [o?.id]);
   const first = (o?.customer.name ?? row.name).split(" ")[0];
   const stage = stageOf(o?.status ?? row.status);
   const status = o?.status ?? row.status;
@@ -51,6 +55,11 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
           <a className="btn btn-outline !min-h-[44px]" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
         </div>
 
+        <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
+          {([["overview", "Overview"], ["travelers", `Travelers${completeness(o).withPassport < completeness(o).pax ? " •" : ""}`], ["ops", "Operations"], ["money", "Payment & documents"], ["notes", "Notes"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70 hover:border-ink/40"}`}>{l}</button>)}
+        </div>
+        {tab === "overview" && <div className="space-y-4">
+        <Checklist o={o} go={(t) => setTab(t)} />
         <div className="grid gap-4 md:grid-cols-2">
           <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
@@ -63,6 +72,12 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
 
         {editOpen && <EditForm o={o} busy={busy} onSave={(v) => run(() => orderUpdate(o.id, v)).then((r) => { if (r?.ok) setEditOpen(false); })} />}
 
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[.04] p-3"><label className="text-sm font-semibold" htmlFor="st">Change status</label>
+          <select id="st" className="input !w-auto !py-2" value={STATUS_OPTIONS.includes(o.status) ? o.status : "PENDING"} disabled={busy} onChange={(e) => run(() => orderSetStatus(o.id, e.target.value))}>{STATUS_OPTIONS.map((x) => <option key={x} value={x}>{STATUS_LABEL[x]}</option>)}</select></div>
+        </div>}
+        {tab === "travelers" && <TravelersPanel o={o} busy={busy} run={run} refresh={refresh} />}
+        {tab === "ops" && <OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} />}
+        {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
           <div className="flex items-end justify-between"><p className="text-sm text-ink/60">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
@@ -84,13 +99,14 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
           <ItinCreate o={o} busy={busy} onCreate={(t, n) => run(() => orderCreateItinerary(o.id, t, n)).then((r) => { if (r?.ok && r.id) router.push(`/admin/itineraries/${r.id}`); })} />
         </Card></div>
 
+        </div>}
+        {tab === "notes" && <div className="space-y-4">
         <Card title="Notes and activity">
           <NoteForm busy={busy} onAdd={(t) => run(() => orderAddNote(o.id, t))} />
           <ul className="mt-3 space-y-2">{o.activity.map((a, i) => <li key={i} className="flex gap-3 text-sm"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.kind === "note" ? "bg-nile" : a.kind === "payment" ? "bg-[#1F7A46]" : a.kind === "doc" ? "bg-gold-600" : "bg-ink/30"}`} /><span className="flex-1"><span className={a.kind === "note" ? "font-medium" : ""}>{a.text}</span><span className="ml-2 text-xs text-ink/45">{ago(a.at)}</span></span></li>)}</ul>
         </Card>
 
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[.04] p-3"><label className="text-sm font-semibold" htmlFor="st">Change status</label>
-          <select id="st" className="input !w-auto !py-2" value={STATUS_OPTIONS.includes(o.status) ? o.status : "PENDING"} disabled={busy} onChange={(e) => run(() => orderSetStatus(o.id, e.target.value))}>{STATUS_OPTIONS.map((x) => <option key={x} value={x}>{STATUS_LABEL[x]}</option>)}</select></div>
+        </div>}
       </div>}
     </Modal>
   );
@@ -167,5 +183,14 @@ function EditForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: Re
       {f("pickupNotes", "Pickup notes", "text", "sm:col-span-2")}{f("requests", "Requests", "text", "sm:col-span-2")}
       <div className="sm:col-span-4"><button disabled={busy} className="btn btn-dark !min-h-[44px]">Save changes</button></div>
     </form>
+  );
+}
+
+function Checklist({ o, go }: { o: Order; go: (t: "travelers" | "ops") => void }) {
+  const c = completeness(o);
+  if (!c.missing.length) return <p className="rounded-xl bg-[#E9F6EE] px-4 py-2.5 text-sm font-semibold text-[#17663A]">✓ Traveler and operations details are complete.</p>;
+  return (
+    <div className="rounded-2xl border border-gold-600/40 bg-gold-500/10 p-3"><p className="mb-2 text-sm font-bold">Still to collect</p>
+      <div className="flex flex-wrap gap-2">{c.missing.map((m) => <button key={m.label} type="button" onClick={() => go(m.tab)} className="rounded-full border border-ink/20 bg-white px-3 py-1.5 text-sm font-semibold hover:border-ink">{m.label}</button>)}</div></div>
   );
 }
