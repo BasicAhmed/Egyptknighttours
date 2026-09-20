@@ -48,7 +48,7 @@ export default async function Home() {
   ];
   return (<>
     {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden pt-[68px]">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
         <div className="orb orb-a -right-[28%] -top-[8%] h-[300px] w-[300px] opacity-70 sm:-right-[12%] sm:-top-[22%] sm:h-[760px] sm:w-[760px] sm:opacity-100" />
         <div className="orb orb-b -bottom-[10%] -left-[30%] h-[260px] w-[260px] opacity-60 sm:-bottom-[30%] sm:-left-[14%] sm:h-[700px] sm:w-[700px] sm:opacity-100" />
