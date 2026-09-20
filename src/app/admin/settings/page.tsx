@@ -4,7 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { saveCompanySettings, savePaymentMethod, deletePaymentMethod } from "../doc-actions";
 import Notice from "@/components/Notice";
-import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide } from "../site-actions";
+import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides } from "../site-actions";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -112,6 +112,10 @@ function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] 
   return (
     <section className="space-y-3">
       <p className="text-sm text-ink/60">Your team of tour guides. Staff pick one for each order in the order's Operations tab. Names are only shown to staff.</p>
+      <details className="rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4"><summary className="cursor-pointer font-semibold">Paste many guides at once</summary>
+        <form action={bulkAddGuides} className="mt-3 grid gap-3">
+          <div><label className="label" htmlFor="gbulk">One guide per block: name, then language, then phone number(s). Leave a blank line between guides. Only the first phone number is saved.</label><textarea id="gbulk" name="bulk" rows={10} className="input" placeholder={"Guide Name\nEnglish\n+20 10 00000000\n\nAnother Guide\nSpanish\n010 00000001"} /></div>
+          <button className="btn btn-dark w-fit">Add all guides</button></form></details>
       {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/50">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
         <div className="mt-4"><Form g={g} /><form action={deleteGuide.bind(null, g.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete guide</button></form></div></details>)}
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={guides.length === 0}><summary className="cursor-pointer font-semibold">+ Add a guide</summary><div className="mt-4"><Form /></div></details>

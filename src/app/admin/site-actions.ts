@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
+import { parseGuides } from "@/lib/guides-import";
 
 const go = (msg: string, err = false, tab = "reviews"): never => redirect(`/admin/settings?tab=${tab}&${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
 const httpsOrEmpty = z.string().trim().max(500).refine((v) => v === "" || /^https:\/\//i.test(v), "Links must start with https://");
@@ -51,4 +52,18 @@ export async function deleteGuide(id: string) {
   await db.update(s.bookings).set({ guideId: null }).where(eq(s.bookings.guideId, id)); await db.delete(s.tourGuides).where(eq(s.tourGuides.id, id));
   await db.insert(s.auditLogs).values({ userId: u.uid, action: "DELETE", entity: "tour_guide", entityId: id }); revalidatePath("/admin/settings");
   return go("Guide removed. Their orders are now unassigned.", false, "guides");
+}
+
+// Paste a list (name, language, phone numbers) and every guide is added. Only the first number is kept. Guides that already exist are skipped.
+export async function bulkAddGuides(fd: FormData) {
+  const u = await requireStaff("settings");
+  const list = parseGuides(String(fd.get("bulk") ?? "").slice(0, 60000));
+  if (!list.length) return go("Nothing to add. Paste each guide as: name, language, phone number, with a blank line between guides.", true, "guides");
+  const have = new Set((await db.select({ name: s.tourGuides.name }).from(s.tourGuides)).map((g) => g.name.toLowerCase())); let added = 0, skipped = 0, noPhone = 0;
+  for (const g of list.slice(0, 200)) {
+    if (have.has(g.name.toLowerCase())) { skipped++; continue; }
+    await db.insert(s.tourGuides).values({ name: g.name.slice(0, 100), phone: g.phone, languages: g.languages, notes: "", active: true }); have.add(g.name.toLowerCase()); added++; if (!g.phone) noPhone++;
+  }
+  await db.insert(s.auditLogs).values({ userId: u.uid, action: "BULK_CREATE", entity: "tour_guide" }); revalidatePath("/admin/settings");
+  return go(`${added} guide${added === 1 ? "" : "s"} added${skipped ? `, ${skipped} skipped (already in the list)` : ""}${noPhone ? `, ${noPhone} without a phone number` : ""}.`, false, "guides");
 }
