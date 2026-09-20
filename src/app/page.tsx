@@ -59,7 +59,7 @@ export default async function Home() {
       <div className="container-x relative grid items-center gap-10 pb-14 pt-8 lg:grid-cols-12 lg:gap-12 lg:pb-20 lg:pt-14">
         <div className="lg:col-span-6">
           <p className="eyebrow">Egypt tours, planned by locals</p>
-          <h1 className="h1 mt-3 !text-[42px] sm:!text-6xl">Don't just visit Egypt. Experience it <span className="relative whitespace-nowrap"><span className="relative z-10">properly.</span><span className="absolute inset-x-0 bottom-1 z-0 h-3 bg-gold-500/70 sm:bottom-2 sm:h-4" /></span></h1>
+          <h1 className="h1 mt-3 !text-[42px] sm:!text-6xl">Egypt is waiting. Are you <span className="relative whitespace-nowrap"><span className="relative z-10">ready?</span><span className="absolute inset-x-0 bottom-1 z-0 h-3 bg-gold-500/70 sm:bottom-2 sm:h-4" /></span></h1>
           <p className="mt-5 max-w-xl text-lg text-ink/75">Egypt's tour team travellers keep coming back to: <b>{plus(g["site.years"])} years</b> of experience, <b>{plus(g["site.tours"])} tours</b> completed, and <b>{plus(g["site.reviews"])} five-star reviews</b> on Tripadvisor.</p>
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold"><span className="flex gap-0.5 text-gold-600">{[0, 1, 2, 3, 4].map((i) => <Star key={i} />)}</span><span>Trusted by thousands of travellers</span>{ta && <a href={ta} target="_blank" rel="noopener noreferrer" className="underline decoration-gold-600 decoration-2 underline-offset-4">See reviews</a>}</div>
           <form action="/tours" className="mt-6 rounded-2xl border border-ink/15 bg-white p-2 shadow-[0_14px_36px_rgba(20,16,16,.12)] sm:flex sm:items-center" role="search">
