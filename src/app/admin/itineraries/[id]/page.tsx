@@ -21,7 +21,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
   const canTour = PERMS.tours.includes(u.role) && !it.isTemplate;
   return (
     <div>
-      <Link href={it.isTemplate ? "/admin/itineraries?tab=templates" : "/admin/itineraries"} className="text-sm text-ink/60">← Itineraries</Link>
+      <Link href={it.isTemplate ? "/admin/itineraries?tab=templates" : "/admin/itineraries"} className="text-sm text-ink/65">← Itineraries</Link>
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
       <ItineraryEditor id={it.id} isTemplate={it.isTemplate} status={it.status} initial={{ name: it.name, description: it.description, bookingId: it.bookingId, content: parseJson<ItineraryContent>(it.content, null as never) }}
         bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}` }))}

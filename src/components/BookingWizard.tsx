@@ -93,22 +93,22 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
     <div className="rounded-2xl border border-ink/15 bg-white p-5">
       <div className="flex gap-3">
         <SiteImage src={tour.imageUrl} alt="" destination={tour.destinationSlug} className="relative h-20 w-24 shrink-0 rounded-xl" />
-        <div><p className="font-display text-[17px] font-bold leading-snug">{tour.title}</p><p className="mt-1 text-xs text-ink/60">{tour.destinationName} · {tour.durationLabel}</p></div>
+        <div><p className="font-display text-[17px] font-bold leading-snug">{tour.title}</p><p className="mt-1 text-xs text-ink/65">{tour.destinationName} · {tour.durationLabel}</p></div>
       </div>
       <dl className="mt-4 space-y-1.5 text-sm">
-        <div className="flex justify-between gap-3"><dt className="text-ink/60">Date</dt><dd className="text-right font-medium">{date ? prettyDate(date) : "Not chosen"}</dd></div>
-        <div className="flex justify-between gap-3"><dt className="text-ink/60">Travelers</dt><dd className="text-right font-medium">{adults} adult{adults > 1 ? "s" : ""}{children ? `, ${children} child${children > 1 ? "ren" : ""}` : ""}{infants ? `, ${infants} infant${infants > 1 ? "s" : ""}` : ""}</dd></div>
-        <div className="flex justify-between gap-3"><dt className="text-ink/60">Style</dt><dd className="font-medium">{isPrivate ? "Private" : "Shared"}</dd></div>
+        <div className="flex justify-between gap-3"><dt className="text-ink/65">Date</dt><dd className="text-right font-medium">{date ? prettyDate(date) : "Not chosen"}</dd></div>
+        <div className="flex justify-between gap-3"><dt className="text-ink/65">Travelers</dt><dd className="text-right font-medium">{adults} adult{adults > 1 ? "s" : ""}{children ? `, ${children} child${children > 1 ? "ren" : ""}` : ""}{infants ? `, ${infants} infant${infants > 1 ? "s" : ""}` : ""}</dd></div>
+        <div className="flex justify-between gap-3"><dt className="text-ink/65">Style</dt><dd className="font-medium">{isPrivate ? "Private" : "Shared"}</dd></div>
       </dl>
       {quote && <div className="mt-4 border-t border-ink/10 pt-3 text-sm" aria-live="polite">
         {quote.lines.map((l, i) => <div key={i} className="flex justify-between gap-3 py-0.5"><span className="text-ink/65">{l.label}</span><span className={l.amount < 0 ? "font-medium text-[#1a7f45]" : ""}>{l.amount < 0 ? "−" : ""}{money(Math.abs(l.amount))}</span></div>)}
         <div className="mt-2 flex items-baseline justify-between border-t border-ink/10 pt-3"><span className="font-semibold">Total</span><span className="font-display text-2xl font-extrabold">{money(quote.total)}</span></div>
-        <p className="mt-1 text-xs text-ink/55">{payMode === "PAY_LATER" ? "Nothing due today." : `Due today: ${money(dueNow)}${payMode === "DEPOSIT" ? ` · Balance later: ${money(quote.dueLater)}` : ""}`}</p>
+        <p className="mt-1 text-xs text-ink/65">{payMode === "PAY_LATER" ? "Nothing due today." : `Due today: ${money(dueNow)}${payMode === "DEPOSIT" ? ` · Balance later: ${money(quote.dueLater)}` : ""}`}</p>
       </div>}
     </div>
   );
   const styleBtn = (v: boolean, label: string, sub: string) => (
-    <button type="button" role="radio" aria-checked={isPrivate === v} onClick={() => setIsPrivate(v)} className={`rounded-xl border p-4 text-left ${isPrivate === v ? "border-ink bg-gold-500/20" : "border-ink/20 hover:border-ink"}`}><span className="block font-semibold">{label}</span><span className="text-xs text-ink/60">{sub}</span></button>
+    <button type="button" role="radio" aria-checked={isPrivate === v} onClick={() => setIsPrivate(v)} className={`rounded-xl border p-4 text-left ${isPrivate === v ? "border-ink bg-gold-500/20" : "border-ink/20 hover:border-ink"}`}><span className="block font-semibold">{label}</span><span className="text-xs text-ink/65">{sub}</span></button>
   );
   const field = (id: string, label: string, val: string, set: (v: string) => void, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div><label className="label" htmlFor={id}>{label}</label><input id={id} className="input" value={val} onChange={(e) => set(e.target.value)} {...props} /></div>
@@ -116,13 +116,13 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
 
   return (
     <div className="container-x scroll-mt-24 pb-36 pt-6 lg:pb-14" ref={top}>
-      <Link href={`/tours/${tour.slug}`} className="text-sm font-medium text-ink/60 hover:text-ink">← Back to tour</Link>
+      <Link href={`/tours/${tour.slug}`} className="text-sm font-medium text-ink/65 hover:text-ink">← Back to tour</Link>
       <h1 className="h2 mt-2">{tour.title}</h1>
       <ol className="mt-5 grid grid-cols-4 gap-2" aria-label="Booking progress">
         {STEPS.map((l, i) => { const n = i + 1, done = n < step, cur = n === step; return (
           <li key={l}><button type="button" onClick={() => goTo(n)} disabled={!done} aria-current={cur ? "step" : undefined} className="block w-full text-left">
             <span className={`block h-1.5 rounded-full ${done ? "bg-gold-500" : cur ? "bg-ink" : "bg-ink/10"}`} />
-            <span className={`mt-1.5 block text-xs font-semibold sm:text-sm ${cur ? "text-ink" : done ? "text-ink/80" : "text-ink/40"}`}><span className="hidden sm:inline">{n}. </span>{l}</span></button></li>); })}
+            <span className={`mt-1.5 block text-xs font-semibold sm:text-sm ${cur ? "text-ink" : done ? "text-ink/80" : "text-ink/65"}`}><span className="hidden sm:inline">{n}. </span>{l}</span></button></li>); })}
       </ol>
 
       <details className="mt-5 rounded-2xl border border-ink/15 lg:hidden"><summary className="flex cursor-pointer list-none items-center justify-between p-4 font-semibold">Order summary<span>{quote ? money(quote.total) : ""} ▾</span></summary><div className="px-1 pb-1"><Summary /></div></details>
@@ -153,7 +153,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
               <label key={a.id} className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 ${on ? "border-ink bg-gold-500/15" : "border-ink/15 hover:border-ink"}`}>
                 <input type="checkbox" className="mt-1 h-5 w-5 accent-black" checked={on} onChange={(e) => { if (e.target.checked) track("add_upsell", { tourSlug: tour.slug, props: { addon: a.name } }); setAddonIds(e.target.checked ? [...addonIds, a.id] : addonIds.filter((x) => x !== a.id)); }} />
                 <span className="flex-1"><span className="block font-semibold">{a.name}</span><span className="text-sm text-ink/65">{a.description}</span></span>
-                <span className="text-right text-sm font-bold">{money(a.price)}<span className="block text-xs font-normal text-ink/55">{a.unit === "PER_PERSON" ? "per person" : "per booking"}</span></span></label>); })}
+                <span className="text-right text-sm font-bold">{money(a.price)}<span className="block text-xs font-normal text-ink/65">{a.unit === "PER_PERSON" ? "per person" : "per booking"}</span></span></label>); })}
               {!addons.length && <p className="rounded-2xl border border-ink/15 p-4 text-sm text-ink/65">No extras for this tour.</p>}</div>
             <div className="mt-8"><label className="label" htmlFor="coupon">Have a coupon code?</label>
               <div className="flex gap-2"><input id="coupon" className="input uppercase" value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Enter code" /><button type="button" className="btn btn-outline" onClick={() => setAppliedCoupon(coupon.trim())}>Apply</button></div>
@@ -175,7 +175,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
               {field("hotel", "Hotel name (or 'not booked yet')", c.hotel, (v) => setC({ ...c, hotel: v }))}
               {field("pn", "Area, address or notes", c.pickupNotes, (v) => setC({ ...c, pickupNotes: v }))}
             </div>
-            {people + infants > 1 && <div className="mt-8"><h3 className="font-display text-xl font-bold">Other travelers <span className="text-sm font-normal text-ink/50">(optional)</span></h3>
+            {people + infants > 1 && <div className="mt-8"><h3 className="font-display text-xl font-bold">Other travelers <span className="text-sm font-normal text-ink/65">(optional)</span></h3>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">{Array.from({ length: people + infants - 1 }).map((_, i) => <div key={i}><label className="label" htmlFor={`o${i}`}>Traveler {i + 2}</label><input id={`o${i}`} className="input" value={others[i] ?? ""} onChange={(e) => { const n = [...others]; n[i] = e.target.value; setOthers(n); }} placeholder="Full name" /></div>)}</div></div>}
             <h3 className="mt-8 font-display text-xl font-bold">Anything we should know?</h3>
             <div className="mt-3 grid gap-4">
@@ -189,7 +189,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
             <h2 id="s4" className="font-display text-2xl font-bold">Review and confirm</h2>
             <div className="mt-4 divide-y divide-ink/10 rounded-2xl border border-ink/15 text-sm">
               {([["Trip", `${date ? prettyDate(date) : ""} · ${adults} adult${adults > 1 ? "s" : ""}${children ? `, ${children} child${children > 1 ? "ren" : ""}` : ""}${infants ? `, ${infants} infant${infants > 1 ? "s" : ""}` : ""} · ${isPrivate ? "Private" : "Shared"}`, 1], ["Extras", addonIds.length ? addons.filter((a) => addonIds.includes(a.id)).map((a) => a.name).join(", ") : "None", 2], ["Contact", `${c.name} · ${c.email} · ${c.whatsapp}`, 3], ["Pickup", c.hotel || "To be confirmed", 3]] as [string, string, number][]).map(([k, v, s]) => (
-                <div key={k} className="flex items-start justify-between gap-4 p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-ink/50">{k}</p><p className="mt-0.5 font-medium">{v}</p></div><button type="button" onClick={() => goTo(s)} className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4">Edit</button></div>))}
+                <div key={k} className="flex items-start justify-between gap-4 p-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{k}</p><p className="mt-0.5 font-medium">{v}</p></div><button type="button" onClick={() => goTo(s)} className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4">Edit</button></div>))}
             </div>
             <h3 className="mt-8 font-display text-xl font-bold">How would you like to pay?</h3>
             <div className="mt-3 space-y-3" role="radiogroup" aria-label="Payment option">
@@ -198,7 +198,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
             </div>
             <div className="mt-4 rounded-2xl bg-gold-500/15 p-4 text-sm"><p className="font-semibold">No card needed on this page.</p><p className="text-ink/75">After you confirm, our team checks availability and sends a secure payment link by WhatsApp and email.</p></div>
             <div className="mt-6"><p className="text-sm font-semibold">Cancellation policy</p><p className="text-sm text-ink/70">{tour.cancellationPolicy || "See the tour page for details."}</p></div>
-            <label className="mt-5 flex items-start gap-3 text-sm"><input type="checkbox" className="mt-0.5 h-5 w-5 accent-black" checked={terms} onChange={(e) => setTerms(e.target.checked)} />I agree to the booking terms and cancellation policy above.</label>
+            <label className="mt-5 flex items-start gap-3 text-sm"><input type="checkbox" className="mt-0.5 h-5 w-5 accent-black" checked={terms} onChange={(e) => setTerms(e.target.checked)} />I agree to the <a href="/terms" target="_blank" rel="noopener" className="font-semibold underline">booking terms</a> and cancellation policy above, and the <a href="/privacy-policy" target="_blank" rel="noopener" className="font-semibold underline">privacy policy</a>.</label>
           </section>}
 
           {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-800">{error}</p>}
@@ -206,7 +206,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
         </div>
           <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t border-ink/10 bg-white p-3 lg:static lg:mt-8 lg:border-0 lg:p-0">
             {step > 1 && <button type="button" onClick={() => goTo(step - 1)} className="btn btn-outline">Back</button>}
-            <div className="mr-auto leading-tight lg:hidden"><p className="text-xs text-ink/55">Total</p><p className="font-display text-lg font-extrabold">{quote ? money(quote.total) : "–"}</p></div>
+            <div className="mr-auto leading-tight lg:hidden"><p className="text-xs text-ink/65">Total</p><p className="font-display text-lg font-extrabold">{quote ? money(quote.total) : "–"}</p></div>
             {step < 4 ? <button type="button" onClick={next} className="btn btn-primary flex-1 lg:min-w-[220px] lg:flex-none">{step === 3 ? "Review booking" : "Continue"}</button>
               : <button type="button" onClick={submit} disabled={busy} className="btn btn-primary flex-1 disabled:opacity-60 lg:min-w-[240px] lg:flex-none">{busy ? "Confirming…" : "Confirm booking"}</button>}
           </div>

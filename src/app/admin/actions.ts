@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../../lib/auth";
+import { invalidate } from "../../lib/cache";
 import { tourSchema, LEAD_STATUS } from "../../lib/validation";
 
 const lines = (v: FormDataEntryValue | null) => String(v ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -33,7 +34,7 @@ export async function saveTour(id: string | null, fd: FormData) {
   if (dupe.length && dupe[0].id !== id) redirect(`${back}?error=${encodeURIComponent("Slug already used")}`);
   if (id) { await db.update(s.tours).set(r.data).where(eq(s.tours.id, id)); await audit(u.uid, "UPDATE", "tour", id); }
   else { const [n] = await db.insert(s.tours).values(r.data).returning(); await audit(u.uid, "CREATE", "tour", n.id); }
-  revalidatePath("/tours"); revalidatePath("/");
+  revalidatePath("/tours"); revalidatePath("/"); invalidate("tours");
   redirect("/admin/tours?saved=1");
 }
 export async function deleteTour(id: string) {
@@ -41,7 +42,7 @@ export async function deleteTour(id: string) {
   const has = await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.tourId, id)).limit(1);
   if (has.length) { await db.update(s.tours).set({ status: "ARCHIVED" }).where(eq(s.tours.id, id)); await audit(u.uid, "ARCHIVE", "tour", id); }
   else { await db.delete(s.addons).where(eq(s.addons.tourId, id)); await db.delete(s.reviews).where(eq(s.reviews.tourId, id)); await db.delete(s.tours).where(eq(s.tours.id, id)); await audit(u.uid, "DELETE", "tour", id); }
-  revalidatePath("/tours"); revalidatePath("/admin/tours");
+  revalidatePath("/tours"); revalidatePath("/admin/tours"); invalidate("tours");
 }
 export async function setLead(id: string, fd: FormData) {
   const u = await requireStaff("leads");
@@ -61,6 +62,6 @@ export async function saveDestination(id: string, fd: FormData) {
   const p = destSchema.safeParse(Object.fromEntries(fd.entries()));
   if (!p.success) redirect(`/admin/destinations/${id}?error=${encodeURIComponent(p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "))}`);
   await db.update(s.destinations).set({ ...p.data, imageUrl: p.data.imageUrl || null }).where(eq(s.destinations.id, id));
-  await audit(u.uid, "UPDATE", "destination", id); revalidatePath("/"); revalidatePath("/destinations"); revalidatePath("/tours");
+  await audit(u.uid, "UPDATE", "destination", id); revalidatePath("/"); revalidatePath("/destinations"); revalidatePath("/tours"); invalidate("destinations", "tours");
   redirect("/admin/destinations?saved=1");
 }

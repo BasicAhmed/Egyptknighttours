@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db, schema as s } from "@/db";
-import { and, eq, inArray } from "drizzle-orm";
-import { listTours } from "@/lib/queries";
+import { listTours, guideBySlug, publishedGuides } from "@/lib/queries";
 import { parseGuideBody, wordCount } from "@/lib/guide-body";
 import { parseJson, SITE, waLink } from "@/lib/format";
 import GuideBody from "@/components/GuideBody";
@@ -11,7 +10,7 @@ import TourCard from "@/components/TourCard";
 import WhatsAppButton from "@/components/WhatsAppButton";
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ slug: string }> };
-const get = async (slug: string) => (await db.select().from(s.guides).where(and(eq(s.guides.slug, slug), eq(s.guides.status, "PUBLISHED"))))[0];
+const get = async (slug: string) => (await guideBySlug(slug)) ?? undefined;
 
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const g = await get((await params).slug); if (!g) return {};
@@ -21,11 +20,8 @@ export default async function Guide({ params }: P) {
   const g = await get((await params).slug); if (!g) notFound();
   const faqs = parseJson<{ q: string; a: string }[]>(g.faqs, []);
   const relSlugs = g.related.split(",").map((x) => x.trim()).filter(Boolean);
-  const [related, mates, tours] = await Promise.all([
-    relSlugs.length ? db.select().from(s.guides).where(and(inArray(s.guides.slug, relSlugs), eq(s.guides.status, "PUBLISHED"))) : Promise.resolve([]),
-    db.select().from(s.guides).where(and(eq(s.guides.cluster, g.cluster), eq(s.guides.status, "PUBLISHED"))),
-    listTours(g.destinationSlug ? { destination: g.destinationSlug } : {}, 3),
-  ]);
+  const [allG, tours] = await Promise.all([publishedGuides(), listTours(g.destinationSlug ? { destination: g.destinationSlug } : {}, 3)]);
+  const related = allG.filter((x) => relSlugs.includes(x.slug)); const mates = allG.filter((x) => x.cluster === g.cluster);
   const pillar = mates.find((m) => m.isPillar && m.slug !== g.slug);
   const relOrdered = relSlugs.map((x) => related.find((r) => r.slug === x)).filter(Boolean) as typeof related;
   const more = [...relOrdered, ...mates.filter((m) => m.slug !== g.slug && !relOrdered.some((r) => r.slug === m.slug))].slice(0, 4);
@@ -39,14 +35,14 @@ export default async function Guide({ params }: P) {
   ];
   return (
     <div className="container-x py-8">
-      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
-      <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/egypt-travel-guide" className="hover:text-ink">Egypt travel guide</Link> / <span>{g.cluster}</span></nav>
+      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(o) }} />)}
+      <nav aria-label="Breadcrumb" className="text-sm text-ink/65"><Link href="/egypt-travel-guide" className="hover:text-ink">Egypt travel guide</Link> / <span>{g.cluster}</span></nav>
       <div className="mt-4 grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
         <article className="min-w-0 max-w-3xl">
           <p className="inline-block rounded-full bg-gold-500/25 px-3 py-1 text-xs font-bold uppercase tracking-[.12em]">{g.cluster}{g.isPillar ? " · Complete guide" : ""}</p>
           <h1 className="mt-3 font-display text-[32px] font-extrabold leading-[1.08] tracking-tight sm:text-[46px]">{g.title}</h1>
           <p className="mt-3 text-[18px] leading-relaxed text-ink/70">{g.summary}</p>
-          <p className="mt-4 text-sm text-ink/55">By the Egypt Knight Tours team · Updated {updated} · {mins} min read</p>
+          <p className="mt-4 text-sm text-ink/65">By the Egypt Knight Tours team · Updated {updated} · {mins} min read</p>
           <details className="mt-6 rounded-2xl border border-ink/10 bg-white p-4 lg:hidden"><summary className="cursor-pointer font-display font-extrabold">In this guide</summary><ol className="mt-3 space-y-2 text-[15px]">{toc.map((t) => <li key={t.id}><a className="font-semibold text-ink/80 hover:text-ink" href={`#${t.id}`}>{t.text}</a></li>)}</ol></details>
           <div className="mt-8"><GuideBody body={g.body} /></div>
 
@@ -59,11 +55,11 @@ export default async function Guide({ params }: P) {
 
         <aside className="hidden lg:block"><div className="sticky top-24 space-y-5">
           <nav aria-label="Table of contents" className="rounded-2xl border border-ink/10 bg-white p-5"><p className="font-display text-lg font-extrabold">In this guide</p><ol className="mt-3 space-y-2.5 text-[14.5px] leading-snug">{toc.map((t) => <li key={t.id}><a className="font-semibold text-ink/70 hover:text-ink" href={`#${t.id}`}>{t.text}</a></li>)}</ol></nav>
-          {pillar && <Link href={`/egypt-travel-guide/${pillar.slug}`} className="block rounded-2xl border border-gold-600/40 bg-gold-500/15 p-5 transition hover:bg-gold-500/25"><p className="text-xs font-bold uppercase tracking-[.12em] text-gold-700">Start with the complete guide</p><p className="mt-1 font-display text-lg font-extrabold leading-snug">{pillar.title}</p><span className="mt-2 inline-block text-sm font-bold">Read it →</span></Link>}
+          {pillar && <Link href={`/egypt-travel-guide/${pillar.slug}`} className="block rounded-2xl border border-gold-600/40 bg-gold-500/15 p-5 transition hover:bg-gold-500/25"><p className="text-xs font-bold uppercase tracking-[.12em] text-gold-800">Start with the complete guide</p><p className="mt-1 font-display text-lg font-extrabold leading-snug">{pillar.title}</p><span className="mt-2 inline-block text-sm font-bold">Read it →</span></Link>}
         </div></aside>
       </div>
 
-      {more.length > 0 && <section className="mt-14"><h2 className="h2">Keep reading</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{more.map((m) => <Link key={m.id} href={`/egypt-travel-guide/${m.slug}`} className="group rounded-3xl border border-ink/10 bg-white p-5 shadow-[0_2px_12px_rgba(20,16,16,.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(20,16,16,.12)]"><p className="text-xs font-bold uppercase tracking-[.12em] text-gold-700">{m.cluster}</p><p className="mt-1 font-display text-lg font-extrabold leading-snug group-hover:underline">{m.title}</p><span className="mt-3 inline-block text-sm font-bold">Read →</span></Link>)}</div></section>}
+      {more.length > 0 && <section className="mt-14"><h2 className="h2">Keep reading</h2><div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{more.map((m) => <Link key={m.id} href={`/egypt-travel-guide/${m.slug}`} className="group rounded-3xl border border-ink/10 bg-white p-5 shadow-[0_2px_12px_rgba(20,16,16,.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(20,16,16,.12)]"><p className="text-xs font-bold uppercase tracking-[.12em] text-gold-800">{m.cluster}</p><p className="mt-1 font-display text-lg font-extrabold leading-snug group-hover:underline">{m.title}</p><span className="mt-3 inline-block text-sm font-bold">Read →</span></Link>)}</div></section>}
       {tours.length > 0 && <section className="mt-14"><h2 className="h2">Egypt tours to book</h2><div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{tours.map((t) => <TourCard key={t.id} t={t} />)}</div></section>}
     </div>
   );

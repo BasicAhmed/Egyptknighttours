@@ -11,6 +11,7 @@ import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
 import { createItineraryRecord } from "@/lib/itineraries";
 import { cleanImageRef } from "@/lib/media";
+import { invalidate } from "@/lib/cache";
 import { parseJson } from "@/lib/format";
 import type { ItineraryContent } from "@/pdf/types";
 
@@ -115,6 +116,6 @@ export async function publishItineraryAsTour(id: string, fd: FormData) {
     const [t] = await db.insert(s.tours).values({ ...base, slug, audience: "ALL", activityLevel: "EASY", maxTravelers: 12, faqs: "[]" }).returning(); tourId = t.id;
   }
   await db.update(s.itineraries).set({ tourId }).where(eq(s.itineraries.id, id));
-  await audit(u.uid, existing ? "UPDATE" : "CREATE", "tour_from_itinerary", tourId!); revalidatePath("/tours"); revalidatePath("/");
+  await audit(u.uid, existing ? "UPDATE" : "CREATE", "tour_from_itinerary", tourId!); revalidatePath("/tours"); revalidatePath("/"); invalidate("tours");
   return go(back, existing ? `Tour updated from this itinerary (${p.data.status === "PUBLISHED" ? "live on the website" : "saved as draft"}).` : p.data.status === "PUBLISHED" ? "Tour created and live on the website." : "Tour created as a draft. Publish it when you're ready.");
 }

@@ -9,6 +9,7 @@ CREATE TABLE `addons` (
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `addons_tour_idx` ON `addons` (`tour_id`);--> statement-breakpoint
 CREATE TABLE `analytics_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -30,6 +31,7 @@ CREATE TABLE `audit_logs` (
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `audit_created_idx` ON `audit_logs` (`created_at`);--> statement-breakpoint
 CREATE TABLE `booking_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`booking_id` text NOT NULL,
@@ -39,6 +41,7 @@ CREATE TABLE `booking_events` (
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `booking_events_booking_idx` ON `booking_events` (`booking_id`);--> statement-breakpoint
 CREATE TABLE `bookings` (
 	`id` text PRIMARY KEY NOT NULL,
 	`ref` text NOT NULL,
@@ -83,6 +86,11 @@ CREATE TABLE `bookings` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `bookings_ref_unique` ON `bookings` (`ref`);--> statement-breakpoint
+CREATE INDEX `bookings_customer_idx` ON `bookings` (`customer_id`);--> statement-breakpoint
+CREATE INDEX `bookings_tour_idx` ON `bookings` (`tour_id`);--> statement-breakpoint
+CREATE INDEX `bookings_status_idx` ON `bookings` (`status`);--> statement-breakpoint
+CREATE INDEX `bookings_travel_idx` ON `bookings` (`travel_date`);--> statement-breakpoint
+CREATE INDEX `bookings_created_idx` ON `bookings` (`created_at`);--> statement-breakpoint
 CREATE TABLE `coupons` (
 	`id` text PRIMARY KEY NOT NULL,
 	`code` text NOT NULL,
@@ -137,6 +145,7 @@ CREATE TABLE `document_events` (
 	FOREIGN KEY (`document_id`) REFERENCES `documents`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `document_events_doc_idx` ON `document_events` (`document_id`);--> statement-breakpoint
 CREATE TABLE `documents` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text NOT NULL,
@@ -158,6 +167,8 @@ CREATE TABLE `documents` (
 	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `documents_booking_idx` ON `documents` (`booking_id`);--> statement-breakpoint
+CREATE INDEX `documents_itinerary_idx` ON `documents` (`itinerary_id`);--> statement-breakpoint
 CREATE TABLE `follow_ups` (
 	`id` text PRIMARY KEY NOT NULL,
 	`lead_id` text NOT NULL,
@@ -168,6 +179,8 @@ CREATE TABLE `follow_ups` (
 	FOREIGN KEY (`lead_id`) REFERENCES `leads`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `follow_ups_lead_idx` ON `follow_ups` (`lead_id`);--> statement-breakpoint
+CREATE INDEX `follow_ups_due_idx` ON `follow_ups` (`status`,`due_at`);--> statement-breakpoint
 CREATE TABLE `guides` (
 	`id` text PRIMARY KEY NOT NULL,
 	`slug` text NOT NULL,
@@ -187,6 +200,7 @@ CREATE TABLE `guides` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `guides_slug_unique` ON `guides` (`slug`);--> statement-breakpoint
+CREATE INDEX `guides_status_idx` ON `guides` (`status`,`cluster`);--> statement-breakpoint
 CREATE TABLE `itineraries` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -204,6 +218,8 @@ CREATE TABLE `itineraries` (
 	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `itineraries_template_idx` ON `itineraries` (`is_template`);--> statement-breakpoint
+CREATE INDEX `itineraries_booking_idx` ON `itineraries` (`booking_id`);--> statement-breakpoint
 CREATE TABLE `lead_events` (
 	`id` text PRIMARY KEY NOT NULL,
 	`lead_id` text NOT NULL,
@@ -213,6 +229,7 @@ CREATE TABLE `lead_events` (
 	FOREIGN KEY (`lead_id`) REFERENCES `leads`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `lead_events_lead_idx` ON `lead_events` (`lead_id`);--> statement-breakpoint
 CREATE TABLE `leads` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -240,6 +257,9 @@ CREATE TABLE `leads` (
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `leads_status_idx` ON `leads` (`status`);--> statement-breakpoint
+CREATE INDEX `leads_created_idx` ON `leads` (`created_at`);--> statement-breakpoint
+CREATE INDEX `leads_email_idx` ON `leads` (`email`);--> statement-breakpoint
 CREATE TABLE `media` (
 	`id` text PRIMARY KEY NOT NULL,
 	`filename` text NOT NULL,
@@ -252,6 +272,7 @@ CREATE TABLE `media` (
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `media_created_idx` ON `media` (`created_at`);--> statement-breakpoint
 CREATE TABLE `payment_methods` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text DEFAULT 'BANK' NOT NULL,
@@ -283,6 +304,13 @@ CREATE TABLE `payments` (
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `payments_booking_idx` ON `payments` (`booking_id`);--> statement-breakpoint
+CREATE TABLE `rate_limits` (
+	`key` text PRIMARY KEY NOT NULL,
+	`count` integer DEFAULT 0 NOT NULL,
+	`window_start` integer NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `reviews` (
 	`id` text PRIMARY KEY NOT NULL,
 	`tour_id` text NOT NULL,
@@ -297,6 +325,7 @@ CREATE TABLE `reviews` (
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
+CREATE INDEX `reviews_tour_idx` ON `reviews` (`tour_id`,`status`);--> statement-breakpoint
 CREATE TABLE `settings` (
 	`key` text PRIMARY KEY NOT NULL,
 	`value` text DEFAULT '' NOT NULL
@@ -317,6 +346,7 @@ CREATE TABLE `testimonials` (
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
+CREATE INDEX `testimonials_active_idx` ON `testimonials` (`active`,`sort_order`);--> statement-breakpoint
 CREATE TABLE `tour_guides` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -367,6 +397,8 @@ CREATE TABLE `tours` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `tours_slug_unique` ON `tours` (`slug`);--> statement-breakpoint
+CREATE INDEX `tours_status_idx` ON `tours` (`status`);--> statement-breakpoint
+CREATE INDEX `tours_destination_idx` ON `tours` (`destination_id`);--> statement-breakpoint
 CREATE TABLE `traveler_files` (
 	`id` text PRIMARY KEY NOT NULL,
 	`traveler_id` text NOT NULL,
@@ -382,6 +414,8 @@ CREATE TABLE `traveler_files` (
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `traveler_files_booking_idx` ON `traveler_files` (`booking_id`);--> statement-breakpoint
+CREATE INDEX `traveler_files_traveler_idx` ON `traveler_files` (`traveler_id`);--> statement-breakpoint
 CREATE TABLE `travelers` (
 	`id` text PRIMARY KEY NOT NULL,
 	`booking_id` text NOT NULL,
@@ -396,6 +430,7 @@ CREATE TABLE `travelers` (
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `travelers_booking_idx` ON `travelers` (`booking_id`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,

@@ -21,8 +21,8 @@ export default function GuideBody({ body }: { body: string }) {
           </aside>);
         if (b.t !== "table") return null;
         return (
-          <div key={i} className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-[0_2px_12px_rgba(20,16,16,.05)]">
-            <table className="w-full min-w-[520px] border-collapse text-left text-[15px] leading-snug"><thead><tr className="bg-ink text-white">{b.head.map((h, k) => <th key={k} className="px-4 py-3 font-display font-bold">{h}</th>)}</tr></thead>
+          <div key={i} tabIndex={0} role="region" aria-label="Table, scroll sideways on small screens" className="overflow-x-auto rounded-2xl border border-ink/10 bg-white shadow-[0_2px_12px_rgba(20,16,16,.05)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink">
+            <table className="w-full min-w-[520px] border-collapse text-left text-[15px] leading-snug"><thead><tr className="bg-ink text-white">{b.head.map((h, k) => <th key={k} scope="col" className="px-4 py-3 font-display font-bold">{h || <span className="sr-only">Topic</span>}</th>)}</tr></thead>
               <tbody>{b.rows.map((r, k) => <tr key={k} className={k % 2 ? "bg-ink/[.03]" : ""}>{r.map((c, j) => <td key={j} className={`px-4 py-3 align-top ${j === 0 ? "font-bold text-ink" : "text-ink/80"}`}><Inline text={c} /></td>)}</tr>)}</tbody></table></div>);
       })}
     </div>

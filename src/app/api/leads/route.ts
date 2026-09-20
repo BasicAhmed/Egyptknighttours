@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { leadSchema } from "@/lib/validation";
 import { db, schema as s } from "@/db";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimitPersistent, clientIp } from "@/lib/rate-limit";
 import { and, eq } from "drizzle-orm";
 
 const DAY = 86400000;
 export async function POST(req: Request) {
-  if (!rateLimit("lead:" + clientIp(req.headers), 8, 10 * 60_000)) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  if (!(await rateLimitPersistent("lead:" + clientIp(req.headers), 10, 10 * 60_000))) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   const parsed = leadSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Please check your details" }, { status: 400 });
   const { website: _hp, ...d } = parsed.data; void _hp;

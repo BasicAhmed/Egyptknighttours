@@ -69,7 +69,7 @@ function TravelerCard({ o, t, n, busy, run, refresh }: { o: Order; t: Traveler; 
       </div>
       {err && <p role="alert" className="mt-2 text-sm font-semibold text-red-700">{err}</p>}
       {t.files.length > 0 && <ul className="mt-3 divide-y divide-ink/10 rounded-xl bg-ink/[.04] text-sm">{t.files.map((f) => (
-        <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"><span className="min-w-0 truncate"><b>{f.kind === "PASSPORT" ? "Passport" : f.kind === "VISA" ? "Visa" : "File"}</b> <span className="text-ink/60">· {f.filename} · {kb(f.size)}</span></span>
+        <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"><span className="min-w-0 truncate"><b>{f.kind === "PASSPORT" ? "Passport" : f.kind === "VISA" ? "Visa" : "File"}</b> <span className="text-ink/65">· {f.filename} · {kb(f.size)}</span></span>
           <span className="flex gap-2"><a className={Btn} href={`/api/admin/files/${f.id}`} target="_blank" rel="noopener noreferrer">View</a><a className={Btn} href={`/api/admin/files/${f.id}?download=1`}>Download</a><button type="button" className={`${Btn} text-red-700`} onClick={() => void del(f.id)}>Delete</button></span></li>))}</ul>}
     </div>
   );
@@ -101,19 +101,19 @@ export function OpsPanel({ o, busy, run }: { o: Order; busy: boolean; run: Run }
   return (
     <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(() => orderSaveOps(o.id, v)); }}>
       <datalist id="langs">{LANGUAGES.map((x) => <option key={x} value={x} />)}</datalist><datalist id="occ">{OCCASIONS.map((x) => <option key={x} value={x} />)}</datalist>
-      <section className="rounded-2xl border border-ink/10 p-4"><h3 className="mb-3 font-display text-base font-extrabold">Guide and language</h3>
+      <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Guide and language</h2>
         <div className="grid gap-2 sm:grid-cols-2">
-          <div><label className="label" htmlFor="oguide">Assigned tour guide</label><select id="oguide" className="input !py-2" value={v.guideId} onChange={set("guideId")}><option value="">Not assigned yet</option>{o.guides.map((g) => <option key={g.id} value={g.id}>{g.name}{g.languages ? ` (${g.languages})` : ""}{!g.active ? " (inactive)" : ""}</option>)}</select>{!o.guides.length && <p className="mt-1 text-xs text-ink/55">No guides yet. Add them in Settings → Guides.</p>}</div>
+          <div><label className="label" htmlFor="oguide">Assigned tour guide</label><select id="oguide" className="input !py-2" value={v.guideId} onChange={set("guideId")}><option value="">Not assigned yet</option>{o.guides.map((g) => <option key={g.id} value={g.id}>{g.name}{g.languages ? ` (${g.languages})` : ""}{!g.active ? " (inactive)" : ""}</option>)}</select>{!o.guides.length && <p className="mt-1 text-xs text-ink/65">No guides yet. Add them in Settings → Guides.</p>}</div>
           <F k="preferredLanguage" label="Customer's preferred language" list="langs" />
           <F k="driver" label="Driver" /><F k="vehicle" label="Vehicle" ph="Car / van / plate" />
         </div>
         {langMismatch && <p className="mt-2 rounded-lg bg-[#FFF3D6] px-3 py-2 text-sm font-semibold text-[#7A4B00]">⚠ {guide!.name} doesn't list {v.preferredLanguage}. Check the language or pick another guide.</p>}
         {guide && guide.phone && <a className="btn btn-wa mt-3 !min-h-[40px] !py-2 !text-[14px]" target="_blank" rel="noopener noreferrer" href={waUrl(guide.phone, guideMsg)}>Send tour details to {guide.name.split(" ")[0]} on WhatsApp</a>}
       </section>
-      <section className="rounded-2xl border border-ink/10 p-4"><h3 className="mb-3 font-display text-base font-extrabold">Arrival and pickup</h3>
+      <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Arrival and pickup</h2>
         <div className="grid gap-2 sm:grid-cols-2"><F k="flightArrival" label="Arrival flight" ph="MS 777, 30 Oct 14:20" /><F k="flightDeparture" label="Departure flight" ph="MS 778, 2 Nov 09:10" />
           <F k="hotel" label="Hotel / pickup place" /><F k="pickupTime" label="Pickup time" ph="08:00" /><F k="roomType" label="Room type" ph="Double, twin, family" /><F k="occasion" label="Occasion" list="occ" /></div></section>
-      <section className="rounded-2xl border border-ink/10 p-4"><h3 className="mb-3 font-display text-base font-extrabold">Care and paperwork</h3>
+      <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Care and paperwork</h2>
         <div className="grid gap-2 sm:grid-cols-2"><div><label className="label" htmlFor="ovisa">Visa status</label><select id="ovisa" className="input !py-2" value={v.visaStatus} onChange={set("visaStatus")}><option value="">Not set</option>{VISA_STATUS.map((x) => <option key={x}>{x}</option>)}</select></div>
           <F k="emergencyContact" label="Emergency contact (name and phone)" /><F k="dietary" label="Dietary requirements" /><F k="accessibility" label="Accessibility needs" />
           <div className="sm:col-span-2"><label className="label" htmlFor="oreq">Special requests</label><textarea id="oreq" className="input !py-2" rows={3} value={v.requests} onChange={set("requests")} /></div></div></section>

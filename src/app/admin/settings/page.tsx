@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { db, schema as s } from "@/db";
 import { asc } from "drizzle-orm";
 import { requireStaff } from "@/lib/auth";
@@ -9,7 +10,7 @@ import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, del
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
-const F = ({ name, label, v, type = "text", ph }: { name: string; label: string; v?: string | number; type?: string; ph?: string }) => <div><label className="label">{label}</label><input name={name} type={type} defaultValue={v ?? ""} placeholder={ph} className="input" /></div>;
+const F = ({ name, label, v, type = "text", ph }: { name: string; label: string; v?: string | number; type?: string; ph?: string }) => <label className="block"><span className="label">{label}</span><input name={name} type={type} defaultValue={v ?? ""} placeholder={ph} className="input" /></label>;
 function MethodForm({ m }: { m?: M }) {
   const act = savePaymentMethod.bind(null, m?.id ?? null);
   return (
@@ -30,20 +31,20 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; const tab = ["company", "wording", "website", "reviews", "guides"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
+  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["wording", "Invoice wording"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["wording", "Invoice wording"], ["system", "System status"]];
   const guidesList = tab === "guides" ? await db.select().from(s.tourGuides).orderBy(asc(s.tourGuides.name)) : [];
   const reviews = tab === "reviews" ? await db.select().from(s.testimonials).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)) : [];
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Settings</h1><p className="text-sm text-ink/55">These feed your invoices and itineraries. New PDFs use whatever is saved here.</p>
+      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Settings</h1><p className="text-sm text-ink/65">These feed your invoices and itineraries. New PDFs use whatever is saved here.</p>
       <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">{tabs.map(([k, l]) => <a key={k} href={`/admin/settings?tab=${k}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70"}`}>{l}</a>)}</div>
       <div className="mt-4"><Notice n={sp.n} e={sp.e} /></div>
       {tab === "payment" && <section>
-        <p className="mb-4 text-sm text-ink/60">Bank details are stored here only, never in the code. Add a payment link to make the invoice button clickable.</p>
+        <p className="mb-4 text-sm text-ink/65">Bank details are stored here only, never in the code. Add a payment link to make the invoice button clickable.</p>
         <div className="space-y-3">
           {methods.map((m) => <details key={m.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold">{m.label}<span className="flex gap-2"><span className="badge">{m.kind}</span>{m.currency && <span className="badge">{m.currency}</span>}<span className="badge">{m.active ? "Active" : "Hidden"}</span></span></summary>
             <div className="mt-4"><MethodForm m={m} /><form action={deletePaymentMethod.bind(null, m.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete this method</button></form></div></details>)}
@@ -57,9 +58,15 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
           <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
           <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>
-          <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} /></>}
+          <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} />
+          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Privacy</h2>
+          <F name="privacy.passportRetentionDays" label="Delete passport files this many days after the trip (0 = never)" type="number" v={g["privacy.passportRetentionDays"]} />
+          <p className="self-end text-sm text-ink/65">Runs nightly. Deletes uploaded passport and visa files and the stored passport number.</p>
+          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Website credit</h2>
+          <F name="builder.name" label="Built by (name)" v={g["builder.name"]} /><F name="builder.url" label="Built by (website link, https://…)" v={g["builder.url"]} />
+          <div><label className="label" htmlFor="bshow">Show the credit</label><select id="bshow" name="builder.show" defaultValue={g["builder.show"]} className="input"><option value="1">Yes: footer, admin and documents</option><option value="0">No</option></select></div></>}
         {tab === "website" && <>
-          <p className="text-sm text-ink/60 sm:col-span-2">These numbers and links appear on the homepage. Only use figures you can back up.</p>
+          <p className="text-sm text-ink/65 sm:col-span-2">These numbers and links appear on the homepage. Only use figures you can back up.</p>
           <div className="sm:col-span-2"><ImageField name="site.heroImage" label="Homepage main photo" value={g["site.heroImage"]} hint="Large landscape or portrait photo shown next to the headline." /></div>
           <F name="site.years" label="Years of experience (number)" v={g["site.years"]} /><F name="site.tours" label="Tours completed (e.g. 5,000)" v={g["site.tours"]} />
           <F name="site.reviews" label="Five-star reviews (e.g. 500)" v={g["site.reviews"]} /><F name="site.tripadvisorUrl" label="Tripadvisor page link (https://…)" v={g["site.tripadvisorUrl"]} />
@@ -91,12 +98,12 @@ function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelec
     </form>);
   return (
     <section className="space-y-4">
-      <p className="text-sm text-ink/60">Add real reviews (copy them from Tripadvisor exactly as written). They show on the homepage. Only add genuine five-star reviews you are entitled to display.</p>
+      <p className="text-sm text-ink/65">Add real reviews (copy them from Tripadvisor exactly as written). They show on the homepage. Only add genuine five-star reviews you are entitled to display.</p>
       <details className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer font-semibold">Paste many reviews at once</summary>
         <form action={bulkAddTestimonials} className="mt-3 grid gap-3">
           <div><label className="label">One review per line: Name | Country | Date | Title | Review text</label><textarea name="bulk" rows={6} className="input" placeholder="Anna M. | Germany | March 2026 | Unforgettable Luxor day | Our guide made the temples come alive…" /></div>
           <div className="grid gap-3 sm:grid-cols-2"><F name="source" label="Source" v="Tripadvisor" /><F name="url" label="Link (optional)" /></div><button className="btn btn-dark w-fit">Add all</button></form></details>
-      {reviews.map((r) => <details key={r.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{r.name}{r.country ? `, ${r.country}` : ""} <span className="font-normal text-ink/50">· {r.title || r.body.slice(0, 40)}</span></span><span className="badge">{r.active ? "Live" : "Hidden"}</span></summary>
+      {reviews.map((r) => <details key={r.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{r.name}{r.country ? `, ${r.country}` : ""} <span className="font-normal text-ink/65">· {r.title || r.body.slice(0, 40)}</span></span><span className="badge">{r.active ? "Live" : "Hidden"}</span></summary>
         <div className="mt-4"><Form r={r} /><form action={deleteTestimonial.bind(null, r.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete</button></form></div></details>)}
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={reviews.length === 0}><summary className="cursor-pointer font-semibold">+ Add one review</summary><div className="mt-4"><Form /></div></details>
     </section>
@@ -114,12 +121,12 @@ function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] 
     </form>);
   return (
     <section className="space-y-3">
-      <p className="text-sm text-ink/60">Your team of tour guides. Staff pick one for each order in the order's Operations tab. Names are only shown to staff.</p>
+      <p className="text-sm text-ink/65">Your team of tour guides. Staff pick one for each order in the order's Operations tab. Names are only shown to staff.</p>
       <details className="rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4"><summary className="cursor-pointer font-semibold">Paste many guides at once</summary>
         <form action={bulkAddGuides} className="mt-3 grid gap-3">
           <div><label className="label" htmlFor="gbulk">One guide per block: name, then language, then phone number(s). Leave a blank line between guides. Only the first phone number is saved.</label><textarea id="gbulk" name="bulk" rows={10} className="input" placeholder={"Guide Name\nEnglish\n+20 10 00000000\n\nAnother Guide\nSpanish\n010 00000001"} /></div>
           <button className="btn btn-dark w-fit">Add all guides</button></form></details>
-      {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/50">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
+      {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/65">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
         <div className="mt-4"><Form g={g} /><form action={deleteGuide.bind(null, g.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete guide</button></form></div></details>)}
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={guides.length === 0}><summary className="cursor-pointer font-semibold">+ Add a guide</summary><div className="mt-4"><Form /></div></details>
     </section>

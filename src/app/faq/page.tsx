@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/jsonld";
 import { SITE } from "@/lib/format";
 export const metadata: Metadata = { title: "Egypt Tours FAQ", description: "Answers about booking, payment, cancellation, pickup and what to expect on an Egypt Knight tour.", alternates: { canonical: "/faq" } };
 const faqs = [
@@ -12,6 +13,6 @@ const faqs = [
 export default function FAQ() {
   const ld = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: faqs.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
   void SITE;
-  return <div className="container-x max-w-3xl py-10"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} /><h1 className="h1 !text-3xl sm:!text-4xl">Frequently asked questions</h1>
+  return <div className="container-x max-w-3xl py-10"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} /><h1 className="h1 !text-3xl sm:!text-4xl">Frequently asked questions</h1>
     <div className="mt-6 space-y-2">{faqs.map(([q, a]) => <details key={q} className="card p-4"><summary className="cursor-pointer font-semibold">{q}</summary><p className="mt-2 text-sm text-ink/70">{a}</p></details>)}</div></div>;
 }

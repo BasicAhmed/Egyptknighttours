@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db, schema as s } from "@/db";
-import { eq, and } from "drizzle-orm";
-import { listTours } from "@/lib/queries";
+import { listTours, destinationBySlug, publishedGuides } from "@/lib/queries";
 import TourCard from "@/components/TourCard";
 import SiteImage from "@/components/SiteImage";
 import { SITE } from "@/lib/format";
 export const dynamic = "force-dynamic";
 type P = { params: Promise<{ slug: string }> };
-const get = async (slug: string) => (await db.select().from(s.destinations).where(eq(s.destinations.slug, slug)))[0];
+const get = async (slug: string) => (await destinationBySlug(slug)) ?? undefined;
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const d = await get((await params).slug); if (!d) return {};
   return { title: { absolute: d.seoTitle }, description: d.seoDescription, alternates: { canonical: `/destinations/${d.slug}` }, openGraph: { title: d.seoTitle, description: d.seoDescription, images: d.imageUrl ? [d.imageUrl] : undefined } };
 }
 export default async function Destination({ params }: P) {
   const d = await get((await params).slug); if (!d) notFound();
-  const [tours, guides] = await Promise.all([listTours({ destination: d.slug }), db.select().from(s.guides).where(and(eq(s.guides.destinationSlug, d.slug), eq(s.guides.status, "PUBLISHED")))]);
+  const [tours, allG] = await Promise.all([listTours({ destination: d.slug }), publishedGuides()]);
+  const guides = allG.filter((x) => x.destinationSlug === d.slug);
   const facts: [string, string, string][] = [[`Best time to visit ${d.name}`, d.bestTime, "☀"], [`How to get to ${d.name}`, d.howToGet, "✈"], [`Where to stay in ${d.name}`, d.whereToStay, "⌂"], [`Local tips for ${d.name}`, d.tips, "✓"]];
   const faqs: [string, string][] = [[`How many days do you need in ${d.name}?`, `We recommend ${d.recommendedDays.toLowerCase()} in ${d.name}.`], [`When is the best time to visit ${d.name}?`, d.bestTime], [`How do I get to ${d.name}?`, d.howToGet]];
   const ld = [
@@ -26,8 +26,8 @@ export default async function Destination({ params }: P) {
   ];
   return (
     <div className="container-x py-8">
-      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
-      <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/">Home</Link> / <Link href="/destinations">Destinations</Link> / {d.name}</nav>
+      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(o) }} />)}
+      <nav aria-label="Breadcrumb" className="text-sm text-ink/65"><Link href="/">Home</Link> / <Link href="/destinations">Destinations</Link> / {d.name}</nav>
       <div className="relative mt-4 overflow-hidden rounded-[28px]">
         <SiteImage src={d.imageUrl} alt={`${d.name}, Egypt: tours and things to do`} destination={d.slug} priority sizes="(min-width: 1024px) 1100px, 100vw" className="relative aspect-[4/3] sm:aspect-[21/9]" />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/15 to-transparent" />

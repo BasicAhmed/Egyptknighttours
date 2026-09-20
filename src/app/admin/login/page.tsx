@@ -6,13 +6,13 @@ import Image from "next/image";
 import { headers } from "next/headers";
 import { createSession, getSession } from "../../../lib/auth";
 import { loginSchema } from "../../../lib/validation";
-import { rateLimit, clientIp } from "../../../lib/rate-limit";
+import { rateLimitPersistent, clientIp } from "../../../lib/rate-limit";
 
 const DUMMY = "$2a$12$C6UzMDM.H6dfI/f/IKcXeOe5Yb1uFqRk7K0m0jY7xXGm7cQkqk1a2";
 async function login(fd: FormData) {
   "use server";
   const ip = clientIp(await headers());
-  if (!rateLimit("login:" + ip, 8, 15 * 60_000)) redirect("/admin/login?e=rate");
+  if (!(await rateLimitPersistent("login:" + ip, 8, 15 * 60_000))) redirect("/admin/login?e=rate");
   const p = loginSchema.safeParse({ email: String(fd.get("email") ?? "").trim(), password: fd.get("password") });
   if (!p.success) redirect("/admin/login?e=bad");
   const [u] = await db.select().from(s.users).where(eq(s.users.email, p.data.email.toLowerCase()));

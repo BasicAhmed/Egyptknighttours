@@ -1,5 +1,6 @@
 import { db, schema as s } from "@/db";
 import { and, asc, desc, eq, gte, lte, sql, inArray, like, or } from "drizzle-orm";
+import { cachedQuery } from "./cache";
 
 export type Filters = { destination?: string; category?: string; audience?: string; type?: string; maxPrice?: number; minDays?: number; maxDays?: number; sort?: string; q?: string };
 
@@ -10,7 +11,7 @@ export async function getRatings(tourIds: string[]) {
   return new Map(rows.map((r) => [r.tourId, { avg: Number(r.avg), count: Number(r.count) }]));
 }
 
-export async function listTours(f: Filters = {}, limit = 60) {
+async function listToursRaw(f: Filters = {}, limit = 60) {
   const conds = [eq(s.tours.status, "PUBLISHED")];
   if (f.destination) conds.push(eq(s.destinations.slug, f.destination));
   if (f.category) conds.push(eq(s.tours.category, f.category));
@@ -28,7 +29,7 @@ export async function listTours(f: Filters = {}, limit = 60) {
   return rows.map((r) => ({ ...r.t, destinationName: r.destinationName, destinationSlug: r.destinationSlug, destinationImage: r.destinationImage, rating: ratings.get(r.t.id) ?? null }));
 }
 
-export async function getTourBySlug(slug: string) {
+async function getTourBySlugRaw(slug: string) {
   const [row] = await db.select({ t: s.tours, dest: s.destinations }).from(s.tours).innerJoin(s.destinations, eq(s.tours.destinationId, s.destinations.id))
     .where(and(eq(s.tours.slug, slug), eq(s.tours.status, "PUBLISHED")));
   if (!row) return null;
@@ -37,3 +38,12 @@ export async function getTourBySlug(slug: string) {
   const rating = reviews.length ? { avg: reviews.reduce((a, r) => a + r.rating, 0) / reviews.length, count: reviews.length } : null;
   return { tour: row.t, dest: row.dest, addons, reviews, rating };
 }
+
+// Cached versions used by the public website.
+export const listTours = cachedQuery("listTours", listToursRaw, ["tours", "destinations"]);
+export const getTourBySlug = cachedQuery("getTourBySlug", getTourBySlugRaw, ["tours", "destinations"]);
+export const allDestinations = cachedQuery("allDestinations", async () => db.select().from(s.destinations).orderBy(asc(s.destinations.name)), ["destinations"]);
+export const destinationBySlug = cachedQuery("destinationBySlug", async (slug: string) => (await db.select().from(s.destinations).where(eq(s.destinations.slug, slug)))[0] ?? null, ["destinations"]);
+export const publishedGuides = cachedQuery("publishedGuides", async () => db.select().from(s.guides).where(eq(s.guides.status, "PUBLISHED")), ["guides"]);
+export const guideBySlug = cachedQuery("guideBySlug", async (slug: string) => (await db.select().from(s.guides).where(and(eq(s.guides.slug, slug), eq(s.guides.status, "PUBLISHED"))))[0] ?? null, ["guides"]);
+export const activeTestimonials = cachedQuery("activeTestimonials", async (limit: number) => db.select().from(s.testimonials).where(eq(s.testimonials.active, true)).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)).limit(limit), ["testimonials"]);

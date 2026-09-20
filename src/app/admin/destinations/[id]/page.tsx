@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function EditDestination({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   await requireStaff("tours"); const { id } = await params; const { error } = await searchParams;
   const [d] = await db.select().from(s.destinations).where(eq(s.destinations.id, id)); if (!d) notFound();
-  const T = ({ name, label, v, rows = 3, hint }: { name: string; label: string; v: string; rows?: number; hint?: string }) => <div className="sm:col-span-2"><label className="label" htmlFor={name}>{label}{hint && <span className="ml-2 font-normal text-ink/50">{hint}</span>}</label><textarea id={name} name={name} rows={rows} defaultValue={v} className="input" /></div>;
+  const T = ({ name, label, v, rows = 3, hint }: { name: string; label: string; v: string; rows?: number; hint?: string }) => <div className="sm:col-span-2"><label className="label" htmlFor={name}>{label}{hint && <span className="ml-2 font-normal text-ink/65">{hint}</span>}</label><textarea id={name} name={name} rows={rows} defaultValue={v} className="input" /></div>;
   return (
-    <div><Link href="/admin/destinations" className="text-sm text-ink/60">← Destinations</Link><h1 className="mt-2 font-display text-2xl font-extrabold sm:text-3xl">{d.name}</h1>
+    <div><Link href="/admin/destinations" className="text-sm text-ink/65">← Destinations</Link><h1 className="mt-2 font-display text-2xl font-extrabold sm:text-3xl">{d.name}</h1>
       <form action={saveDestination.bind(null, d.id)} className="mt-5 grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2">
         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800 sm:col-span-2">{error}</p>}
         <div className="sm:col-span-2"><ImageField name="imageUrl" label="Destination photo" value={d.imageUrl} hint="Upload a wide, good-looking photo. It's used on the homepage tiles and this destination's page." /></div>

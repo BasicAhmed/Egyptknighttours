@@ -12,7 +12,7 @@ export default async function TourForm({ tour, error }: { tour?: T; error?: stri
   const fq = j<{ q: string; a: string }[]>(tour?.faqs, []).map((x) => `${x.q} | ${x.a}`).join("\n");
   const sel = (name: string, opts: string[][], v?: string) => <select name={name} defaultValue={v} className="input">{opts.map(([val, l]) => <option key={val} value={val}>{l}</option>)}</select>;
   const inp = (name: string, label: string, v?: string | number | null, type = "text") => <div><label className="label">{label}</label><input name={name} type={type} step="any" defaultValue={v ?? ""} className="input" /></div>;
-  const ta = (name: string, label: string, v: string | undefined, rows = 4, hint?: string) => <div className="sm:col-span-2"><label className="label">{label}{hint && <span className="ml-2 font-normal text-ink/50">{hint}</span>}</label><textarea name={name} rows={rows} defaultValue={v} className="input" /></div>;
+  const ta = (name: string, label: string, v: string | undefined, rows = 4, hint?: string) => <div className="sm:col-span-2"><label className="label">{label}{hint && <span className="ml-2 font-normal text-ink/65">{hint}</span>}</label><textarea name={name} rows={rows} defaultValue={v} className="input" /></div>;
   return <form action={act} className="card grid gap-4 p-5 sm:grid-cols-2">
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 sm:col-span-2">{error}</p>}
     {inp("title", "Title", tour?.title)}{inp("slug", "Slug (lowercase-with-dashes)", tour?.slug)}

@@ -31,7 +31,7 @@ export default function AvailabilityCard(p: P) {
   return (
     <div className="rounded-2xl border border-ink/15 bg-white p-5 shadow-[0_10px_30px_rgba(20,16,16,.07)]" id="book">
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between rounded-xl border border-ink/20 px-4 py-3 text-left hover:border-ink">
-        <span><span className="block text-[11px] font-semibold uppercase tracking-wide text-ink/50">Date</span><span className="font-semibold">{date ? prettyDate(date) : "Select a date"}</span></span><span aria-hidden>▾</span>
+        <span><span className="block text-[11px] font-semibold uppercase tracking-wide text-ink/65">Date</span><span className="font-semibold">{date ? prettyDate(date) : "Select a date"}</span></span><span aria-hidden>▾</span>
       </button>
       {open && <div className="mt-3 rounded-xl border border-ink/10 p-3"><Calendar value={date} min={p.minDate} onChange={(d) => { setDate(d); setOpen(false); setErr(null); }} /></div>}
       <div className="mt-2 divide-y divide-ink/10">
@@ -44,9 +44,9 @@ export default function AvailabilityCard(p: P) {
           {[[false, "Shared"], [true, "Private"]].map(([v, l]) => <button key={String(l)} type="button" role="radio" aria-checked={isPrivate === v} onClick={() => setIsPrivate(v as boolean)} className={`rounded-xl border px-3 py-3 text-sm font-semibold ${isPrivate === v ? "border-ink bg-gold-500/25" : "border-ink/20"}`}>{l as string}</button>)}
         </div>)}
       {err && <p role="alert" className="mt-3 text-sm text-red-700">{err}</p>}
-      <div className="mt-4 flex items-end justify-between"><span className="text-sm text-ink/60">Total</span><span className="font-display text-2xl font-extrabold">{total != null ? money(total) : "–"}</span></div>
+      <div className="mt-4 flex items-end justify-between"><span className="text-sm text-ink/65">Total</span><span className="font-display text-2xl font-extrabold">{total != null ? money(total) : "–"}</span></div>
       <button type="button" onClick={go} className="btn btn-primary mt-3 w-full">Check availability</button>
-      <p className="mt-2 text-center text-xs text-ink/55">You won't be charged yet. Pay a deposit or reserve now.</p>
+      <p className="mt-2 text-center text-xs text-ink/65">You won't be charged yet. Pay a deposit or reserve now.</p>
     </div>
   );
 }

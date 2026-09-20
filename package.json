@@ -10,11 +10,10 @@
     "db:seed": "tsx src/db/run-seed.ts",
     "db:setup": "drizzle-kit push --force && tsx src/db/run-seed.ts",
     "db:sql": "rm -rf drizzle && drizzle-kit generate --name init && node scripts/gen-migration.mjs",
-    "test": "tsx --test src/lib/pricing.test.ts src/lib/booking-token.test.ts src/lib/crypto.test.ts src/lib/guides-import.test.ts src/lib/content-limits.test.ts src/lib/guide-body.test.ts src/lib/content-links.test.ts"
+    "test": "tsx --test src/lib/pricing.test.ts src/lib/booking-token.test.ts src/lib/crypto.test.ts src/lib/guides-import.test.ts src/lib/content-limits.test.ts src/lib/guide-body.test.ts src/lib/content-links.test.ts src/lib/platform.test.ts",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
-    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
-    "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/bricolage-grotesque": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
     "@libsql/client": "^0.18.0",
@@ -40,5 +39,12 @@
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3"
-  }
+  },
+  "overrides": {
+    "next": {
+      "postcss": "$postcss"
+    }
+  },
+  "author": "Nino Techy",
+  "description": "Egypt Knight Tours: booking platform, CRM and SEO website. Built and maintained by Nino Techy."
 }

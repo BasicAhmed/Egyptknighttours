@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5ea5ea2d-c7f8-44d8-95cd-00cf2b92d4e1",
+  "id": "781ba8d9-70f3-4861-b92f-84e8ef6f4dc5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -60,7 +60,15 @@
           "default": true
         }
       },
-      "indexes": {},
+      "indexes": {
+        "addons_tour_idx": {
+          "name": "addons_tour_idx",
+          "columns": [
+            "tour_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "addons_tour_id_tours_id_fk": {
           "name": "addons_tour_id_tours_id_fk",
@@ -196,7 +204,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "audit_created_idx": {
+          "name": "audit_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "audit_logs_user_id_users_id_fk": {
           "name": "audit_logs_user_id_users_id_fk",
@@ -256,7 +272,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "booking_events_booking_idx": {
+          "name": "booking_events_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "booking_events_booking_id_bookings_id_fk": {
           "name": "booking_events_booking_id_bookings_id_fk",
@@ -556,6 +580,41 @@
             "ref"
           ],
           "isUnique": true
+        },
+        "bookings_customer_idx": {
+          "name": "bookings_customer_idx",
+          "columns": [
+            "customer_id"
+          ],
+          "isUnique": false
+        },
+        "bookings_tour_idx": {
+          "name": "bookings_tour_idx",
+          "columns": [
+            "tour_id"
+          ],
+          "isUnique": false
+        },
+        "bookings_status_idx": {
+          "name": "bookings_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "bookings_travel_idx": {
+          "name": "bookings_travel_idx",
+          "columns": [
+            "travel_date"
+          ],
+          "isUnique": false
+        },
+        "bookings_created_idx": {
+          "name": "bookings_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -933,7 +992,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "document_events_doc_idx": {
+          "name": "document_events_doc_idx",
+          "columns": [
+            "document_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "document_events_document_id_documents_id_fk": {
           "name": "document_events_document_id_documents_id_fk",
@@ -1066,7 +1133,22 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "documents_booking_idx": {
+          "name": "documents_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        },
+        "documents_itinerary_idx": {
+          "name": "documents_itinerary_idx",
+          "columns": [
+            "itinerary_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "documents_booking_id_bookings_id_fk": {
           "name": "documents_booking_id_bookings_id_fk",
@@ -1160,7 +1242,23 @@
           "default": "'SCHEDULED'"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "follow_ups_lead_idx": {
+          "name": "follow_ups_lead_idx",
+          "columns": [
+            "lead_id"
+          ],
+          "isUnique": false
+        },
+        "follow_ups_due_idx": {
+          "name": "follow_ups_due_idx",
+          "columns": [
+            "status",
+            "due_at"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "follow_ups_lead_id_leads_id_fk": {
           "name": "follow_ups_lead_id_leads_id_fk",
@@ -1302,6 +1400,14 @@
             "slug"
           ],
           "isUnique": true
+        },
+        "guides_status_idx": {
+          "name": "guides_status_idx",
+          "columns": [
+            "status",
+            "cluster"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -1402,7 +1508,22 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "itineraries_template_idx": {
+          "name": "itineraries_template_idx",
+          "columns": [
+            "is_template"
+          ],
+          "isUnique": false
+        },
+        "itineraries_booking_idx": {
+          "name": "itineraries_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "itineraries_booking_id_bookings_id_fk": {
           "name": "itineraries_booking_id_bookings_id_fk",
@@ -1475,7 +1596,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "lead_events_lead_idx": {
+          "name": "lead_events_lead_idx",
+          "columns": [
+            "lead_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "lead_events_lead_id_leads_id_fk": {
           "name": "lead_events_lead_id_leads_id_fk",
@@ -1657,7 +1786,29 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "leads_status_idx": {
+          "name": "leads_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "leads_created_idx": {
+          "name": "leads_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "leads_email_idx": {
+          "name": "leads_email_idx",
+          "columns": [
+            "email"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "leads_assigned_to_id_users_id_fk": {
           "name": "leads_assigned_to_id_users_id_fk",
@@ -1758,7 +1909,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "media_created_idx": {
+          "name": "media_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -1963,7 +2122,15 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "payments_booking_idx": {
+          "name": "payments_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "payments_booking_id_bookings_id_fk": {
           "name": "payments_booking_id_bookings_id_fk",
@@ -1979,6 +2146,38 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "rate_limits": {
+      "name": "rate_limits",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "window_start": {
+          "name": "window_start",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -2059,7 +2258,16 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "reviews_tour_idx": {
+          "name": "reviews_tour_idx",
+          "columns": [
+            "tour_id",
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "reviews_tour_id_tours_id_fk": {
           "name": "reviews_tour_id_tours_id_fk",
@@ -2201,7 +2409,16 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "testimonials_active_idx": {
+          "name": "testimonials_active_idx",
+          "columns": [
+            "active",
+            "sort_order"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -2552,6 +2769,20 @@
             "slug"
           ],
           "isUnique": true
+        },
+        "tours_status_idx": {
+          "name": "tours_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "tours_destination_idx": {
+          "name": "tours_destination_idx",
+          "columns": [
+            "destination_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -2649,7 +2880,22 @@
           "default": "(unixepoch())"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "traveler_files_booking_idx": {
+          "name": "traveler_files_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        },
+        "traveler_files_traveler_idx": {
+          "name": "traveler_files_traveler_idx",
+          "columns": [
+            "traveler_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "traveler_files_traveler_id_travelers_id_fk": {
           "name": "traveler_files_traveler_id_travelers_id_fk",
@@ -2756,7 +3002,15 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "travelers_booking_idx": {
+          "name": "travelers_booking_idx",
+          "columns": [
+            "booking_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "travelers_booking_id_bookings_id_fk": {
           "name": "travelers_booking_id_bookings_id_fk",

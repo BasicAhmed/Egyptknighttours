@@ -20,12 +20,12 @@ export default function TourCard({ t }: { t: Card }) {
         <span className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-xs font-bold shadow"><Clock />{duration(t)}</span>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <p className="text-xs font-bold uppercase tracking-[.14em] text-gold-700">{t.destinationName}</p>
+        <p className="text-xs font-bold uppercase tracking-[.14em] text-gold-800">{t.destinationName}</p>
         <h3 className="mt-1 font-display text-[20px] font-extrabold leading-snug">{t.title}</h3>
         <p className="mb-4 mt-1.5 line-clamp-2 text-sm text-ink/65">{t.shortDescription}</p>
-        {t.rating && <p className="mt-2 text-sm font-semibold">★ {t.rating.avg.toFixed(1)} <span className="font-normal text-ink/50">({t.rating.count} reviews)</span></p>}
+        {t.rating && <p className="mt-2 text-sm font-semibold">★ {t.rating.avg.toFixed(1)} <span className="font-normal text-ink/65">({t.rating.count} reviews)</span></p>}
         <div className="mt-auto flex items-end justify-between border-t border-ink/10 pt-4">
-          <div><p className="text-xs font-semibold text-ink/50">From</p><p className="flex items-baseline gap-1.5"><span className="font-display text-[28px] font-extrabold leading-none">{money(price)}</span><span className="text-sm text-ink/60">{t.pricingModel === "PER_GROUP" ? "per group" : "per person"}</span></p>{t.discountPrice != null && <s className="text-xs text-ink/40">{money(t.price)}</s>}</div>
+          <div><p className="text-xs font-semibold text-ink/65">From</p><p className="flex items-baseline gap-1.5"><span className="font-display text-[28px] font-extrabold leading-none">{money(price)}</span><span className="text-sm text-ink/65">{t.pricingModel === "PER_GROUP" ? "per group" : "per person"}</span></p>{t.discountPrice != null && <s className="text-xs text-ink/65">{money(t.price)}</s>}</div>
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gold-500 text-ink transition group-hover:bg-ink group-hover:text-gold-500" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg></span>
         </div>
       </div>

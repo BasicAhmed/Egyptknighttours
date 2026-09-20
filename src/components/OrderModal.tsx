@@ -14,7 +14,7 @@ export function prefetchOrder(id: string) { if (!cache.has(id)) fetchOrder(id).c
 
 type Res = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
 const Card = ({ title, children, id, action }: { title: string; children: React.ReactNode; id?: string; action?: React.ReactNode }) => <section id={id} className="rounded-2xl border border-ink/10 p-4"><div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-display text-base font-extrabold">{title}</h3>{action}</div>{children}</section>;
-const Row = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="flex justify-between gap-4 py-1 text-sm"><span className="text-ink/55">{k}</span><span className="text-right font-medium">{v}</span></div>;
+const Row = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="flex justify-between gap-4 py-1 text-sm"><span className="text-ink/65">{k}</span><span className="text-right font-medium">{v}</span></div>;
 const Small = "btn btn-outline !min-h-[38px] !py-1.5 !px-3 !text-[13px]";
 
 export default function OrderModal({ row, focus, onClose, onChanged }: { row: OrderRow; focus?: Focus | null; onClose: () => void; onChanged: (o: Order) => void }) {
@@ -63,7 +63,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         <div className="grid gap-4 md:grid-cols-2">
           <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
-            <Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/50">(in {daysUntil(o.travelDate)}d)</span>}</>} />
+            <Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
             <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />
             <Row k="Pickup" v={o.hotel || "Not given"} />{o.pickupNotes && <Row k="Pickup notes" v={o.pickupNotes} />}{o.requests && <Row k="Requests" v={<span className="whitespace-pre-line">{o.requests}</span>} />}
             {o.addons.length > 0 && <Row k="Add-ons" v={o.addons.map((a) => a.name).join(", ")} />}
@@ -79,9 +79,9 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         {tab === "ops" && <OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} />}
         {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
-          <div className="flex items-end justify-between"><p className="text-sm text-ink/60">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>
+          <div className="flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
-          {o.payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{o.payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><b className={p.status === "PAID" ? "" : "text-ink/40"}>{money(p.amount, o.currency)}{p.status !== "PAID" && ` (${p.status.toLowerCase()})`}</b></li>)}</ul>}
+          {o.payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{o.payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><b className={p.status === "PAID" ? "" : "text-ink/65"}>{money(p.amount, o.currency)}{p.status !== "PAID" && ` (${p.status.toLowerCase()})`}</b></li>)}</ul>}
           {o.balance > 0 && <PayForm o={o} busy={busy} onPay={(v) => run(() => orderAddPayment(o.id, v))} />}
         </Card></div>
 
@@ -103,7 +103,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         {tab === "notes" && <div className="space-y-4">
         <Card title="Notes and activity">
           <NoteForm busy={busy} onAdd={(t) => run(() => orderAddNote(o.id, t))} />
-          <ul className="mt-3 space-y-2">{o.activity.map((a, i) => <li key={i} className="flex gap-3 text-sm"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.kind === "note" ? "bg-nile" : a.kind === "payment" ? "bg-[#1F7A46]" : a.kind === "doc" ? "bg-gold-600" : "bg-ink/30"}`} /><span className="flex-1"><span className={a.kind === "note" ? "font-medium" : ""}>{a.text}</span><span className="ml-2 text-xs text-ink/45">{ago(a.at)}</span></span></li>)}</ul>
+          <ul className="mt-3 space-y-2">{o.activity.map((a, i) => <li key={i} className="flex gap-3 text-sm"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${a.kind === "note" ? "bg-nile" : a.kind === "payment" ? "bg-[#1F7A46]" : a.kind === "doc" ? "bg-gold-600" : "bg-ink/30"}`} /><span className="flex-1"><span className={a.kind === "note" ? "font-medium" : ""}>{a.text}</span><span className="ml-2 text-xs text-ink/65">{ago(a.at)}</span></span></li>)}</ul>
         </Card>
 
         </div>}
@@ -146,11 +146,11 @@ function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate:
 function DocList({ o, kind, run, busy }: { o: Order; kind: "INVOICE" | "ITINERARY"; run: (fn: () => Promise<Res>) => Promise<Res | null>; busy: boolean }) {
   const docs = o.documents.filter((d) => d.kind === kind);
   const phone = o.customer.whatsapp || o.customer.phone;
-  if (!docs.length) return kind === "INVOICE" ? <p className="text-sm text-ink/55">No invoice yet.</p> : null;
+  if (!docs.length) return kind === "INVOICE" ? <p className="text-sm text-ink/65">No invoice yet.</p> : null;
   return (
     <ul className="space-y-2">{docs.map((d) => (
-      <li key={d.id} className="rounded-xl border border-ink/10 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{d.number}{d.amount != null && kind === "INVOICE" && <span className="font-normal text-ink/55"> · due {money(d.amount, d.currency)}</span>}</p>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${d.sentAt ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/60"}`}>{d.sentAt ? `Sent ${ago(d.sentAt)}${d.sentVia ? ` · ${d.sentVia.toLowerCase()}` : ""}` : "Not sent yet"}</span></div>
+      <li key={d.id} className="rounded-xl border border-ink/10 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{d.number}{d.amount != null && kind === "INVOICE" && <span className="font-normal text-ink/65"> · due {money(d.amount, d.currency)}</span>}</p>
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${d.sentAt ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/65"}`}>{d.sentAt ? `Sent ${ago(d.sentAt)}${d.sentVia ? ` · ${d.sentVia.toLowerCase()}` : ""}` : "Not sent yet"}</span></div>
         <div className="mt-2 flex flex-wrap gap-2"><a className={Small} target="_blank" rel="noopener noreferrer" href={`/api/documents/${d.id}/pdf?inline=1`}>Preview</a><a className={Small} href={`/api/documents/${d.id}/pdf`}>Download</a>
           <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderEmailDoc(o.id, d.id))}>{d.sentAt ? "Resend email" : "Email"}</button>
           {phone && <a className="btn btn-wa !min-h-[38px] !py-1.5 !px-3 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, here's your ${kind === "INVOICE" ? "invoice" : "itinerary"} from Egypt Knight: ${d.shareUrl}`)} onClick={() => { if (!d.sentAt) void run(() => orderMarkSent(o.id, d.id, "WHATSAPP")); }}>Send on WhatsApp</a>}

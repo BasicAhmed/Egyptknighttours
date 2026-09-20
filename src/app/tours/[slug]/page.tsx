@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTourBySlug, listTours } from "@/lib/queries";
@@ -41,8 +42,8 @@ export default async function TourPage({ params }: P) {
   return (
     <div className="container-x py-8 pb-28 lg:pb-8">
       <Tracker name="view_tour" tourSlug={t.slug} />
-      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
-      <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/">Home</Link> / <Link href="/tours">Tours</Link> / <Link href={`/destinations/${dest.slug}`}>{dest.name}</Link></nav>
+      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(o) }} />)}
+      <nav aria-label="Breadcrumb" className="text-sm text-ink/65"><Link href="/">Home</Link> / <Link href="/tours">Tours</Link> / <Link href={`/destinations/${dest.slug}`}>{dest.name}</Link></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_380px]">
         <div>
           <SiteImage src={t.imageUrl || dest.imageUrl} alt={`${t.title} in ${dest.name}, Egypt`} destination={dest.slug} priority sizes="(min-width: 1024px) 780px, 100vw" className="relative aspect-[16/10] rounded-2xl sm:aspect-[16/9]" />
@@ -58,11 +59,11 @@ export default async function TourPage({ params }: P) {
           <dl className="mt-3 space-y-3 text-sm">{[["Pickup", t.pickupInfo], ["Meeting point", t.meetingPoint], ["What to bring", t.whatToBring], ["Activity level", t.activityLevel.toLowerCase()], ["Cancellation", t.cancellationPolicy]].map(([k, v]) => v && <div key={k}><dt className="font-semibold">{k}</dt><dd className="text-ink/70">{v}</dd></div>)}</dl>
           {faqs.length > 0 && <><h2 className="h2 mt-8">FAQ</h2><div className="mt-3 space-y-2">{faqs.map((f) => <details key={f.q} className="card p-4"><summary className="cursor-pointer font-semibold">{f.q}</summary><p className="mt-2 text-sm text-ink/70">{f.a}</p></details>)}</div></>}
           <h2 className="h2 mt-8">Reviews</h2>
-          {reviews.length ? <div className="mt-3 space-y-3">{reviews.map((r) => <div key={r.id} className="card p-4"><p className="font-semibold">★ {r.rating} · {r.title}</p><p className="text-sm text-ink/70">{r.body}</p><p className="mt-1 text-xs text-ink/50">{r.authorName}{r.country ? `, ${r.country}` : ""}{r.tripDate ? ` · ${r.tripDate}` : ""}</p></div>)}</div>
+          {reviews.length ? <div className="mt-3 space-y-3">{reviews.map((r) => <div key={r.id} className="card p-4"><p className="font-semibold">★ {r.rating} · {r.title}</p><p className="text-sm text-ink/70">{r.body}</p><p className="mt-1 text-xs text-ink/65">{r.authorName}{r.country ? `, ${r.country}` : ""}{r.tripDate ? ` · ${r.tripDate}` : ""}</p></div>)}</div>
             : <p className="mt-2 text-sm text-ink/70">No reviews yet. We only show real reviews from travellers who've been on this tour.</p>}
         </div>
         <aside className="lg:sticky lg:top-20 lg:self-start">
-          <div className="mb-3 flex items-end justify-between"><p className="text-sm text-ink/60">From <span className="text-2xl font-extrabold text-ink">{money(price)}</span> {t.pricingModel === "PER_GROUP" ? "/ group" : "/ person"}{t.discountPrice != null && <s className="ml-1 text-ink/40">{money(t.price)}</s>}</p></div>
+          <div className="mb-3 flex items-end justify-between"><p className="text-sm text-ink/65">From <span className="text-2xl font-extrabold text-ink">{money(price)}</span> {t.pricingModel === "PER_GROUP" ? "/ group" : "/ person"}{t.discountPrice != null && <s className="ml-1 text-ink/65">{money(t.price)}</s>}</p></div>
           <AvailabilityCard slug={t.slug} pricingModel={t.pricingModel} maxTravelers={t.maxTravelers} isPrivateAvailable={t.isPrivateAvailable} isGroupAvailable={t.isGroupAvailable} minDate={minDate} />
           <div className="card mt-4 p-4 text-sm"><p className="font-semibold">Not sure this fits?</p><p className="text-ink/70">Ask us on WhatsApp and we'll help you choose.</p><WhatsAppButton href={wa} label="Ask on WhatsApp" className="btn btn-wa mt-3 w-full" tourSlug={t.slug} /></div>
         </aside>
@@ -71,7 +72,7 @@ export default async function TourPage({ params }: P) {
         <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{related.map((r) => <TourCard key={r.id} t={r} />)}</div>
         <p className="mt-4 text-sm text-ink/70">Read more: <Link className="underline" href={`/destinations/${dest.slug}`}>{dest.name} travel guide</Link> · <Link className="underline" href="/egypt-travel-guide">Egypt travel guide</Link></p></section>
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-ink/10 bg-white p-3 lg:hidden">
-        <div className="flex-1 leading-tight"><p className="text-xs text-ink/60">From</p><p className="font-bold">{money(price)}</p></div>
+        <div className="flex-1 leading-tight"><p className="text-xs text-ink/65">From</p><p className="font-bold">{money(price)}</p></div>
         <WhatsAppButton href={wa} label="WhatsApp" tourSlug={t.slug} /><a href="#book" className="btn btn-primary">Book now</a>
       </div>
     </div>

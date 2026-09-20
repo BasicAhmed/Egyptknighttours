@@ -132,7 +132,7 @@ export default function InvoicePdf({ d }: { d: InvoiceData }) {
 
         <View fixed style={s.footer}>
           <Text>{d.company.name}{d.company.licence ? `  ·  Licence ${d.company.licence}` : ""}{d.company.address ? `  ·  ${d.company.address}` : ""}</Text>
-          <Text render={({ pageNumber, totalPages }) => `${d.number}  ·  Page ${pageNumber} of ${totalPages}`} />
+          <Text render={({ pageNumber, totalPages }) => `${d.number}  ·  Page ${pageNumber} of ${totalPages}${d.company.builder ? `  ·  Booking system by ${d.company.builder}` : ""}`} />
         </View>
       </Page>
     </Document>

@@ -8,5 +8,5 @@ export default function Contact() {
     <p className="mt-2 text-ink/70">Fastest is WhatsApp. Or send a message and we'll reply within one working day.</p>
     <WhatsAppButton href={waLink("Hi Egypt Knight, I have a question about a tour.")} label="Chat on WhatsApp" className="btn btn-wa mt-4" />
     <div className="mt-6"><LeadForm kind="CONTACT" cta="Send message" /></div>
-    <p className="mt-6 text-xs text-ink/50">Office address, phone and company registration: to be added by Egypt Knight.</p></div>;
+    <p className="mt-6 text-xs text-ink/65">Office address, phone and company registration: to be added by Egypt Knight.</p></div>;
 }

@@ -11,7 +11,7 @@ export default function VideoSection({ url, start }: { url: string; start: strin
   if (!id) return null;
   const s = Math.max(0, Math.round(Number(start) || 0));
   return (
-    <section className="container-x py-16" aria-labelledby="video-h">
+    <section className="container-x py-16 cv-auto" aria-labelledby="video-h">
       <div className="grid items-center gap-8 lg:grid-cols-[.85fr_1.15fr] lg:gap-14">
         <div>
           <p className="eyebrow">Watch</p>

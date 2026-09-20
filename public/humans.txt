@@ -1,0 +1,8 @@
+/* TEAM */
+Built by: Nino Techy
+Role: Design, engineering, SEO and platform (website, booking system, CRM, PDFs)
+
+/* SITE */
+Client: Egypt Knight Tours
+Standards: Next.js, React, TypeScript, Tailwind CSS, libSQL
+Last update: 2026

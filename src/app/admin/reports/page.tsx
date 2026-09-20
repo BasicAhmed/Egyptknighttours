@@ -25,11 +25,11 @@ export default async function Reports() {
   ]);
   const ev = Object.fromEntries(events.map((e) => [e.name, e.n]));
   const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1)}%` : "–");
-  const stat = (l: string, v: string) => <div key={l} className="rounded-2xl border border-ink/10 bg-white p-4"><p className="text-xs font-semibold text-ink/55">{l}</p><p className="mt-1 font-display text-2xl font-extrabold">{v}</p></div>;
-  const list = (title: string, rows: [string, string][]) => <section className="rounded-2xl border border-ink/10 bg-white p-4"><h2 className="font-display font-extrabold">{title}</h2>{rows.length ? <ul className="mt-2 divide-y divide-ink/10 text-sm">{rows.map(([a, b]) => <li key={a} className="flex justify-between gap-3 py-1.5"><span>{a}</span><b>{b}</b></li>)}</ul> : <p className="mt-2 text-sm text-ink/50">Nothing yet.</p>}</section>;
+  const stat = (l: string, v: string) => <div key={l} className="rounded-2xl border border-ink/10 bg-white p-4"><p className="text-xs font-semibold text-ink/65">{l}</p><p className="mt-1 font-display text-2xl font-extrabold">{v}</p></div>;
+  const list = (title: string, rows: [string, string][]) => <section className="rounded-2xl border border-ink/10 bg-white p-4"><h2 className="font-display font-extrabold">{title}</h2>{rows.length ? <ul className="mt-2 divide-y divide-ink/10 text-sm">{rows.map(([a, b]) => <li key={a} className="flex justify-between gap-3 py-1.5"><span>{a}</span><b>{b}</b></li>)}</ul> : <p className="mt-2 text-sm text-ink/65">Nothing yet.</p>}</section>;
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Reports</h1><p className="text-sm text-ink/55">How the business is doing. Amounts are shown as entered on each order.</p>
+      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Reports</h1><p className="text-sm text-ink/65">How the business is doing. Amounts are shown as entered on each order.</p>
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stat("Booked this month", fmt(month[0].rev))}{stat("Orders this month", String(month[0].n))}{stat("Booked, all time", fmt(tot[0].rev))}{stat("Average order", tot[0].n ? fmt(tot[0].rev / tot[0].n) : "–")}
         {stat("New inquiries", String(newLeads[0].n))}{stat("Inquiry → order", pct(tot[0].n, allLeads[0].n))}{stat("Follow-ups due", String(followDue[0].n))}{stat("Repeat customers", pct(Number(repeat[0].n), customers[0].n))}
@@ -37,8 +37,8 @@ export default async function Reports() {
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
         {list("Top tours by revenue", byTour.map((r) => [`${r.title} (${r.n})`, fmt(r.rev)]))}{list("Revenue by destination", byDest.map((r) => [r.name, fmt(r.rev)]))}
         {list("Where inquiries come from", bySource.map((r) => [r.src, String(r.n)]))}
-        <section className="rounded-2xl border border-ink/10 bg-white p-4"><h2 className="font-display font-extrabold">Website funnel (30 days)</h2><div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">{[["Tour views", "view_tour"], ["Started booking", "start_booking"], ["Checkout", "start_checkout"], ["Purchases", "purchase"], ["WhatsApp clicks", "whatsapp_click"]].map(([l, k]) => <div key={k}><p className="text-ink/55">{l}</p><p className="font-display text-xl font-extrabold">{ev[k] ?? 0}</p></div>)}</div>
-          <p className="mt-3 text-xs text-ink/50">View → start: {pct(ev.start_booking ?? 0, ev.view_tour ?? 0)} · Start → purchase: {pct(ev.purchase ?? 0, ev.start_booking ?? 0)} · Abandoned checkouts: {abandoned[0].n}</p></section>
+        <section className="rounded-2xl border border-ink/10 bg-white p-4"><h2 className="font-display font-extrabold">Website funnel (30 days)</h2><div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">{[["Tour views", "view_tour"], ["Started booking", "start_booking"], ["Checkout", "start_checkout"], ["Purchases", "purchase"], ["WhatsApp clicks", "whatsapp_click"]].map(([l, k]) => <div key={k}><p className="text-ink/65">{l}</p><p className="font-display text-xl font-extrabold">{ev[k] ?? 0}</p></div>)}</div>
+          <p className="mt-3 text-xs text-ink/65">View → start: {pct(ev.start_booking ?? 0, ev.view_tour ?? 0)} · Start → purchase: {pct(ev.purchase ?? 0, ev.start_booking ?? 0)} · Abandoned checkouts: {abandoned[0].n}</p></section>
       </div>
     </div>
   );

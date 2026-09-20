@@ -24,7 +24,7 @@ export default function Calendar({ value, onChange, min }: { value: string; onCh
         <p className="font-display text-base font-bold">{label}</p>
         <button type="button" onClick={() => shift(1)} aria-label="Next month" className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-ink/5">›</button>
       </div>
-      <div className="grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-ink/45">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => <span key={d} className="py-1">{d}</span>)}</div>
+      <div className="grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-ink/65">{["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => <span key={d} className="py-1">{d}</span>)}</div>
       <div className="grid grid-cols-7 gap-y-1">
         {Array.from({ length: blanks }).map((_, i) => <span key={"b" + i} />)}
         {Array.from({ length: days }, (_, i) => i + 1).map((day) => {

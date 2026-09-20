@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listTours } from "@/lib/queries";
@@ -22,8 +23,8 @@ export default async function Landing({ params }: P) {
   ];
   return (
     <div className="container-x py-8">
-      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
-      <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/">Home</Link> / <Link href="/tours">Egypt tours</Link> / {l.h1}</nav>
+      {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(o) }} />)}
+      <nav aria-label="Breadcrumb" className="text-sm text-ink/65"><Link href="/">Home</Link> / <Link href="/tours">Egypt tours</Link> / {l.h1}</nav>
       <p className="eyebrow mt-4">{l.eyebrow}</p><h1 className="h1 mt-2 !text-[34px] sm:!text-5xl">{l.h1}</h1>
       <div className="mt-4 max-w-3xl space-y-3 text-[17px] leading-relaxed text-ink/75">{l.intro.map((p) => <p key={p}>{p}</p>)}</div>
       <ul className="mt-5 grid max-w-3xl gap-2 sm:grid-cols-2">{l.points.map((p) => <li key={p} className="flex gap-2 text-[15px] font-semibold"><span className="text-[#17663A]">✓</span>{p}</li>)}</ul>

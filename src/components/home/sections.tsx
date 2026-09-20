@@ -35,10 +35,10 @@ export function TrustBand({ g }: { g: SiteCfg }) {
   const ta = https(g["site.tripadvisorUrl"]);
   const items = [[plus(g["site.years"]), "years of experience", "Local, and here every day"], [plus(g["site.tours"]), "tours completed", "Real trips, real travellers"], [plus(g["site.reviews"]), "five-star reviews", "On Tripadvisor"], ["Thousands", "of happy travellers", "Trusted by guests from around the world"]];
   return (
-    <section aria-label="Why travellers trust us" className="border-y border-ink/10 bg-[#FFF9EC]">
+    <section aria-label="Why travellers trust us" className="border-y border-ink/10 bg-[#FFF9EC] cv-auto">
       <div className="container-x py-10">
         <p className="text-center font-display text-xl font-extrabold sm:text-2xl">Trusted by thousands of travellers</p>
-        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-7 lg:grid-cols-4">{items.map(([n, l, s]) => <div key={l} className="text-center"><p className="font-display text-[30px] font-extrabold leading-none sm:text-5xl">{n}</p><p className="mt-1.5 text-[15px] font-bold">{l}</p><p className="text-sm text-ink/55">{s}</p></div>)}</div>
+        <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-7 lg:grid-cols-4">{items.map(([n, l, s]) => <div key={l} className="text-center"><p className="font-display text-[30px] font-extrabold leading-none sm:text-5xl">{n}</p><p className="mt-1.5 text-[15px] font-bold">{l}</p><p className="text-sm text-ink/65">{s}</p></div>)}</div>
         {ta && <p className="mt-6 text-center"><a href={ta} target="_blank" rel="noopener noreferrer" className="text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Read our reviews on Tripadvisor →</a></p>}
       </div>
     </section>
@@ -55,7 +55,7 @@ export function WhyEgypt() {
     [P.heart, "Hospitality you'll remember", "Egyptians love welcoming guests. Expect tea, conversation and stories at almost every stop."],
   ];
   return (
-    <section className="container-x py-16"><Head eyebrow="Why Egypt" title="There's a reason it's on everyone's list" sub="Egypt isn't one trip. It's dozens, and the right guide makes all the difference." />
+    <section className="container-x py-16 cv-auto"><Head eyebrow="Why Egypt" title="There's a reason it's on everyone's list" sub="Egypt isn't one trip. It's dozens, and the right guide makes all the difference." />
       <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{items.map(([d, h, p]) => <article key={h} className="rounded-3xl border border-ink/10 bg-white p-6 shadow-[0_2px_12px_rgba(20,16,16,.05)]"><span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold-500 text-ink"><Icon d={d} /></span><h3 className="mt-4 font-display text-xl font-extrabold">{h}</h3><p className="mt-2 text-[15px] leading-relaxed text-ink/70">{p}</p></article>)}</div></section>
   );
 }
@@ -79,14 +79,14 @@ export function CompareTable() {
     ["Local knowledge", "Guides who work in Egypt every day", "Varies by operator", "Varies by operator"],
   ];
   return (
-    <section className="container-x py-16"><Head eyebrow="Why Egypt Knight" title="Booking direct with a local team feels different" sub="Here's how we compare with the usual ways to book a trip to Egypt." />
-      <p className="mt-6 text-xs font-semibold text-ink/50 md:hidden">Swipe the table sideways to compare →</p>
-      <div className="mt-3 overflow-x-auto rounded-3xl border border-ink/10 bg-white shadow-[0_2px_14px_rgba(20,16,16,.06)] md:mt-9">
-        <table className="w-full min-w-[720px] border-collapse text-left text-[15px]"><thead><tr><th className="p-4 pl-6 text-sm font-semibold text-ink/50"><span className="sr-only">Feature</span></th>
+    <section className="container-x py-16 cv-auto"><Head eyebrow="Why Egypt Knight" title="Booking direct with a local team feels different" sub="Here's how we compare with the usual ways to book a trip to Egypt." />
+      <p className="mt-6 text-xs font-semibold text-ink/65 md:hidden">Swipe the table sideways to compare →</p>
+      <div tabIndex={0} role="region" aria-label="Comparison table, scroll sideways on small screens" className="mt-3 overflow-x-auto rounded-3xl border border-ink/10 bg-white shadow-[0_2px_14px_rgba(20,16,16,.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink md:mt-9">
+        <table className="w-full min-w-[720px] border-collapse text-left text-[15px]"><thead><tr><th className="p-4 pl-6 text-sm font-semibold text-ink/65"><span className="sr-only">Feature</span></th>
           <th className="w-[28%] bg-gold-500 p-4 font-display text-lg font-extrabold">Egypt Knight Tours</th><th className="w-[24%] p-4 font-display font-extrabold text-ink/70">Booking marketplaces</th><th className="w-[24%] p-4 pr-6 font-display font-extrabold text-ink/70">Big group operators</th></tr></thead>
           <tbody>{rows.map(([f, a, b, c]) => <tr key={f} className="border-t border-ink/10"><th scope="row" className="p-4 pl-6 font-semibold">{f}</th>
             <td className="bg-gold-500/15 p-4 font-semibold"><span className="flex items-start gap-2"><span className="mt-0.5 shrink-0 text-[#17663A]"><Icon d={P.check} size={20} /></span>{a}</span></td><td className="p-4 text-ink/65">{b}</td><td className="p-4 pr-6 text-ink/65">{c}</td></tr>)}</tbody></table></div>
-      <p className="mt-3 text-xs text-ink/45">Based on typical arrangements. Details vary between providers.</p></section>
+      <p className="mt-3 text-xs text-ink/65">Based on typical arrangements. Details vary between providers.</p></section>
   );
 }
 
@@ -100,7 +100,7 @@ export function GuidesSection() {
     [P.shield, "They look after you", "Water, breaks, comfort and safety. They stay with you and keep everything smooth from pickup to drop-off."],
   ];
   return (
-    <section className="bg-[#FFF9EC] py-16"><div className="container-x"><Head eyebrow="Our guides" title="Guides who make Egypt make sense" sub="A great guide is the difference between seeing Egypt and understanding it. This is what ours are known for." />
+    <section className="bg-[#FFF9EC] py-16 cv-auto"><div className="container-x"><Head eyebrow="Our guides" title="Guides who make Egypt make sense" sub="A great guide is the difference between seeing Egypt and understanding it. This is what ours are known for." />
       <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{pts.map(([d, h, p]) => <article key={h} className="flex gap-4 rounded-3xl border border-ink/10 bg-white p-5 shadow-[0_2px_12px_rgba(20,16,16,.05)]"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-ink text-gold-500"><Icon d={d} size={20} /></span><div><h3 className="font-display text-lg font-extrabold">{h}</h3><p className="mt-1 text-[15px] leading-relaxed text-ink/70">{p}</p></div></article>)}</div></div></section>
   );
 }
@@ -109,12 +109,12 @@ export function ReviewsSection({ g, reviews }: { g: SiteCfg; reviews: Review[] }
   const ta = https(g["site.tripadvisorUrl"]);
   if (!reviews.length && !ta) return null;
   return (
-    <section className="container-x py-16"><div className="flex flex-wrap items-end justify-between gap-4"><Head eyebrow="Reviews" title="What our travellers say" sub="Real reviews from real trips." />
-      <div className="rounded-2xl border border-ink/10 bg-white px-5 py-4 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars /><p className="mt-1 font-display text-2xl font-extrabold">{plus(g["site.reviews"])} five-star reviews</p><p className="text-sm text-ink/55">on Tripadvisor</p>{ta && <a href={ta} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Read them all →</a>}</div></div>
+    <section className="container-x py-16 cv-auto"><div className="flex flex-wrap items-end justify-between gap-4"><Head eyebrow="Reviews" title="What our travellers say" sub="Real reviews from real trips." />
+      <div className="rounded-2xl border border-ink/10 bg-white px-5 py-4 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars /><p className="mt-1 font-display text-2xl font-extrabold">{plus(g["site.reviews"])} five-star reviews</p><p className="text-sm text-ink/65">on Tripadvisor</p>{ta && <a href={ta} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Read them all →</a>}</div></div>
       {reviews.length > 0 && <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{reviews.map((r) => (
         <figure key={r.id} className="flex flex-col rounded-3xl border border-ink/10 bg-white p-6 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars />{r.title && <p className="mt-3 font-display text-lg font-extrabold leading-snug">{r.title}</p>}
           <blockquote className="mt-2 line-clamp-6 flex-1 text-[15px] leading-relaxed text-ink/75">{r.body}</blockquote>
-          <figcaption className="mt-4 border-t border-ink/10 pt-3 text-sm"><b>{r.name}</b>{r.country ? <span className="text-ink/55">, {r.country}</span> : null}<span className="block text-xs text-ink/45">{[r.reviewDate, r.source && `on ${r.source}`].filter(Boolean).join(" · ")}{https(r.url) && <> · <a className="underline" href={https(r.url)} target="_blank" rel="noopener noreferrer">View</a></>}</span></figcaption></figure>))}</div>}</section>
+          <figcaption className="mt-4 border-t border-ink/10 pt-3 text-sm"><b>{r.name}</b>{r.country ? <span className="text-ink/65">, {r.country}</span> : null}<span className="block text-xs text-ink/65">{[r.reviewDate, r.source && `on ${r.source}`].filter(Boolean).join(" · ")}{https(r.url) && <> · <a className="underline" href={https(r.url)} target="_blank" rel="noopener noreferrer">View</a></>}</span></figcaption></figure>))}</div>}</section>
   );
 }
 
@@ -123,8 +123,8 @@ export function GuidesLinks({ guides }: { guides: { id: string; slug: string; ti
     <section className="container-x py-16"><Head eyebrow="Read before you go" title="Plan it like a local" sub="Short, practical guides to the questions every first-time visitor asks." />
       <div className="mt-9 grid gap-4 md:grid-cols-3">{guides.map((g, i) => (
         <Link key={g.id} href={`/egypt-travel-guide/${g.slug}`} className="group relative overflow-hidden rounded-3xl border border-gold-600/30 bg-[#FFF6E0] p-6 transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(20,16,16,.12)]">
-          <span className="font-display text-6xl font-extrabold leading-none text-gold-500/60">{String(i + 1).padStart(2, "0")}</span>
-          <p className="mt-3 text-xs font-bold uppercase tracking-[.14em] text-gold-700">{g.cluster}</p><h3 className="mt-1 font-display text-xl font-extrabold leading-snug">{g.title}</h3><p className="mt-2 text-sm text-ink/70">{g.summary}</p>
+          <span aria-hidden="true" className="font-display text-6xl font-extrabold leading-none text-[#B07A24]">{String(i + 1).padStart(2, "0")}</span>
+          <p className="mt-3 text-xs font-bold uppercase tracking-[.14em] text-gold-800">{g.cluster}</p><h3 className="mt-1 font-display text-xl font-extrabold leading-snug">{g.title}</h3><p className="mt-2 text-sm text-ink/70">{g.summary}</p>
           <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold">Read the guide <span className="transition group-hover:translate-x-1" aria-hidden>→</span></span></Link>))}</div></section>
   );
 }
@@ -152,7 +152,7 @@ export function ContactMap({ g }: { g: SiteCfg }) {
   return (
     <section className="container-x py-16"><Head eyebrow="Reach us" title="Talk to a real person" sub="Message us any time. We reply fast, and we're happy to help you choose." />
       <div className="mt-9 grid gap-5 lg:grid-cols-[1fr_1.25fr]">
-        <div className="space-y-3">{cards.filter(([, , v]) => v).map(([d, l, v, href]) => { const inner = <><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gold-500"><Icon d={d} size={20} /></span><span className="min-w-0"><span className="block text-xs font-bold uppercase tracking-wide text-ink/50">{l}</span><span className="block break-words font-semibold">{v}</span></span></>; const cls = "flex items-center gap-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-[0_2px_10px_rgba(20,16,16,.05)]"; return href ? <a key={l} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className={`${cls} transition hover:border-ink/40`}>{inner}</a> : <div key={l} className={cls}>{inner}</div>; })}
+        <div className="space-y-3">{cards.filter(([, , v]) => v).map(([d, l, v, href]) => { const inner = <><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gold-500"><Icon d={d} size={20} /></span><span className="min-w-0"><span className="block text-xs font-bold uppercase tracking-wide text-ink/65">{l}</span><span className="block break-words font-semibold">{v}</span></span></>; const cls = "flex items-center gap-4 rounded-2xl border border-ink/10 bg-white p-4 shadow-[0_2px_10px_rgba(20,16,16,.05)]"; return href ? <a key={l} href={href} target={href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className={`${cls} transition hover:border-ink/40`}>{inner}</a> : <div key={l} className={cls}>{inner}</div>; })}
           <div className="flex flex-wrap gap-3 pt-1"><WhatsAppButton href={waLink("Hi Egypt Knight, I'd like some help planning my trip.")} label="Chat on WhatsApp" /><Link href="/contact" className="btn btn-outline">Send a message</Link></div></div>
         <div className="overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-[0_2px_14px_rgba(20,16,16,.07)]">
           <iframe title={`Map: ${q}`} src={`https://www.google.com/maps?q=${encodeURIComponent(q)}&output=embed`} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="block h-[320px] w-full border-0 sm:h-[380px]" />

@@ -4,12 +4,12 @@ import { headers } from "next/headers";
 import { db, schema as s } from "@/db";
 import { eq } from "drizzle-orm";
 import { normalizeRef, signRef } from "@/lib/booking-token";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimitPersistent, clientIp } from "@/lib/rate-limit";
 export const metadata: Metadata = { title: "Track your booking", description: "Look up your Egypt Knight booking with your booking ID and email.", robots: { index: false, follow: true } };
 
 async function lookup(fd: FormData) {
   "use server";
-  if (!rateLimit("lookup:" + clientIp(await headers()), 10, 10 * 60_000)) redirect("/track?e=rate");
+  if (!(await rateLimitPersistent("lookup:" + clientIp(await headers()), 10, 10 * 60_000))) redirect("/track?e=rate");
   const raw = String(fd.get("ref") ?? ""); const ref = normalizeRef(raw); const email = String(fd.get("email") ?? "").trim().toLowerCase();
   let ok = false;
   if (ref && email) {

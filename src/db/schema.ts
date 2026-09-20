@@ -45,14 +45,14 @@ export const tours = sqliteTable("tours", {
   popularity: integer("popularity").notNull().default(0),
   createdAt: createdAt(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
+}, (t) => [index("tours_status_idx").on(t.status), index("tours_destination_idx").on(t.destinationId)]);
 
 export const addons = sqliteTable("addons", {
   id: id(), tourId: text("tour_id").notNull().references(() => tours.id, { onDelete: "cascade" }),
   name: text("name").notNull(), description: text("description").notNull().default(""),
   price: real("price").notNull(), unit: text("unit").notNull().default("PER_BOOKING"), // PER_BOOKING | PER_PERSON
   active: integer("active", { mode: "boolean" }).notNull().default(true),
-});
+}, (t) => [index("addons_tour_idx").on(t.tourId)]);
 
 export const coupons = sqliteTable("coupons", {
   id: id(), code: text("code").notNull().unique(), type: text("type").notNull(), // PERCENT | FIXED
@@ -89,13 +89,13 @@ export const bookings = sqliteTable("bookings", {
   flightArrival: text("flight_arrival"), flightDeparture: text("flight_departure"), roomType: text("room_type"), pickupTime: text("pickup_time"),
   occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"),
   createdAt: createdAt(),
-});
+}, (t) => [index("bookings_customer_idx").on(t.customerId), index("bookings_tour_idx").on(t.tourId), index("bookings_status_idx").on(t.status), index("bookings_travel_idx").on(t.travelDate), index("bookings_created_idx").on(t.createdAt)]);
 
 export const bookingEvents = sqliteTable("booking_events", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // CREATED STATUS_CONFIRMED STATUS_DEPOSIT_PAID STATUS_PAID STATUS_COMPLETED STATUS_CANCELLED
   note: text("note"), createdAt: createdAt(),
-});
+}, (t) => [index("booking_events_booking_idx").on(t.bookingId)]);
 
 export const settings = sqliteTable("settings", { key: text("key").primaryKey(), value: text("value").notNull().default("") });
 
@@ -117,7 +117,7 @@ export const itineraries = sqliteTable("itineraries", {
   bookingId: text("booking_id").references(() => bookings.id), sourceTemplateId: text("source_template_id"), tourId: text("tour_id"),
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
+}, (t) => [index("itineraries_template_idx").on(t.isTemplate), index("itineraries_booking_idx").on(t.bookingId)]);
 
 // Every generated PDF is stored as a snapshot so history stays exact even when prices or bank details change later.
 export const documents = sqliteTable("documents", {
@@ -128,12 +128,12 @@ export const documents = sqliteTable("documents", {
   currency: text("currency").notNull().default("USD"), amount: real("amount"),
   data: text("data").notNull(), createdById: text("created_by_id").references(() => users.id), createdAt: createdAt(),
   sentAt: integer("sent_at", { mode: "timestamp" }), sentTo: text("sent_to"), sentVia: text("sent_via"),
-});
+}, (t) => [index("documents_booking_idx").on(t.bookingId), index("documents_itinerary_idx").on(t.itineraryId)]);
 export const documentEvents = sqliteTable("document_events", {
   id: id(), documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // CREATED EMAILED EMAIL_FAILED MARKED_SENT
   note: text("note"), userId: text("user_id"), createdAt: createdAt(),
-});
+}, (t) => [index("document_events_doc_idx").on(t.documentId)]);
 
 // Real customer reviews shown on the homepage (for example copied from Tripadvisor). Managed in Settings, never generated.
 export const testimonials = sqliteTable("testimonials", {
@@ -141,20 +141,20 @@ export const testimonials = sqliteTable("testimonials", {
   title: text("title").notNull().default(""), body: text("body").notNull(), source: text("source").notNull().default("Tripadvisor"),
   url: text("url").notNull().default(""), reviewDate: text("review_date").notNull().default(""),
   active: integer("active", { mode: "boolean" }).notNull().default(true), sortOrder: integer("sort_order").notNull().default(0), createdAt: createdAt(),
-});
+}, (t) => [index("testimonials_active_idx").on(t.active, t.sortOrder)]);
 
 // Website photos uploaded by staff (tours, destinations, itineraries, homepage). Public, served from /api/media/[id] with long caching.
 export const media = sqliteTable("media", {
   id: id(), filename: text("filename").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
   width: integer("width"), height: integer("height"), data: blob("data", { mode: "buffer" }).notNull(), uploadedById: text("uploaded_by_id"), createdAt: createdAt(),
-});
+}, (t) => [index("media_created_idx").on(t.createdAt)]);
 
 export const travelers = sqliteTable("travelers", {
   id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   fullName: text("full_name").notNull(), type: text("type").notNull(), age: integer("age"),
   nationality: text("nationality"), dob: text("dob"), passportNumber: text("passport_number"), // stored encrypted (see lib/crypto)
   passportExpiry: text("passport_expiry"), notes: text("notes"),
-});
+}, (t) => [index("travelers_booking_idx").on(t.bookingId)]);
 
 // Passport and visa scans. The bytes are encrypted before they are stored and only staff can download them.
 export const travelerFiles = sqliteTable("traveler_files", {
@@ -163,7 +163,7 @@ export const travelerFiles = sqliteTable("traveler_files", {
   kind: text("kind").notNull().default("PASSPORT"), // PASSPORT VISA OTHER
   filename: text("filename").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
   data: blob("data", { mode: "buffer" }).notNull(), uploadedById: text("uploaded_by_id"), createdAt: createdAt(),
-});
+}, (t) => [index("traveler_files_booking_idx").on(t.bookingId), index("traveler_files_traveler_idx").on(t.travelerId)]);
 
 // Tour guides staff can assign to an order.
 export const tourGuides = sqliteTable("tour_guides", {
@@ -177,7 +177,7 @@ export const payments = sqliteTable("payments", {
   provider: text("provider").notNull().default("MANUAL"), // MANUAL until Stripe/Paymob keys exist
   kind: text("kind").notNull(), amount: real("amount").notNull(),
   status: text("status").notNull().default("PENDING"), providerRef: text("provider_ref"), createdAt: createdAt(),
-});
+}, (t) => [index("payments_booking_idx").on(t.bookingId)]);
 
 export const leads = sqliteTable("leads", {
   id: id(), name: text("name").notNull(), email: text("email").notNull(),
@@ -194,25 +194,25 @@ export const leads = sqliteTable("leads", {
   lastContactAt: integer("last_contact_at", { mode: "timestamp" }),
   nextFollowUpAt: integer("next_follow_up_at", { mode: "timestamp" }),
   createdAt: createdAt(),
-});
+}, (t) => [index("leads_status_idx").on(t.status), index("leads_created_idx").on(t.createdAt), index("leads_email_idx").on(t.email)]);
 
 export const leadEvents = sqliteTable("lead_events", {
   id: id(), leadId: text("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
   type: text("type").notNull(), note: text("note"), createdAt: createdAt(),
-});
+}, (t) => [index("lead_events_lead_idx").on(t.leadId)]);
 
 export const followUps = sqliteTable("follow_ups", {
   id: id(), leadId: text("lead_id").notNull().references(() => leads.id, { onDelete: "cascade" }),
   templateKey: text("template_key").notNull(), channel: text("channel").notNull().default("EMAIL"),
   dueAt: integer("due_at", { mode: "timestamp" }).notNull(), status: text("status").notNull().default("SCHEDULED"),
-});
+}, (t) => [index("follow_ups_lead_idx").on(t.leadId), index("follow_ups_due_idx").on(t.status, t.dueAt)]);
 
 export const reviews = sqliteTable("reviews", {
   id: id(), tourId: text("tour_id").notNull().references(() => tours.id),
   authorName: text("author_name").notNull(), country: text("country"), rating: integer("rating").notNull(),
   title: text("title").notNull(), body: text("body").notNull(), tripDate: text("trip_date"),
   status: text("status").notNull().default("PENDING"), createdAt: createdAt(),
-});
+}, (t) => [index("reviews_tour_idx").on(t.tourId, t.status)]);
 
 export const guides = sqliteTable("guides", {
   id: id(), slug: text("slug").notNull().unique(), title: text("title").notNull(), cluster: text("cluster").notNull(),
@@ -221,7 +221,7 @@ export const guides = sqliteTable("guides", {
   status: text("status").notNull().default("DRAFT"),
   faqs: text("faqs").notNull().default("[]"), related: text("related").notNull().default(""), isPillar: integer("is_pillar", { mode: "boolean" }).notNull().default(false), keywords: text("keywords").notNull().default(""),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
+}, (t) => [index("guides_status_idx").on(t.status, t.cluster)]);
 
 export const analyticsEvents = sqliteTable("analytics_events", {
   id: id(), name: text("name").notNull(), sessionId: text("session_id"), path: text("path"),
@@ -231,7 +231,7 @@ export const analyticsEvents = sqliteTable("analytics_events", {
 export const auditLogs = sqliteTable("audit_logs", {
   id: id(), userId: text("user_id").references(() => users.id), action: text("action").notNull(),
   entity: text("entity").notNull(), entityId: text("entity_id"), createdAt: createdAt(),
-});
+}, (t) => [index("audit_created_idx").on(t.createdAt)]);
 
 export const toursRelations = relations(tours, ({ one, many }) => ({
   destination: one(destinations, { fields: [tours.destinationId], references: [destinations.id] }),
@@ -253,3 +253,6 @@ export const leadsRelations = relations(leads, ({ one, many }) => ({
 }));
 export const leadEventsRelations = relations(leadEvents, ({ one }) => ({ lead: one(leads, { fields: [leadEvents.leadId], references: [leads.id] }) }));
 export const followUpsRelations = relations(followUps, ({ one }) => ({ lead: one(leads, { fields: [followUps.leadId], references: [leads.id] }) }));
+
+// Persistent request counters for rate limiting (works across serverless instances).
+export const rateLimits = sqliteTable("rate_limits", { key: text("key").primaryKey(), count: integer("count").notNull().default(0), windowStart: integer("window_start").notNull() });

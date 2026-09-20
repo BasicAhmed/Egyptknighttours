@@ -83,11 +83,11 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
         </div>}
       </section>
 
-      <div className="flex items-center justify-between"><h2 className="font-display text-2xl font-bold">Days <span className="text-base font-normal text-ink/50">({c.days.length})</span></h2><Mini onClick={() => upd((n) => { n.days.push(newDay("", "", "", [])); })}>+ Add day</Mini></div>
+      <div className="flex items-center justify-between"><h2 className="font-display text-2xl font-bold">Days <span className="text-base font-normal text-ink/65">({c.days.length})</span></h2><Mini onClick={() => upd((n) => { n.days.push(newDay("", "", "", [])); })}>+ Add day</Mini></div>
       {c.days.map((d, i) => (
         <section key={d.id} className="card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <button type="button" onClick={() => setOpen({ ...open, [d.id]: !(open[d.id] ?? i < 2) })} className="text-left"><span className="font-display text-2xl font-extrabold text-gold-600">Day {i + 1}</span><span className="ml-3 font-semibold">{d.title || "Untitled day"}</span><span className="ml-2 text-sm text-ink/50">{d.location}</span></button>
+            <button type="button" onClick={() => setOpen({ ...open, [d.id]: !(open[d.id] ?? i < 2) })} className="text-left"><span className="font-display text-2xl font-extrabold text-gold-600">Day {i + 1}</span><span className="ml-3 font-semibold">{d.title || "Untitled day"}</span><span className="ml-2 text-sm text-ink/65">{d.location}</span></button>
             <div className="flex flex-wrap gap-1.5"><Mini disabled={i === 0} onClick={() => upd((n) => swap(n.days, i, i - 1))}>↑</Mini><Mini disabled={i === c.days.length - 1} onClick={() => upd((n) => swap(n.days, i, i + 1))}>↓</Mini>
               <Mini onClick={() => upd((n) => { const cp = structuredClone(n.days[i]); cp.id = uid(); cp.blocks.forEach((b) => { b.id = uid(); }); n.days.splice(i + 1, 0, cp); })}>Duplicate</Mini><Mini danger onClick={() => { if (confirm(`Delete Day ${i + 1}?`)) upd((n) => { n.days.splice(i, 1); }); }}>Delete</Mini></div>
           </div>
@@ -124,7 +124,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
           <form action={saveAsTemplate.bind(null, id)} className="flex gap-2"><input name="templateName" placeholder="Template name" defaultValue={name} className="input !py-2" /><button className="btn btn-outline !min-h-[44px]" onClick={() => void 0}>Save as template</button></form>
           <div className="flex flex-wrap gap-2"><form action={duplicateItinerary.bind(null, id)}><button className="btn btn-outline">Duplicate</button></form>
             <form action={deleteItinerary.bind(null, id)}><button className="btn btn-outline text-red-700" onClick={(e) => { if (!confirm("Delete this itinerary?")) e.preventDefault(); }}>Delete</button></form></div>
-          <p className="text-xs text-ink/55">Save as template copies the saved version without customer name or dates. Click Save first if you just made changes.</p>
+          <p className="text-xs text-ink/65">Save as template copies the saved version without customer name or dates. Click Save first if you just made changes.</p>
         </div>
       </section>
     </div>

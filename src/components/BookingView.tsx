@@ -39,46 +39,46 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
       ) : (<div><p className="eyebrow">Booking tracker</p><h1 className="h1 mt-2 !text-4xl">Hi {first}, here's your booking</h1></div>)}
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border-2 border-dashed border-gold-600 bg-gold-500/10 p-5">
-        <div><p className="text-xs font-semibold uppercase tracking-wide text-ink/60">Your booking ID</p><p className="font-display text-3xl font-extrabold tracking-wider">{b.ref}</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-wide text-ink/65">Your booking ID</p><p className="font-display text-3xl font-extrabold tracking-wider">{b.ref}</p></div>
         <div className="flex flex-wrap gap-2 print:hidden"><CopyButton text={b.ref} label="Copy ID" />{mode === "confirmation" && <Link href={`/track/${b.ref}?t=${token}`} className="btn btn-dark !min-h-[40px] !py-2">Track booking</Link>}</div>
       </div>
-      {mode === "confirmation" && <p className="mt-2 text-sm text-ink/60">Keep this ID. You can track your booking any time at <b>/track</b> with your ID and email.</p>}
+      {mode === "confirmation" && <p className="mt-2 text-sm text-ink/65">Keep this ID. You can track your booking any time at <b>/track</b> with your ID and email.</p>}
 
       {cur === -1 ? <div className="mt-8 rounded-2xl bg-red-50 p-5 font-semibold text-red-800">This booking was cancelled.</div> : (
         <ol className="mt-8 grid gap-4 sm:grid-cols-5" aria-label="Booking status">
           {MILESTONES.map((m, i) => { const done = i < cur || (i === cur && cur === 4), now = i === cur && cur !== 4; const date = when(m.types); return (
             <li key={m.key} className="relative">
               <span className={`block h-1.5 rounded-full ${done ? "bg-gold-500" : now ? "bg-ink" : "bg-ink/10"}`} />
-              <p className={`mt-2 text-sm font-semibold ${done || now ? "text-ink" : "text-ink/40"}`}>{m.label}</p>
-              <p className="text-xs text-ink/50">{date ?? (now ? "In progress" : "")}</p></li>); })}
+              <p className={`mt-2 text-sm font-semibold ${done || now ? "text-ink" : "text-ink/65"}`}>{m.label}</p>
+              <p className="text-xs text-ink/65">{date ?? (now ? "In progress" : "")}</p></li>); })}
         </ol>)}
       <p className="mt-5 rounded-xl bg-ink/[.04] p-4 text-[15px] text-ink/80"><b>What's next: </b>{NEXT[b.status] ?? NEXT.PENDING}</p>
 
       <div className="mt-8 grid gap-6 md:grid-cols-[1.4fr_1fr]">
         <section className="rounded-2xl border border-ink/15 p-5">
           <div className="flex gap-4"><SiteImage src={tour.imageUrl} alt="" destination={dest.slug} className="relative h-24 w-32 shrink-0 rounded-xl" />
-            <div><Link href={`/tours/${tour.slug}`} className="font-display text-xl font-bold hover:underline">{tour.title}</Link><p className="text-sm text-ink/60">{dest.name}</p></div></div>
+            <div><Link href={`/tours/${tour.slug}`} className="font-display text-xl font-bold hover:underline">{tour.title}</Link><p className="text-sm text-ink/65">{dest.name}</p></div></div>
           <dl className="mt-5 space-y-3 text-sm">
             {([["Date", nice(b.travelDate)], ["Travelers", people], ["Style", b.isPrivate ? "Private" : "Shared"], ["Pickup", b.hotel ? `${b.hotel}${b.pickupLocation ? ` (${b.pickupLocation})` : ""}` : "To be confirmed"], ["Meeting point", tour.meetingPoint || "We'll message you"], ["Extras", data.addons.length ? data.addons.map((a) => a.name).join(", ") : "None"]] as [string, string][]).map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-6"><dt className="text-ink/55">{k}</dt><dd className="text-right font-medium">{v}</dd></div>))}
-            {b.specialRequests && <div className="flex justify-between gap-6"><dt className="text-ink/55">Requests</dt><dd className="max-w-[60%] whitespace-pre-line text-right font-medium">{b.specialRequests}</dd></div>}
+              <div key={k} className="flex justify-between gap-6"><dt className="text-ink/65">{k}</dt><dd className="text-right font-medium">{v}</dd></div>))}
+            {b.specialRequests && <div className="flex justify-between gap-6"><dt className="text-ink/65">Requests</dt><dd className="max-w-[60%] whitespace-pre-line text-right font-medium">{b.specialRequests}</dd></div>}
           </dl>
         </section>
         <section className="rounded-2xl border border-ink/15 p-5 text-sm">
           <h2 className="font-display text-lg font-bold">Payment</h2>
           <dl className="mt-3 space-y-2">
-            <div className="flex justify-between"><dt className="text-ink/55">Subtotal</dt><dd>{money(b.subtotal)}</dd></div>
-            {b.discount > 0 && <div className="flex justify-between"><dt className="text-ink/55">Discount</dt><dd className="text-[#1a7f45]">−{money(b.discount)}</dd></div>}
+            <div className="flex justify-between"><dt className="text-ink/65">Subtotal</dt><dd>{money(b.subtotal)}</dd></div>
+            {b.discount > 0 && <div className="flex justify-between"><dt className="text-ink/65">Discount</dt><dd className="text-[#1a7f45]">−{money(b.discount)}</dd></div>}
             <div className="flex justify-between border-t border-ink/10 pt-2 text-base font-bold"><dt>Total</dt><dd>{money(b.total)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink/55">Paid so far</dt><dd>{money(data.paid)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink/65">Paid so far</dt><dd>{money(data.paid)}</dd></div>
             <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due)}</dd></div>
           </dl>
-          <p className="mt-3 text-xs text-ink/55">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
+          <p className="mt-3 text-xs text-ink/65">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
         </section>
       </div>
 
       {data.docs.length > 0 && <section className="mt-6 rounded-2xl border border-ink/15 p-5 print:hidden"><h2 className="font-display text-lg font-bold">Your documents</h2>
-        <ul className="mt-3 divide-y divide-ink/10 text-sm">{data.docs.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/55">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul></section>}
+        <ul className="mt-3 divide-y divide-ink/10 text-sm">{data.docs.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/65">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul></section>}
 
       <div className="mt-8 flex flex-wrap gap-3 print:hidden">
         <WhatsAppButton href={wa} label="Message us about this booking" />
@@ -86,7 +86,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
         <PrintButton />
         <Link href="/tours" className="btn btn-outline">Explore more tours</Link>
       </div>
-      {mode === "confirmation" && <p className="mt-6 text-xs text-ink/50 print:hidden">A confirmation email is not sent automatically yet. Save this page or your booking ID.</p>}
+      {mode === "confirmation" && <p className="mt-6 text-xs text-ink/65 print:hidden">A confirmation email is not sent automatically yet. Save this page or your booking ID.</p>}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
+import { invalidate } from "@/lib/cache";
 import { parseGuides } from "@/lib/guides-import";
 
 const go = (msg: string, err = false, tab = "reviews"): never => redirect(`/admin/settings?tab=${tab}&${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
@@ -17,11 +18,11 @@ export async function saveTestimonial(id: string | null, fd: FormData) {
   const p = schema.safeParse(Object.fromEntries(fd.entries())); if (!p.success) return go(p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "), true);
   const row = { ...p.data, active: fd.get("active") === "on" };
   if (id) await db.update(s.testimonials).set(row).where(eq(s.testimonials.id, id)); else await db.insert(s.testimonials).values(row);
-  await audit(u.uid, id ? "UPDATE" : "CREATE", id ?? undefined); revalidatePath("/"); revalidatePath("/admin/settings");
+  await audit(u.uid, id ? "UPDATE" : "CREATE", id ?? undefined); revalidatePath("/"); revalidatePath("/admin/settings"); invalidate("testimonials");
   return go("Review saved. It's live on the homepage.");
 }
 export async function deleteTestimonial(id: string) {
-  const u = await requireStaff("settings"); await db.delete(s.testimonials).where(eq(s.testimonials.id, id)); await audit(u.uid, "DELETE", id); revalidatePath("/"); return go("Review removed");
+  const u = await requireStaff("settings"); await db.delete(s.testimonials).where(eq(s.testimonials.id, id)); await audit(u.uid, "DELETE", id); revalidatePath("/"); invalidate("testimonials"); return go("Review removed");
 }
 // One review per line: Name | Country | Date | Title | Review text
 export async function bulkAddTestimonials(fd: FormData) {
@@ -34,7 +35,7 @@ export async function bulkAddTestimonials(fd: FormData) {
     const p = schema.safeParse({ name, country: country ?? "", rating: 5, title: title ?? "", body, source, url, reviewDate: date ?? "", sortOrder: 0 });
     if (p.success) { await db.insert(s.testimonials).values({ ...p.data, active: true }); n++; }
   }
-  await audit(u.uid, "BULK_CREATE"); revalidatePath("/"); revalidatePath("/admin/settings");
+  await audit(u.uid, "BULK_CREATE"); revalidatePath("/"); revalidatePath("/admin/settings"); invalidate("testimonials");
   return go(n ? `${n} review${n > 1 ? "s" : ""} added` : "Nothing added. Use one review per line: Name | Country | Date | Title | Review text", !n);
 }
 

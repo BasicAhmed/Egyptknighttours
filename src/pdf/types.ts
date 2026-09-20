@@ -1,4 +1,4 @@
-export type Company = { name: string; email: string; phone: string; phone2: string; whatsapp: string; address: string; website: string; licence: string; signatureName: string; signatureTitle: string };
+export type Company = { name: string; email: string; phone: string; phone2: string; whatsapp: string; address: string; website: string; licence: string; signatureName: string; signatureTitle: string; builder?: string };
 export type PayMethod = { id: string; kind: string; label: string; currency: string; bankName: string; accountName: string; accountNumber: string; iban: string; swift: string; branch: string; bankAddress: string; instructions: string; paymentUrl: string };
 export type InvoiceData = {
   number: string; issuedAt: string; currency: string; ref: string;

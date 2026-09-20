@@ -67,12 +67,12 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
     if (c) { to ||= c.c.email; name = c.c.name.split(" ")[0]; }
   }
   if (!to) return { ok: false as const, message: "No customer email on this booking. Enter one first." };
-  const g = await getSettings(); const company = g["company.name"];
+  const g = await getSettings(); const company = g["company.name"]; const builder = g["builder.show"] === "0" ? "" : (g["builder.name"] || "Nino Techy");
   const inv = doc.kind === "INVOICE";
   const link = docUrl(doc.id);
   const mail = brandedEmail(inv
-    ? { greeting: `Hi ${name}, your Egypt adventure is almost confirmed.`, lines: [`Your invoice ${doc.number} is attached. It shows exactly what's due and how to pay.`, doc.amount != null ? `Amount due now: ${new Intl.NumberFormat("en-US", { style: "currency", currency: doc.currency }).format(doc.amount)}.` : "", "Once you've paid, send us a quick message with your receipt and we'll confirm right away."].filter(Boolean), buttonLabel: "Open your invoice", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.` }
-    : { greeting: `Hi ${name}, here's your Egypt itinerary.`, lines: ["We've put your trip together day by day. Have a look, and tell us what you'd like to change.", "When you're ready to make it official, the last page has everything you need."], buttonLabel: "Open your itinerary", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.` });
+    ? { greeting: `Hi ${name}, your Egypt adventure is almost confirmed.`, lines: [`Your invoice ${doc.number} is attached. It shows exactly what's due and how to pay.`, doc.amount != null ? `Amount due now: ${new Intl.NumberFormat("en-US", { style: "currency", currency: doc.currency }).format(doc.amount)}.` : "", "Once you've paid, send us a quick message with your receipt and we'll confirm right away."].filter(Boolean), buttonLabel: "Open your invoice", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.`, builder }
+    : { greeting: `Hi ${name}, here's your Egypt itinerary.`, lines: ["We've put your trip together day by day. Have a look, and tell us what you'd like to change.", "When you're ready to make it official, the last page has everything you need."], buttonLabel: "Open your itinerary", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.`, builder });
   const pdf = await renderDocument(doc);
   const res = await sendEmail({ to, subject: inv ? `Your ${company} invoice ${doc.number}` : `Your Egypt itinerary from ${company}`, html: mail.html, text: mail.text, attachments: [{ filename: `${doc.number}.pdf`, content: pdf }], replyTo: g["company.email"] });
   if (!res.ok) { await db.insert(s.documentEvents).values({ documentId: doc.id, type: "EMAIL_FAILED", note: res.message, userId }); return { ok: false as const, message: res.message }; }

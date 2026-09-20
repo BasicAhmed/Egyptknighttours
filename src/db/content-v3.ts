@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 // Topic clusters. Each cluster has one complete "pillar" guide, and supporting guides that link to it and to each other.
 //   Plan your trip: egypt-travel-guide-2026 (pillar) | Where to go: best-places-to-visit-in-egypt (pillar) | Itineraries: egypt-7-day-itinerary (pillar)
 export type G = { slug: string; title: string; cluster: string; isPillar: boolean; summary: string; destinationSlug: string | null; seoTitle: string; seoDescription: string; keywords: string; related: string; faqs: { q: string; a: string }[]; body: string };
+export const CONTENT_VERSION = 3;
 const PLAN = "Plan your trip", GO = "Where to go", ITIN = "Itineraries";
 
 export const GUIDES_V3: G[] = [

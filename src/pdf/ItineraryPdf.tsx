@@ -79,7 +79,7 @@ export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
   const cta = d.ctaUrl || wa || (d.company.email ? `mailto:${d.company.email}` : "");
   const cover = c.coverImageUrl && d.images[c.coverImageUrl];
   const footer = (
-    <View fixed style={s.footer}><Text>{d.company.name}  ·  {c.title}</Text><Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} /></View>
+    <View fixed style={s.footer}><Text>{d.company.name}  ·  {c.title}</Text><Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}${d.company.builder ? `  ·  Booking system by ${d.company.builder}` : ""}`} /></View>
   );
   return (
     <Document title={c.title} author={d.company.name} subject={`Itinerary ${d.ref}`}>
@@ -187,7 +187,7 @@ export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
           {d.company.email ? <Link src={`mailto:${d.company.email}`} style={{ textDecoration: "none" }}><View style={{ flexDirection: "row", alignItems: "center" }}><Icon name="mail" size={13} color={C.gold} /><Text style={{ color: C.white, marginLeft: 9, fontSize: 11 }}>{d.company.email}</Text></View></Link> : null}
           {d.company.website ? <View style={{ flexDirection: "row", alignItems: "center" }}><Icon name="link" size={13} color={C.gold} /><Text style={{ color: C.white, marginLeft: 9, fontSize: 11 }}>{d.company.website}</Text></View> : null}
         </View>
-        <Text style={{ position: "absolute", bottom: 34, left: 44, fontSize: 8, color: "#9C948A" }}>{d.company.name}{d.company.licence ? `  ·  Licence ${d.company.licence}` : ""}  ·  Reference {d.ref}</Text>
+        <Text style={{ position: "absolute", bottom: 34, left: 44, fontSize: 8, color: "#9C948A" }}>{d.company.name}{d.company.licence ? `  ·  Licence ${d.company.licence}` : ""}  ·  Reference {d.ref}{d.company.builder ? `  ·  Booking system by ${d.company.builder}` : ""}</Text>
       </Page>
     </Document>
   );

@@ -38,7 +38,7 @@ export default function TourFilters({ dests, current, count }: { dests: { slug: 
       <div className="sticky top-[68px] z-30 -mx-5 border-b border-ink/10 bg-white/95 px-5 py-3 backdrop-blur sm:-mx-8 sm:px-8 md:mx-0 md:rounded-2xl md:border md:px-4 md:shadow-sm">
         <div className="flex items-center gap-2">
           <form className="relative min-w-0 flex-1" role="search" onSubmit={(e) => { e.preventDefault(); router.push(href({ ...current, q })); }}>
-            <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/40" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
+            <svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/65" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
             <input aria-label="Search tours" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search pyramids, Luxor, Nile cruise…" className="input !rounded-xl !py-2.5 !pl-10" />
           </form>
           <button type="button" onClick={() => setOpen(true)} className="relative flex h-[46px] shrink-0 items-center gap-2 rounded-xl border border-ink/25 bg-white px-4 text-[15px] font-bold hover:border-ink">
@@ -46,14 +46,14 @@ export default function TourFilters({ dests, current, count }: { dests: { slug: 
           </button>
           <select aria-label="Sort tours" value={current.sort ?? ""} onChange={(e) => router.push(href({ ...current, sort: e.target.value }))} className="hidden h-[46px] rounded-xl border border-ink/25 bg-white px-3 text-[15px] font-semibold sm:block">{SORT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         </div>
-        <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 md:-mx-4 md:px-4" role="navigation" aria-label="Destinations">
+        <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 md:-mx-4 md:px-4" role="navigation" aria-label="Filter by destination">
           <Link href={href({ ...current, destination: "" })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${!current.destination ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/75 hover:border-ink/50"}`}>All Egypt</Link>
           {dests.map((d) => <Link key={d.slug} href={href({ ...current, destination: d.slug })} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${current.destination === d.slug ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/75 hover:border-ink/50"}`}>{d.name}</Link>)}
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <p className="mr-1 text-sm font-semibold text-ink/60">{count} tour{count === 1 ? "" : "s"}</p>
+        <p className="mr-1 text-sm font-semibold text-ink/65">{count} tour{count === 1 ? "" : "s"}</p>
         {chips.map((c) => <Link key={c.k} href={href({ ...current, [c.k]: "" })} className="inline-flex items-center gap-1.5 rounded-full border border-gold-600/50 bg-gold-500/20 px-3 py-1.5 text-sm font-semibold hover:bg-gold-500/35" aria-label={`Remove filter ${c.text}`}>{c.text}<span aria-hidden>×</span></Link>)}
         {chips.length > 0 && <Link href="/tours" className="text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Clear all</Link>}
         <select aria-label="Sort tours" value={current.sort ?? ""} onChange={(e) => router.push(href({ ...current, sort: e.target.value }))} className="ml-auto rounded-xl border border-ink/20 bg-white px-3 py-2 text-sm font-semibold sm:hidden">{SORT.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
