@@ -179,6 +179,10 @@ CREATE TABLE `guides` (
 	`seo_title` text NOT NULL,
 	`seo_description` text NOT NULL,
 	`status` text DEFAULT 'DRAFT' NOT NULL,
+	`faqs` text DEFAULT '[]' NOT NULL,
+	`related` text DEFAULT '' NOT NULL,
+	`is_pillar` integer DEFAULT false NOT NULL,
+	`keywords` text DEFAULT '' NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint

@@ -29,6 +29,11 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - SEO: keyword-focused titles and descriptions, 7 landing pages under `/egypt-tours/…`, 9 travel guides, rewritten destination pages with FAQ and destination schema, homepage schema (agency, website search, FAQ), keyword footer and sitemap entries. Filtered tour URLs are noindex.
 - Homepage video section (YouTube, starts at 0:14; link and start time editable in Settings → Website).
 
+## Travel guides and topic clusters
+- 20 guides in 3 clusters, each with one complete "pillar" guide: **Plan your trip** (Egypt Travel Guide 2026), **Where to go** (Best Places to Visit in Egypt) and **Itineraries** (7 Days in Egypt). Every guide links to its pillar, to related guides, to destination pages and to tour landing pages.
+- Articles have a contents list, key takeaways box, tables, FAQ (with FAQ schema) and Article schema. Written in a simple format in `src/db/content-v3.ts`; tests check every internal link.
+- The cost guide's prices are estimates: review them before relying on them.
+
 ## Travelers, passports and operations (order modal)
 - **Travelers tab:** one card per person (adult, child, infant) with name, age (required for children), date of birth, nationality, passport number and expiry, notes, and passport/visa upload from a local file (JPG, PNG, WebP or PDF, up to 4 MB). Warns when a passport expires within 6 months of the trip.
 - **Files are encrypted** (AES-256-GCM) before storage in the database, downloadable only by logged-in staff, and every view, upload and delete is written to the audit log. Set `FILE_ENCRYPTION_KEY` in Vercel for a dedicated key; otherwise it derives from `AUTH_SECRET` (changing that would make existing files unreadable). Delete files after the trip.

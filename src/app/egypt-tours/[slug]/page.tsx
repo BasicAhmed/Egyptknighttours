@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type P = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const l = landingBySlug((await params).slug); if (!l) return {};
-  return { title: l.title, description: l.description, alternates: { canonical: `/egypt-tours/${l.slug}` }, openGraph: { title: l.title, description: l.description } };
+  return { title: { absolute: l.title }, description: l.description, alternates: { canonical: `/egypt-tours/${l.slug}` }, openGraph: { title: l.title, description: l.description } };
 }
 export default async function Landing({ params }: P) {
   const l = landingBySlug((await params).slug); if (!l) notFound();

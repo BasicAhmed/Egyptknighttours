@@ -219,6 +219,7 @@ export const guides = sqliteTable("guides", {
   summary: text("summary").notNull(), body: text("body").notNull(), destinationSlug: text("destination_slug"),
   seoTitle: text("seo_title").notNull(), seoDescription: text("seo_description").notNull(),
   status: text("status").notNull().default("DRAFT"),
+  faqs: text("faqs").notNull().default("[]"), related: text("related").notNull().default(""), isPillar: integer("is_pillar", { mode: "boolean" }).notNull().default(false), keywords: text("keywords").notNull().default(""),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 

@@ -12,7 +12,7 @@ type P = { params: Promise<{ slug: string }> };
 const get = async (slug: string) => (await db.select().from(s.destinations).where(eq(s.destinations.slug, slug)))[0];
 export async function generateMetadata({ params }: P): Promise<Metadata> {
   const d = await get((await params).slug); if (!d) return {};
-  return { title: d.seoTitle, description: d.seoDescription, alternates: { canonical: `/destinations/${d.slug}` }, openGraph: { title: d.seoTitle, description: d.seoDescription, images: d.imageUrl ? [d.imageUrl] : undefined } };
+  return { title: { absolute: d.seoTitle }, description: d.seoDescription, alternates: { canonical: `/destinations/${d.slug}` }, openGraph: { title: d.seoTitle, description: d.seoDescription, images: d.imageUrl ? [d.imageUrl] : undefined } };
 }
 export default async function Destination({ params }: P) {
   const d = await get((await params).slug); if (!d) notFound();

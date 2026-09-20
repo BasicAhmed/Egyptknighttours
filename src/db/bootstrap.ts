@@ -4,6 +4,7 @@ import { seedDatabase } from "./seed";
 import { seedItineraryTemplates } from "./seed-templates";
 import { syncAdminFromEnv } from "./admin-sync";
 import { applyContentV2 } from "./content-v2";
+import { applyContentV3 } from "./content-v3";
 
 // Creates any missing tables, then seeds demo content if the database is empty. Safe to call repeatedly and on old databases.
 const COLUMNS = [
@@ -12,6 +13,7 @@ const COLUMNS = [
   { table: "bookings", name: "flight_departure", ddl: "text" }, { table: "bookings", name: "room_type", ddl: "text" }, { table: "bookings", name: "pickup_time", ddl: "text" },
   { table: "bookings", name: "occasion", ddl: "text" }, { table: "bookings", name: "emergency_contact", ddl: "text" }, { table: "bookings", name: "visa_status", ddl: "text" },
   { table: "destinations", name: "image_url", ddl: "text" }, { table: "itineraries", name: "tour_id", ddl: "text" }, { table: "customers", name: "nationality", ddl: "text" },
+  { table: "guides", name: "faqs", ddl: "text NOT NULL DEFAULT '[]'" }, { table: "guides", name: "related", ddl: "text NOT NULL DEFAULT ''" }, { table: "guides", name: "is_pillar", ddl: "integer NOT NULL DEFAULT 0" }, { table: "guides", name: "keywords", ddl: "text NOT NULL DEFAULT ''" },
   { table: "travelers", name: "nationality", ddl: "text" }, { table: "travelers", name: "dob", ddl: "text" }, { table: "travelers", name: "passport_number", ddl: "text" },
   { table: "travelers", name: "passport_expiry", ddl: "text" }, { table: "travelers", name: "notes", ddl: "text" },
 ];
@@ -36,6 +38,7 @@ async function run() {
   if (Number(n.rows[0].n) === 0) await seedDatabase();
   await seedItineraryTemplates();
   await applyContentV2();
+  await applyContentV3();
   const a = await syncAdminFromEnv();
   if (a.status === "created" || a.status === "updated") console.log(`Admin account ${a.status} from ADMIN_EMAIL / ADMIN_PASSWORD`);
 }
