@@ -7,6 +7,7 @@ export const DEFAULTS: Record<string, string> = {
   "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "",
   "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "",
   "site.instagram": "", "site.facebook": "", "site.tiktok": "", "site.youtube": "",
+  "site.heroImage": "", "site.videoUrl": "https://youtu.be/uz23AE-oemU", "site.videoStart": "14",
   "site.mapQuery": "Aswan, Egypt", "site.mapLink": "", "site.hours": "Every day, 9am to 9pm Egypt time",
   "invoice.depositDeadlineDays": "3", "invoice.balanceDaysBefore": "21",
   "invoice.paymentTerms": "A 50% deposit is required to confirm the reservation.\nThe remaining balance is due 21 days before arrival, or in cash on arrival where agreed.",

@@ -7,6 +7,7 @@ import Stepper from "./Stepper";
 import SiteImage from "./SiteImage";
 import { track } from "./Tracker";
 import { money } from "@/lib/format";
+import { COUNTRIES } from "@/lib/countries";
 import { DEPOSIT_PERCENT, type Quote } from "@/lib/pricing";
 
 type Addon = { id: string; name: string; description: string; price: number; unit: string };
@@ -25,7 +26,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
   const [addonIds, setAddonIds] = useState<string[]>([]);
   const [coupon, setCoupon] = useState(""); const [appliedCoupon, setAppliedCoupon] = useState("");
   const [payMode, setPayMode] = useState<PayMode>("DEPOSIT");
-  const [c, setC] = useState({ name: "", email: "", whatsapp: "", country: "", hotel: "", pickupNotes: "", requests: "", dietary: "", accessibility: "" });
+  const [c, setC] = useState({ name: "", email: "", whatsapp: "", nationality: "", hotel: "", pickupNotes: "", requests: "", dietary: "", accessibility: "" });
   const [others, setOthers] = useState<string[]>([]);
   const [consent, setConsent] = useState(false); const [terms, setTerms] = useState(false);
   const [quote, setQuote] = useState<Quote | null>(null); const [couponMsg, setCouponMsg] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
       if (c.name.trim().length < 2) return "Please enter your full name";
       if (!emailOk(c.email)) return "Please enter a valid email";
       if (c.whatsapp.replace(/\D/g, "").length < 6) return "Please enter your WhatsApp number with country code";
+      if (!c.nationality) return "Please choose your nationality";
     }
     if (n === 4 && !terms) return "Please accept the booking terms to continue";
     return null;
@@ -68,7 +70,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
     setError(null);
     if (step === 3 && !abandonSent.current) {
       abandonSent.current = true; // contact details are in: save a CRM task in case they don't finish
-      fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "ABANDONED", name: c.name, email: c.email, whatsapp: c.whatsapp, country: c.country || undefined, travelDates: date, travelers: people + infants, toursViewed: tour.slug, source: "checkout" }) }).catch(() => {});
+      fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "ABANDONED", name: c.name, email: c.email, whatsapp: c.whatsapp, country: c.nationality || undefined, travelDates: date, travelers: people + infants, toursViewed: tour.slug, source: "checkout" }) }).catch(() => {});
     }
     if (step === 2) track("start_checkout", { tourSlug: tour.slug });
     setStep(step + 1);
@@ -78,7 +80,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
     const v = validStep(3) ?? validStep(4); if (v) { setError(v); return; }
     setBusy(true); setError(null);
     const noteBits = [c.pickupNotes && `Pickup notes: ${c.pickupNotes}`, c.requests].filter(Boolean).join("\n");
-    const r = await fetch("/api/bookings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, travelDate: date, name: c.name, email: c.email, whatsapp: c.whatsapp, country: c.country || undefined, hotel: c.hotel || undefined, pickupLocation: c.pickupNotes || undefined, specialRequests: noteBits || undefined, dietary: c.dietary || undefined, accessibility: c.accessibility || undefined, travelerNames: [c.name, ...others], consentMarketing: consent, source: document.referrer ? new URL(document.referrer).hostname : "direct" }) });
+    const r = await fetch("/api/bookings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, travelDate: date, name: c.name, email: c.email, whatsapp: c.whatsapp, nationality: c.nationality, hotel: c.hotel || undefined, pickupLocation: c.pickupNotes || undefined, specialRequests: noteBits || undefined, dietary: c.dietary || undefined, accessibility: c.accessibility || undefined, travelerNames: [c.name, ...others], consentMarketing: consent, source: document.referrer ? new URL(document.referrer).hostname : "direct" }) });
     const j = await r.json(); setBusy(false);
     if (!r.ok) { setError(j.error ?? "Something went wrong. Please try again."); return; }
     track("purchase", { tourSlug: tour.slug, props: { value: j.total } });
@@ -165,7 +167,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
               {field("name", "Full name (lead traveler)", c.name, (v) => setC({ ...c, name: v }), { autoComplete: "name" })}
               {field("email", "Email", c.email, (v) => setC({ ...c, email: v }), { type: "email", autoComplete: "email", inputMode: "email" })}
               {field("wa", "WhatsApp number (with country code)", c.whatsapp, (v) => setC({ ...c, whatsapp: v }), { type: "tel", autoComplete: "tel", inputMode: "tel", placeholder: "+44 7700 900123" })}
-              {field("country", "Country", c.country, (v) => setC({ ...c, country: v }), { autoComplete: "country-name" })}
+              <div><label className="label" htmlFor="nat">Nationality (as on your passport)</label><select id="nat" className="input" value={c.nationality} onChange={(e) => setC({ ...c, nationality: e.target.value })} autoComplete="country-name"><option value="">Select your nationality</option>{COUNTRIES.map((x) => <option key={x} value={x}>{x}</option>)}</select></div>
             </div>
             <h3 className="mt-8 font-display text-xl font-bold">Pickup</h3>
             <p className="text-sm text-ink/65">{tour.pickupInfo || "Tell us where to collect you."}</p>

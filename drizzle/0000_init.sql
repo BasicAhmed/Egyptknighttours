@@ -105,11 +105,13 @@ CREATE TABLE `customers` (
 	`phone` text,
 	`whatsapp` text,
 	`country` text,
+	`nationality` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `customers_email_unique` ON `customers` (`email`);--> statement-breakpoint
 CREATE TABLE `destinations` (
+	`image_url` text,
 	`id` text PRIMARY KEY NOT NULL,
 	`slug` text NOT NULL,
 	`name` text NOT NULL,
@@ -189,6 +191,7 @@ CREATE TABLE `itineraries` (
 	`status` text DEFAULT 'DRAFT' NOT NULL,
 	`booking_id` text,
 	`source_template_id` text,
+	`tour_id` text,
 	`content` text NOT NULL,
 	`created_by_id` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
@@ -231,6 +234,18 @@ CREATE TABLE `leads` (
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`assigned_to_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE TABLE `media` (
+	`id` text PRIMARY KEY NOT NULL,
+	`filename` text NOT NULL,
+	`mime` text NOT NULL,
+	`size` integer NOT NULL,
+	`width` integer,
+	`height` integer,
+	`data` blob NOT NULL,
+	`uploaded_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE `payment_methods` (

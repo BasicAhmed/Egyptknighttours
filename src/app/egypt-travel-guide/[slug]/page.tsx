@@ -17,7 +17,7 @@ export default async function Guide({ params }: P) {
   return <div className="container-x max-w-3xl py-10"><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
     <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/egypt-travel-guide">Egypt travel guide</Link> / {g.cluster}</nav>
     <h1 className="h1 mt-3 !text-3xl sm:!text-4xl">{g.title}</h1>
-    <div className="mt-5 space-y-4 text-lg leading-relaxed text-ink/85">{g.body.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}</div>
-    <h2 className="h2 mt-12">Ready to plan it?</h2><div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{tours.map((t) => <TourCard key={t.id} t={t} />)}</div>
+    <div className="mt-5 space-y-4 text-lg leading-relaxed text-ink/85">{g.body.split("\n\n").map((blk, i) => { const [first, ...rest] = blk.split("\n"); return first.startsWith("## ") ? <div key={i}><h2 className="font-display text-2xl font-extrabold text-ink">{first.slice(3)}</h2>{rest.length > 0 && <p className="mt-2">{rest.join(" ")}</p>}</div> : <p key={i}>{blk.replace(/\n/g, " ")}</p>; })}</div>
+    <h2 className="h2 mt-12">Ready to plan your Egypt trip?</h2><div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{tours.map((t) => <TourCard key={t.id} t={t} />)}</div>
   </div>;
 }

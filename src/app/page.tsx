@@ -5,9 +5,13 @@ import { getSettings } from "@/lib/settings";
 import TourCard from "@/components/TourCard";
 import SiteImage from "@/components/SiteImage";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import VideoSection from "@/components/home/VideoSection";
 import { TrustBand, WhyEgypt, HowItWorks, CompareTable, GuidesSection, ReviewsSection, GuidesLinks, SocialSection, ContactMap, FaqPanel, plus, https } from "@/components/home/sections";
 import { waLink, money } from "@/lib/format";
 import { asc, eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import { LANDINGS } from "@/lib/landing";
+import { SITE } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 const ORDER = ["giza", "luxor", "cairo", "aswan", "alexandria", "hurghada"];
@@ -20,6 +24,12 @@ const FAQ: [string, string][] = [
   ["Can you build a custom trip?", "Yes. Tell us your dates, group and interests and we'll send an itinerary and a price."],
 ];
 
+export async function generateMetadata(): Promise<Metadata> {
+  const g = await getSettings();
+  const title = "Egypt Tours: Private Pyramids, Cairo, Luxor & Nile Cruise Packages";
+  const description = `Book Egypt tours with a trusted local team: ${plus(g["site.years"])} years experience, ${plus(g["site.tours"])} tours completed and ${plus(g["site.reviews"])} five-star Tripadvisor reviews. Private Giza pyramids tours, Nile cruises, Cairo and Luxor packages.`;
+  return { title: { absolute: title }, description, alternates: { canonical: "/" }, openGraph: { title, description, type: "website" }, keywords: ["Egypt tours", "Egypt tour packages", "private tours Egypt", "Giza pyramids tour", "Cairo day tours", "Luxor tours", "Nile cruise", "Egypt honeymoon", "Egypt family tours", "Cairo airport transfer"] };
+}
 export default async function Home() {
   const [all, dRows, guides, g, reviews] = await Promise.all([
     listTours({}, 12), db.select().from(s.destinations),
@@ -28,14 +38,21 @@ export default async function Home() {
   ]);
   const popular = all.slice(0, 4); const featured = all[0];
   const dests = ORDER.map((slug) => dRows.find((d) => d.slug === slug)).filter(Boolean) as typeof dRows;
-  const hero = (process.env.NEXT_PUBLIC_HERO_IMAGE ?? "").trim() || null;
+  const hero = (g["site.heroImage"] || process.env.NEXT_PUBLIC_HERO_IMAGE || "").trim() || null;
   const ta = https(g["site.tripadvisorUrl"]);
+  const sameAs = [g["site.instagram"], g["site.facebook"], g["site.tiktok"], g["site.youtube"], g["site.tripadvisorUrl"]].map(https).filter(Boolean);
+  const ld = [
+    { "@context": "https://schema.org", "@type": "TravelAgency", name: g["company.name"], url: SITE, logo: `${SITE}/logo.webp`, image: `${SITE}/logo.webp`, description: "Egypt tours and travel packages by a local team: private pyramids tours, Nile cruises, Cairo, Luxor and Aswan.", areaServed: { "@type": "Country", name: "Egypt" }, email: g["company.email"], telephone: g["company.phone"] || g["company.whatsapp"], ...(sameAs.length ? { sameAs } : {}) },
+    { "@context": "https://schema.org", "@type": "WebSite", name: g["company.name"], url: SITE, potentialAction: { "@type": "SearchAction", target: `${SITE}/tours?q={search_term_string}`, "query-input": "required name=search_term_string" } },
+    { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
+  ];
   return (<>
+    {ld.map((o, i) => <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(o) }} />)}
     <section className="relative overflow-hidden">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-        <div className="orb orb-a -right-[12%] -top-[22%] h-[620px] w-[620px] sm:h-[760px] sm:w-[760px]" />
-        <div className="orb orb-b -bottom-[30%] -left-[14%] h-[560px] w-[560px] sm:h-[700px] sm:w-[700px]" />
-        <div className="orb orb-c left-[30%] top-[10%] h-[380px] w-[380px]" />
+        <div className="orb orb-a -right-[28%] -top-[8%] h-[300px] w-[300px] opacity-70 sm:-right-[12%] sm:-top-[22%] sm:h-[760px] sm:w-[760px] sm:opacity-100" />
+        <div className="orb orb-b -bottom-[10%] -left-[30%] h-[260px] w-[260px] opacity-60 sm:-bottom-[30%] sm:-left-[14%] sm:h-[700px] sm:w-[700px] sm:opacity-100" />
+        <div className="orb orb-c hidden left-[30%] top-[10%] h-[380px] w-[380px] sm:block" />
         <svg className="sun-ring absolute -right-24 top-6 hidden opacity-[.18] lg:block" width="460" height="460" viewBox="0 0 200 200" fill="none" stroke="#C09040" strokeWidth=".5"><circle cx="100" cy="100" r="60" /><circle cx="100" cy="100" r="78" strokeDasharray="1.5 3" />{Array.from({ length: 24 }).map((_, i) => <line key={i} x1="100" y1="12" x2="100" y2="24" transform={`rotate(${i * 15} 100 100)`} />)}</svg>
         <svg className="absolute bottom-0 right-0 hidden opacity-[.09] md:block" width="520" height="200" viewBox="0 0 520 200" fill="none" stroke="#141010" strokeWidth="1.2"><path d="M20 200L150 60l130 140M170 200l110-92 110 92M330 200l70-58 70 58" /></svg>
       </div>
@@ -67,7 +84,7 @@ export default async function Home() {
     <TrustBand g={g} />
 
     <section className="container-x py-16">
-      <div className="flex items-end justify-between"><div><p className="eyebrow">Top experiences</p><h2 className="h2 mt-2">Book these first</h2></div><Link href="/tours" className="hidden text-sm font-bold underline decoration-gold-500 decoration-2 underline-offset-4 sm:block">See all tours</Link></div>
+      <div className="flex items-end justify-between"><div><p className="eyebrow">Top Egypt tours</p><h2 className="h2 mt-2">Our most popular Egypt tours</h2></div><Link href="/tours" className="hidden text-sm font-bold underline decoration-gold-500 decoration-2 underline-offset-4 sm:block">See all tours</Link></div>
       <div className="no-scrollbar -mx-5 mt-8 flex snap-x gap-5 overflow-x-auto px-5 pb-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4">
         {popular.map((t) => <div key={t.id} className="w-[80%] shrink-0 snap-start sm:w-auto"><TourCard t={t} /></div>)}
       </div>
@@ -75,11 +92,11 @@ export default async function Home() {
     </section>
 
     <section className="container-x pb-16">
-      <p className="eyebrow">Destinations</p><h2 className="h2 mt-2">Where in Egypt?</h2>
+      <p className="eyebrow">Destinations</p><h2 className="h2 mt-2">Where to go in Egypt: Cairo, Giza, Luxor, Aswan</h2>
       <div className="mt-7 grid auto-rows-[170px] grid-cols-2 gap-3 sm:auto-rows-[210px] md:grid-cols-4">
         {dests.map((d, i) => (
           <Link key={d.id} href={`/destinations/${d.slug}`} className={`group relative overflow-hidden rounded-2xl ${i === 0 ? "col-span-2 md:row-span-2" : i === 5 ? "col-span-2" : ""}`}>
-            <SiteImage alt={d.name} destination={d.slug} className="absolute inset-0 transition duration-500 group-hover:scale-105" />
+            <SiteImage src={d.imageUrl} alt={`${d.name} tours and things to do in Egypt`} destination={d.slug} className="absolute inset-0 transition duration-500 group-hover:scale-105" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/10 to-transparent" />
             <div className="absolute bottom-0 p-4 text-white"><p className="font-display text-2xl font-bold">{d.name}</p><p className="text-sm text-white/85">{d.tagline}</p></div>
           </Link>))}
@@ -87,6 +104,7 @@ export default async function Home() {
       </div>
     </section>
 
+    <VideoSection url={g["site.videoUrl"]} start={g["site.videoStart"]} />
     <WhyEgypt />
     <HowItWorks />
     <CompareTable />
@@ -95,6 +113,15 @@ export default async function Home() {
     <GuidesLinks guides={guides} />
     <SocialSection g={g} />
     <ContactMap g={g} />
+    <section className="container-x pb-16" aria-labelledby="seo-h">
+      <div className="max-w-4xl"><h2 id="seo-h" className="h2">Egypt tours planned by a local team</h2>
+        <div className="mt-4 space-y-4 text-[17px] leading-relaxed text-ink/75">
+          <p>Egypt Knight Tours offers <Link className="font-semibold underline" href="/tours">Egypt tours and travel packages</Link> for couples, families, friends and solo travellers. Whether you want a <Link className="font-semibold underline" href="/egypt-tours/private-tours-egypt">private Giza pyramids tour</Link>, a day trip through <Link className="font-semibold underline" href="/destinations/cairo">Cairo</Link>, the temples and tombs of <Link className="font-semibold underline" href="/destinations/luxor">Luxor</Link>, or a <Link className="font-semibold underline" href="/egypt-tours/nile-cruises-egypt">Nile cruise</Link> from Luxor to <Link className="font-semibold underline" href="/destinations/aswan">Aswan</Link>, our team plans it around you.</p>
+          <p>Every tour shows clear prices and inclusions, hotel pickup where available, and a simple 50% deposit. Add <Link className="font-semibold underline" href="/egypt-tours/cairo-airport-transfers">Cairo airport transfers</Link>, build a custom itinerary with our <Link className="font-semibold underline" href="/plan-my-trip">Egypt trip planner</Link>, or read our <Link className="font-semibold underline" href="/egypt-travel-guide">Egypt travel guides</Link> to choose the best time to visit, understand visas and plan your days.</p>
+        </div>
+        <div className="mt-6 flex flex-wrap gap-2">{LANDINGS.map((l) => <Link key={l.slug} href={`/egypt-tours/${l.slug}`} className="rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-bold hover:border-ink">{l.h1}</Link>)}</div></div>
+    </section>
+
     <FaqPanel faq={FAQ} />
 
     <section className="container-x pb-4">

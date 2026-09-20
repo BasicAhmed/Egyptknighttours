@@ -8,5 +8,5 @@ export const SITE = siteUrl();
 export const WA = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "") || "201000000000";
 export const waLink = (text: string) => `https://wa.me/${WA}?text=${encodeURIComponent(text)}`;
 export const CATEGORY_LABEL: Record<string, string> = { DAY: "Day tour", MULTI_DAY: "Multi-day", NILE_CRUISE: "Nile cruise", TRANSFER: "Transfer" };
-export const duration = (t: { durationDays: number; durationHours: number }) => t.durationDays > 1 ? `${t.durationDays} days` : `${t.durationHours} hours`;
+export const duration = (t: { durationDays: number; durationHours: number }) => t.durationDays > 1 ? `${t.durationDays} days` : `${t.durationHours} hour${t.durationHours === 1 ? "" : "s"}`;
 export const toDateInput = (d: Date) => d.toISOString().slice(0, 10);

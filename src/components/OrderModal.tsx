@@ -61,7 +61,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         {tab === "overview" && <div className="space-y-4">
         <Checklist o={o} go={(t) => setTab(t)} />
         <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
+          <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
             <Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/50">(in {daysUntil(o.travelDate)}d)</span>}</>} />
             <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />

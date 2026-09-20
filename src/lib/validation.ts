@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { COUNTRIES } from "./countries";
 export const TOUR_STATUS = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 export const LEAD_STATUS = ["NEW","CONTACTED","QUALIFIED","QUOTE_SENT","FOLLOW_UP","BOOKED","TRAVELING","COMPLETED","REPEAT_CUSTOMER","LOST","ABANDONED"] as const;
 export const BOOKING_STATUS = ["INQUIRY","QUOTE_SENT","PENDING","CONFIRMED","INVOICED","PARTIALLY_PAID","DEPOSIT_PAID","PAID","COMPLETED","CANCELLED"] as const;
@@ -17,6 +18,7 @@ export const bookingSchema = quoteSchema.extend({
   travelDate: dateStr,
   name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200),
   whatsapp: z.string().trim().min(5).max(30), country: z.string().trim().max(80).optional(),
+  nationality: z.string().trim().refine((v) => COUNTRIES.includes(v), "Please choose your nationality"),
   hotel: z.string().trim().max(200).optional(), pickupLocation: z.string().trim().max(200).optional(),
   specialRequests: z.string().trim().max(1000).optional(), dietary: z.string().trim().max(300).optional(),
   accessibility: z.string().trim().max(300).optional(),
@@ -45,7 +47,7 @@ export const tourSchema = z.object({
   price: z.coerce.number().min(0).max(100000), discountPrice: z.coerce.number().min(0).max(100000).optional().nullable(),
   childPercent: z.coerce.number().int().min(0).max(100), privateSurcharge: z.coerce.number().min(0).max(100000),
   maxTravelers: z.coerce.number().int().min(1).max(100),
-  imageUrl: z.string().trim().url().max(500).optional().or(z.literal("")),
+  imageUrl: z.string().trim().max(500).refine((v) => v === "" || /^\/api\/media\/[\w-]{8,64}$/.test(v) || /^https:\/\//i.test(v), "Use the Upload photo button").optional().or(z.literal("")),
   status: z.enum(TOUR_STATUS), seoTitle: z.string().trim().max(70), seoDescription: z.string().trim().max(170),
 });
 export const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1).max(200) });

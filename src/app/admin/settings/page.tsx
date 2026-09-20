@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { saveCompanySettings, savePaymentMethod, deletePaymentMethod } from "../doc-actions";
 import Notice from "@/components/Notice";
+import ImageField from "@/components/ImageField";
 import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides } from "../site-actions";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
@@ -59,10 +60,12 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} /></>}
         {tab === "website" && <>
           <p className="text-sm text-ink/60 sm:col-span-2">These numbers and links appear on the homepage. Only use figures you can back up.</p>
+          <div className="sm:col-span-2"><ImageField name="site.heroImage" label="Homepage main photo" value={g["site.heroImage"]} hint="Large landscape or portrait photo shown next to the headline." /></div>
           <F name="site.years" label="Years of experience (number)" v={g["site.years"]} /><F name="site.tours" label="Tours completed (e.g. 5,000)" v={g["site.tours"]} />
           <F name="site.reviews" label="Five-star reviews (e.g. 500)" v={g["site.reviews"]} /><F name="site.tripadvisorUrl" label="Tripadvisor page link (https://…)" v={g["site.tripadvisorUrl"]} />
           <F name="site.instagram" label="Instagram link" v={g["site.instagram"]} /><F name="site.facebook" label="Facebook link" v={g["site.facebook"]} />
           <F name="site.tiktok" label="TikTok link" v={g["site.tiktok"]} /><F name="site.youtube" label="YouTube link" v={g["site.youtube"]} />
+          <F name="site.videoUrl" label="Homepage video (YouTube link)" v={g["site.videoUrl"]} /><F name="site.videoStart" label="Video starts at (seconds)" type="number" v={g["site.videoStart"]} />
           <F name="site.mapQuery" label="Map location (address or place name)" v={g["site.mapQuery"]} /><F name="site.mapLink" label="Google Maps link (for the Open in Maps button)" v={g["site.mapLink"]} />
           <div className="sm:col-span-2"><F name="site.hours" label="Opening hours text" v={g["site.hours"]} /></div></>}
         {tab === "wording" && <>

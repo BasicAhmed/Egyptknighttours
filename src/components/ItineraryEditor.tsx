@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { saveItinerary, generateItineraryPdf, duplicateItinerary, saveAsTemplate, deleteItinerary, attachItinerary } from "@/app/admin/doc-actions";
 import { blk, day as newDay, suggestHook, uid } from "@/lib/itinerary-templates";
+import ImageField from "./ImageField";
 import type { Block, BlockType, Day, ItineraryContent } from "@/pdf/types";
 
 const TYPES: [BlockType, string][] = [["ACTIVITY", "Activity"], ["TOUR", "Tour"], ["TRANSFER", "Airport transfer"], ["TRANSPORT", "Transportation"], ["FLIGHT", "Flight"], ["HOTEL", "Hotel"], ["MEAL", "Restaurant / meal"], ["FREE_TIME", "Free time"], ["MEETING_POINT", "Meeting point"], ["GUIDE", "Guide information"], ["INFO", "Important information"], ["NOTE", "Notes"]];
@@ -63,7 +64,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
           <In label="Trip title (cover)" value={c.title} onChange={(v) => upd((n) => { n.title = v; })} ph="Cairo & the Nile" />
           <In label="Subtitle" value={c.subtitle} onChange={(v) => upd((n) => { n.subtitle = v; })} ph="8 days, 7 nights" />
           <Ta cls="sm:col-span-2" label="Introduction (a short, exciting overview)" value={c.intro} onChange={(v) => upd((n) => { n.intro = v; })} rows={3} />
-          <In label="Cover photo URL (https://…)" value={c.coverImageUrl} onChange={(v) => upd((n) => { n.coverImageUrl = v; })} />
+          <ImageField label="Cover photo" value={c.coverImageUrl} onChange={(v) => upd((n) => { n.coverImageUrl = v; })} hint="Upload a photo for the PDF cover." />
           <div><label className="label">Cover illustration (when no photo)</label><select className="input !py-2" value={c.sceneKind || "auto"} onChange={(e) => upd((n) => { n.sceneKind = e.target.value; })}>{["auto", "giza", "cairo", "luxor", "aswan", "alexandria", "hurghada"].map((k) => <option key={k}>{k}</option>)}</select></div>
           <In label="Prepared for (customer name)" value={c.customerName} onChange={(v) => upd((n) => { n.customerName = v; })} />
           <In label="Travelers" value={c.travelers} onChange={(v) => upd((n) => { n.travelers = v; })} ph="2 travelers" />
@@ -96,7 +97,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
               <Ta cls="sm:col-span-2" label="Short hook (one or two sentences)" value={d.hook} onChange={(v) => updDay(i, (x) => { x.hook = v; })} rows={2} />
               <In label="Location" value={d.location} onChange={(v) => updDay(i, (x) => { x.location = v; })} ph="Cairo · Giza" />
               <In label="Date" type="date" value={d.date} onChange={(v) => updDay(i, (x) => { x.date = v; })} />
-              <In cls="sm:col-span-2" label="Day photo URL (https://…). Leave blank for an illustration" value={d.imageUrl} onChange={(v) => updDay(i, (x) => { x.imageUrl = v; })} />
+              <div className="sm:col-span-2"><ImageField label="Day photo (leave empty for an illustration)" value={d.imageUrl} onChange={(v) => updDay(i, (x) => { x.imageUrl = v; })} compact /></div>
             </div>
             <div className="rounded-xl bg-cream p-3"><p className="mb-2 text-sm font-semibold">Hotel for tonight</p><div className="grid gap-3 sm:grid-cols-2"><In label="Hotel name" value={d.hotel.name} onChange={(v) => updDay(i, (x) => { x.hotel.name = v; })} /><In label="Stars" value={d.hotel.stars} onChange={(v) => updDay(i, (x) => { x.hotel.stars = v; })} ph="4 stars" /><In label="Room / meal notes" value={d.hotel.notes} onChange={(v) => updDay(i, (x) => { x.hotel.notes = v; })} /><In label="Hotel link" value={d.hotel.link} onChange={(v) => updDay(i, (x) => { x.hotel.link = v; })} ph="https://" /></div></div>
             <div><p className="mb-2 text-sm font-semibold">Timeline</p>
@@ -106,7 +107,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
                     <div className="flex gap-1.5"><Mini disabled={j === 0} onClick={() => updDay(i, (x) => swap(x.blocks, j, j - 1))}>↑</Mini><Mini disabled={j === d.blocks.length - 1} onClick={() => updDay(i, (x) => swap(x.blocks, j, j + 1))}>↓</Mini><Mini danger onClick={() => updDay(i, (x) => { x.blocks.splice(j, 1); })}>Remove</Mini></div></div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-[110px_1fr_1fr]"><In label="Time" value={b.time} onChange={(v) => updDay(i, (x) => { x.blocks[j].time = v; })} ph="Morning" /><In label="Title" value={b.title} onChange={(v) => updDay(i, (x) => { x.blocks[j].title = v; })} /><In label="Location" value={b.location} onChange={(v) => updDay(i, (x) => { x.blocks[j].location = v; })} /></div>
                   <Ta cls="mt-2" label="Description" value={b.description} onChange={(v) => updDay(i, (x) => { x.blocks[j].description = v; })} rows={2} />
-                  <div className="mt-2 grid gap-2 sm:grid-cols-3"><In label="Link" value={b.link} onChange={(v) => updDay(i, (x) => { x.blocks[j].link = v; })} ph="https://" /><In label="Photo URL" value={b.imageUrl} onChange={(v) => updDay(i, (x) => { x.blocks[j].imageUrl = v; })} ph="https://" /><In label="Note (highlighted)" value={b.notes} onChange={(v) => updDay(i, (x) => { x.blocks[j].notes = v; })} /></div>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-3"><In label="Link" value={b.link} onChange={(v) => updDay(i, (x) => { x.blocks[j].link = v; })} ph="https://" /><ImageField label="Photo" value={b.imageUrl} onChange={(v) => updDay(i, (x) => { x.blocks[j].imageUrl = v; })} compact /><In label="Note (highlighted)" value={b.notes} onChange={(v) => updDay(i, (x) => { x.blocks[j].notes = v; })} /></div>
                 </div>))}</div>
               <div className="mt-3 flex flex-wrap gap-1.5">{TYPES.map(([v, l]) => <Mini key={v} onClick={() => updDay(i, (x) => { x.blocks.push(blk(v as BlockType, "", "", "") as Block); })}>+ {l}</Mini>)}</div>
             </div>

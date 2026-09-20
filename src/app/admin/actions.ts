@@ -2,9 +2,10 @@
 import { db, schema as s } from "../../db";
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { requireStaff } from "../../lib/auth";
-import { tourSchema, LEAD_STATUS, BOOKING_STATUS } from "../../lib/validation";
+import { tourSchema, LEAD_STATUS } from "../../lib/validation";
 
 const lines = (v: FormDataEntryValue | null) => String(v ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 const pairs = (v: FormDataEntryValue | null, a: string, b: string) => lines(v).map((l) => { const [x, ...y] = l.split("|"); return { [a]: x.trim(), [b]: y.join("|").trim() }; }).filter((o) => o[a]);
@@ -52,4 +53,14 @@ export async function setLead(id: string, fd: FormData) {
   await db.insert(s.leadEvents).values({ leadId: id, type: "STATUS_" + status, note: notes || null });
   if (["BOOKED", "LOST"].includes(status)) await db.update(s.followUps).set({ status: "SKIPPED" }).where(and(eq(s.followUps.leadId, id), eq(s.followUps.status, "SCHEDULED")));
   await audit(u.uid, "UPDATE", "lead", id); revalidatePath("/admin/leads");
+}
+
+const destSchema = z.object({ tagline: z.string().trim().min(3).max(140), overview: z.string().trim().min(20).max(3000), bestTime: z.string().trim().max(600), howToGet: z.string().trim().max(600), whereToStay: z.string().trim().max(600), tips: z.string().trim().max(800), recommendedDays: z.string().trim().max(60), seoTitle: z.string().trim().max(70), seoDescription: z.string().trim().max(170), imageUrl: z.string().trim().max(500).refine((v) => v === "" || /^\/api\/media\/[\w-]{8,64}$/.test(v) || /^https:\/\//i.test(v), "Use the Upload photo button") });
+export async function saveDestination(id: string, fd: FormData) {
+  const u = await requireStaff("tours");
+  const p = destSchema.safeParse(Object.fromEntries(fd.entries()));
+  if (!p.success) redirect(`/admin/destinations/${id}?error=${encodeURIComponent(p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "))}`);
+  await db.update(s.destinations).set({ ...p.data, imageUrl: p.data.imageUrl || null }).where(eq(s.destinations.id, id));
+  await audit(u.uid, "UPDATE", "destination", id); revalidatePath("/"); revalidatePath("/destinations"); revalidatePath("/tours");
+  redirect("/admin/destinations?saved=1");
 }

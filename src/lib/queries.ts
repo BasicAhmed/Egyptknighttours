@@ -22,10 +22,10 @@ export async function listTours(f: Filters = {}, limit = 60) {
   if (f.maxDays) conds.push(lte(s.tours.durationDays, f.maxDays));
   if (f.q) conds.push(or(like(s.tours.title, `%${f.q}%`), like(s.tours.shortDescription, `%${f.q}%`))!);
   const order = f.sort === "price-asc" ? asc(sql`coalesce(${s.tours.discountPrice}, ${s.tours.price})`) : f.sort === "price-desc" ? desc(sql`coalesce(${s.tours.discountPrice}, ${s.tours.price})`) : desc(s.tours.popularity);
-  const rows = await db.select({ t: s.tours, destinationName: s.destinations.name, destinationSlug: s.destinations.slug })
+  const rows = await db.select({ t: s.tours, destinationName: s.destinations.name, destinationSlug: s.destinations.slug, destinationImage: s.destinations.imageUrl })
     .from(s.tours).innerJoin(s.destinations, eq(s.tours.destinationId, s.destinations.id)).where(and(...conds)).orderBy(order).limit(limit);
   const ratings = await getRatings(rows.map((r) => r.t.id));
-  return rows.map((r) => ({ ...r.t, destinationName: r.destinationName, destinationSlug: r.destinationSlug, rating: ratings.get(r.t.id) ?? null }));
+  return rows.map((r) => ({ ...r.t, destinationName: r.destinationName, destinationSlug: r.destinationSlug, destinationImage: r.destinationImage, rating: ratings.get(r.t.id) ?? null }));
 }
 
 export async function getTourBySlug(slug: string) {

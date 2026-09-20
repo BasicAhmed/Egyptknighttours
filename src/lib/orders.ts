@@ -15,7 +15,7 @@ export type Guide = { id: string; name: string; phone: string; languages: string
 export type Ops = { preferredLanguage: string; guideId: string; driver: string; vehicle: string; flightArrival: string; flightDeparture: string; roomType: string; pickupTime: string; occasion: string; emergencyContact: string; visaStatus: string };
 export type Order = {
   id: string; ref: string; status: string; title: string; tourId: string; tourTitle: string; destination: string;
-  customer: { name: string; email: string; whatsapp: string; phone: string; country: string };
+  customer: { name: string; email: string; whatsapp: string; phone: string; country: string; nationality: string };
   travelDate: string; adults: number; children: number; infants: number; isPrivate: boolean; hotel: string; pickupNotes: string; requests: string; dietary: string; accessibility: string;
   addons: { name: string; price: number; unit: string }[]; subtotal: number; discount: number; total: number; deposit: number; payMode: string; currency: string; paid: number; balance: number; source: string; createdAt: number; titleOverride: string;
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
@@ -84,7 +84,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const depDays = Number(g["invoice.depositDeadlineDays"]) || 3;
   return {
     id: b.id, ref: b.ref, status: b.status, title: b.titleOverride || tour.title, tourId: tour.id, tourTitle: tour.title, destination: dest.name,
-    customer: { name: c.name, email: c.email, whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "" },
+    customer: { name: c.name, email: c.email, whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
     travelDate: b.travelDate, adults: b.adults, children: b.children, infants: b.infants, isPrivate: b.isPrivate, hotel: b.hotel ?? "", pickupNotes: b.pickupLocation ?? "", requests: b.specialRequests ?? "", dietary: b.dietary ?? "", accessibility: b.accessibility ?? "",
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "",
     payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),

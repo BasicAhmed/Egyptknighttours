@@ -1,7 +1,16 @@
 // Fetch remote photos once, shrink to a print-friendly size and return data URIs the PDF can embed.
 // Anything that fails to load is skipped so a broken image link never breaks the document.
+import { db, schema as s } from "../db";
+import { eq } from "drizzle-orm";
+
+async function fromMedia(path: string): Promise<string | null> {
+  const id = path.split("/").pop() ?? ""; const [m] = await db.select().from(s.media).where(eq(s.media.id, id)); if (!m) return null;
+  try { const sharp = (await import("sharp")).default; const jpg = await sharp(Buffer.from(m.data)).resize({ width: 1400, withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer(); return `data:image/jpeg;base64,${jpg.toString("base64")}`; }
+  catch { return m.mime === "image/jpeg" || m.mime === "image/png" ? `data:${m.mime};base64,${Buffer.from(m.data).toString("base64")}` : null; }
+}
 export async function prepareImages(urls: string[]): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  await Promise.all(urls.filter((u) => u.startsWith("/api/media/")).map(async (u) => { const d = await fromMedia(u).catch(() => null); if (d) out[u] = d; }));
   const uniq = [...new Set(urls.filter((u) => /^https?:\/\//i.test(u)))].slice(0, 40);
   await Promise.all(uniq.map(async (u) => {
     try {

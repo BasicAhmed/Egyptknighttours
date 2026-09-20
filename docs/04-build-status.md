@@ -21,6 +21,14 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
 - Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
 
+## Website content and SEO
+- Photos are uploaded from a phone or computer (no links): tours, destinations, itinerary cover/day/activity photos and the homepage photo. Stored in the database, resized, served from `/api/media/[id]` with year-long caching and responsive sizes.
+- **Destinations** admin: change each destination photo and text. Tours without a photo use their destination's photo.
+- **Itinerary → tour**: "Add this itinerary as a tour on the website" creates or updates a bookable tour from an itinerary.
+- Booking now requires a nationality (dropdown), saved on the customer and the lead traveler and shown in the admin.
+- SEO: keyword-focused titles and descriptions, 7 landing pages under `/egypt-tours/…`, 9 travel guides, rewritten destination pages with FAQ and destination schema, homepage schema (agency, website search, FAQ), keyword footer and sitemap entries. Filtered tour URLs are noindex.
+- Homepage video section (YouTube, starts at 0:14; link and start time editable in Settings → Website).
+
 ## Travelers, passports and operations (order modal)
 - **Travelers tab:** one card per person (adult, child, infant) with name, age (required for children), date of birth, nationality, passport number and expiry, notes, and passport/visa upload from a local file (JPG, PNG, WebP or PDF, up to 4 MB). Warns when a passport expires within 6 months of the trip.
 - **Files are encrypted** (AES-256-GCM) before storage in the database, downloadable only by logged-in staff, and every view, upload and delete is written to the audit log. Set `FILE_ENCRYPTION_KEY` in Vercel for a dedicated key; otherwise it derives from `AUTH_SECRET` (changing that would make existing files unreadable). Delete files after the trip.

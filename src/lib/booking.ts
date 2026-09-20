@@ -65,8 +65,8 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const token = signRef(ref); // fail early if AUTH_SECRET is missing
   return await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
-    if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: input.name, whatsapp: input.whatsapp, phone: input.whatsapp, country: input.country ?? null }).returning();
-    else await tx.update(s.customers).set({ name: input.name, whatsapp: input.whatsapp, country: input.country ?? cust.country }).where(eq(s.customers.id, cust.id));
+    if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: input.name, whatsapp: input.whatsapp, phone: input.whatsapp, country: input.country ?? input.nationality, nationality: input.nationality }).returning();
+    else await tx.update(s.customers).set({ name: input.name, whatsapp: input.whatsapp, country: input.country ?? cust.country ?? input.nationality, nationality: input.nationality }).where(eq(s.customers.id, cust.id));
 
     const [b] = await tx.insert(s.bookings).values({
       ref, tourId: tour.id, customerId: cust.id, travelDate: input.travelDate, adults: input.adults, children: input.children, infants: input.infants,
@@ -82,7 +82,7 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
     let n = 0;
     for (const [type, count] of [["ADULT", input.adults], ["CHILD", input.children], ["INFANT", input.infants]] as const)
       for (let i = 0; i < count; i++) rows.push({ bookingId: b.id, fullName: names[n++]?.trim() || (n === 1 ? input.name : `Traveler ${n}`), type });
-    if (rows.length) await tx.insert(s.travelers).values(rows);
+    if (rows.length) await tx.insert(s.travelers).values(rows.map((r, i) => (i === 0 ? { ...r, nationality: input.nationality } : r)));
 
     if (quote.deposit > 0) await tx.insert(s.payments).values({ bookingId: b.id, kind: input.payMode === "FULL" ? "FULL" : "DEPOSIT", amount: quote.deposit, provider: "MANUAL", status: "PENDING" });
     if (coupon) await tx.update(s.coupons).set({ usedCount: sql`${s.coupons.usedCount} + 1` }).where(eq(s.coupons.id, coupon.id));

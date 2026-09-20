@@ -1,6 +1,7 @@
 import { db, schema as s } from "../db";
 import { saveTour } from "../app/admin/actions";
 import { parseJson } from "../lib/format";
+import ImageField from "./ImageField";
 
 type T = typeof s.tours.$inferSelect;
 export default async function TourForm({ tour, error }: { tour?: T; error?: string }) {
@@ -30,7 +31,7 @@ export default async function TourForm({ tour, error }: { tour?: T; error?: stri
     {ta("included", "Included", j<string[]>(tour?.included, []).join("\n"), 4, "one per line")}{ta("excluded", "Excluded", j<string[]>(tour?.excluded, []).join("\n"), 4, "one per line")}
     {ta("pickupInfo", "Pickup information", tour?.pickupInfo, 2)}{ta("meetingPoint", "Meeting point", tour?.meetingPoint, 2)}{ta("whatToBring", "What to bring", tour?.whatToBring, 2)}{ta("cancellationPolicy", "Cancellation policy", tour?.cancellationPolicy, 2)}
     {ta("faqs", "FAQ", fq, 4, "Question | answer, one per line")}
-    {inp("imageUrl", "Photo URL (https://…)", tour?.imageUrl)}
+    <div className="sm:col-span-2"><ImageField name="imageUrl" label="Tour photo (shown on cards and the tour page)" value={tour?.imageUrl} hint="Upload from your phone or computer. Landscape photos look best." /></div>
     {inp("seoTitle", "SEO title (max 70)", tour?.seoTitle)}{inp("seoDescription", "SEO description (max 170)", tour?.seoDescription)}
     <div><label className="label">Status</label>{sel("status", [["DRAFT", "Draft"], ["PUBLISHED", "Published"], ["ARCHIVED", "Archived"]], tour?.status ?? "DRAFT")}</div>
     <div className="sm:col-span-2"><button className="btn btn-primary">Save tour</button></div>

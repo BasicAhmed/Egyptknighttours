@@ -13,6 +13,7 @@ export const users = sqliteTable("users", {
 });
 
 export const destinations = sqliteTable("destinations", {
+  imageUrl: text("image_url"),
   id: id(), slug: text("slug").notNull().unique(), name: text("name").notNull(), tagline: text("tagline").notNull(),
   overview: text("overview").notNull(), bestTime: text("best_time").notNull(), howToGet: text("how_to_get").notNull(),
   whereToStay: text("where_to_stay").notNull(), tips: text("tips").notNull(), recommendedDays: text("recommended_days").notNull(),
@@ -64,7 +65,7 @@ export const coupons = sqliteTable("coupons", {
 
 export const customers = sqliteTable("customers", {
   id: id(), email: text("email").notNull().unique(), name: text("name").notNull(),
-  phone: text("phone"), whatsapp: text("whatsapp"), country: text("country"), createdAt: createdAt(),
+  phone: text("phone"), whatsapp: text("whatsapp"), country: text("country"), nationality: text("nationality"), createdAt: createdAt(),
 });
 
 export const bookings = sqliteTable("bookings", {
@@ -113,7 +114,7 @@ export const itineraries = sqliteTable("itineraries", {
   id: id(), name: text("name").notNull(), description: text("description").notNull().default(""),
   isTemplate: integer("is_template", { mode: "boolean" }).notNull().default(false),
   status: text("status").notNull().default("DRAFT"), // DRAFT READY SENT
-  bookingId: text("booking_id").references(() => bookings.id), sourceTemplateId: text("source_template_id"),
+  bookingId: text("booking_id").references(() => bookings.id), sourceTemplateId: text("source_template_id"), tourId: text("tour_id"),
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
@@ -140,6 +141,12 @@ export const testimonials = sqliteTable("testimonials", {
   title: text("title").notNull().default(""), body: text("body").notNull(), source: text("source").notNull().default("Tripadvisor"),
   url: text("url").notNull().default(""), reviewDate: text("review_date").notNull().default(""),
   active: integer("active", { mode: "boolean" }).notNull().default(true), sortOrder: integer("sort_order").notNull().default(0), createdAt: createdAt(),
+});
+
+// Website photos uploaded by staff (tours, destinations, itineraries, homepage). Public, served from /api/media/[id] with long caching.
+export const media = sqliteTable("media", {
+  id: id(), filename: text("filename").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(),
+  width: integer("width"), height: integer("height"), data: blob("data", { mode: "buffer" }).notNull(), uploadedById: text("uploaded_by_id"), createdAt: createdAt(),
 });
 
 export const travelers = sqliteTable("travelers", {

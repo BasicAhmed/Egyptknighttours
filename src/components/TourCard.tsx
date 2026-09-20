@@ -2,7 +2,7 @@ import Link from "next/link";
 import { money, duration } from "@/lib/format";
 import SiteImage from "./SiteImage";
 
-type Card = { slug: string; title: string; shortDescription: string; category: string; price: number; discountPrice: number | null; durationHours: number; durationDays: number; pricingModel: string; isPrivateAvailable: boolean; isGroupAvailable: boolean; destinationName: string; destinationSlug?: string; imageUrl?: string | null; rating?: { avg: number; count: number } | null };
+type Card = { slug: string; title: string; shortDescription: string; category: string; price: number; discountPrice: number | null; durationHours: number; durationDays: number; pricingModel: string; isPrivateAvailable: boolean; isGroupAvailable: boolean; destinationName: string; destinationSlug?: string; destinationImage?: string | null; imageUrl?: string | null; rating?: { avg: number; count: number } | null };
 const Clock = () => <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>;
 export default function TourCard({ t }: { t: Card }) {
   const price = t.discountPrice ?? t.price;
@@ -10,7 +10,7 @@ export default function TourCard({ t }: { t: Card }) {
   return (
     <Link href={`/tours/${t.slug}`} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-[0_2px_12px_rgba(20,16,16,.07)] transition duration-300 hover:-translate-y-1 hover:border-gold-600/60 hover:shadow-[0_22px_44px_rgba(20,16,16,.16)]">
       <div className="relative">
-        <SiteImage src={t.imageUrl} alt={t.title} destination={t.destinationSlug} className="relative aspect-[4/3]" />
+        <SiteImage src={t.imageUrl || t.destinationImage} alt={`${t.title}, ${t.destinationName} tour in Egypt`} destination={t.destinationSlug} className="relative aspect-[4/3]" />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/45 via-transparent to-transparent" />
         <div className="absolute left-3 top-3 flex gap-2">
           {t.discountPrice != null && <span className="rounded-full bg-gold-500 px-3 py-1 text-xs font-extrabold text-ink shadow">Save {Math.round((1 - t.discountPrice / t.price) * 100)}%</span>}

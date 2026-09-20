@@ -23,7 +23,8 @@ export default async function TourPage({ params }: P) {
   if (!d) notFound();
   const { tour: t, dest, addons, reviews, rating } = d;
   const hl = parseJson<string[]>(t.highlights, []); const it = parseJson<{ title: string; text: string }[]>(t.itinerary, []);
-  const inc = parseJson<string[]>(t.included, []); const exc = parseJson<string[]>(t.excluded, []); const faqs = parseJson<{ q: string; a: string }[]>(t.faqs, []);
+  const inc = parseJson<string[]>(t.included, []); const exc = parseJson<string[]>(t.excluded, []); const faqs0 = parseJson<{ q: string; a: string }[]>(t.faqs, []);
+  const faqs = faqs0.length ? faqs0 : [{ q: `Is hotel pickup included on the ${t.title}?`, a: "Pickup is arranged for most tours. Tell us your hotel when you book and we confirm the exact time by WhatsApp and email." }, { q: `Can I book a private ${dest.name} tour?`, a: t.isPrivateAvailable ? "Yes. Choose Private when you book and the tour runs just for your group, at your pace." : "This tour runs as a shared experience. Message us and we can look at a private option." }, { q: `How do I pay for the ${t.title}?`, a: "Pay a 50% deposit to confirm your booking and the rest before you travel. We send secure payment details after you book." }];
   const price = t.discountPrice ?? t.price;
   const same = (await listTours({ destination: dest.slug }, 6)).filter((x) => x.slug !== t.slug).slice(0, 2);
   const other = (await listTours({}, 8)).filter((x) => x.slug !== t.slug && !same.find((y) => y.slug === x.slug)).slice(0, 3 - same.length);
@@ -44,13 +45,13 @@ export default async function TourPage({ params }: P) {
       <nav aria-label="Breadcrumb" className="text-sm text-ink/60"><Link href="/">Home</Link> / <Link href="/tours">Tours</Link> / <Link href={`/destinations/${dest.slug}`}>{dest.name}</Link></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_380px]">
         <div>
-          <SiteImage src={t.imageUrl} alt={t.title} destination={dest.slug} className="relative aspect-[16/10] rounded-2xl sm:aspect-[16/9]" />
-          {!t.imageUrl && <p className="mt-2 text-xs text-ink/45">Illustration shown until a real photo is added in the admin.</p>}
+          <SiteImage src={t.imageUrl || dest.imageUrl} alt={`${t.title} in ${dest.name}, Egypt`} destination={dest.slug} priority sizes="(min-width: 1024px) 780px, 100vw" className="relative aspect-[16/10] rounded-2xl sm:aspect-[16/9]" />
+          
           <h1 className="h1 mt-3 !text-3xl sm:!text-4xl">{t.title}</h1>
           <p className="mt-3 text-sm font-medium text-ink/70">{[CATEGORY_LABEL[t.category], duration(t), dest.name, t.isPrivateAvailable ? "Private available" : null, rating ? `★ ${rating.avg.toFixed(1)} (${rating.count} reviews)` : "New: no reviews yet"].filter(Boolean).join("  ·  ")}</p>
           <p className="mt-4 text-lg text-ink/80">{t.shortDescription}</p>
-          <h2 className="h2 mt-8">Overview</h2><p className="mt-2 whitespace-pre-line text-ink/80">{t.longDescription}</p>
-          {hl.length > 0 && <><h2 className="h2 mt-8">Highlights</h2><List items={hl} mark="✓" /></>}
+          <h2 className="h2 mt-8">About this {dest.name} tour</h2><p className="mt-2 whitespace-pre-line text-ink/80">{t.longDescription}</p>
+          {hl.length > 0 && <><h2 className="h2 mt-8">Tour highlights</h2><List items={hl} mark="✓" /></>}
           {it.length > 0 && <><h2 className="h2 mt-8">Itinerary</h2><ol className="mt-3 space-y-3">{it.map((s, i) => <li key={i} className="card p-4"><p className="font-semibold">{i + 1}. {s.title}</p><p className="text-sm text-ink/70">{s.text}</p></li>)}</ol></>}
           <div className="mt-8 grid gap-6 sm:grid-cols-2"><div><h2 className="h2 !text-xl">Included</h2><div className="mt-2"><List items={inc} mark="✓" /></div></div><div><h2 className="h2 !text-xl">Not included</h2><div className="mt-2"><List items={exc} mark="✗" /></div></div></div>
           <h2 className="h2 mt-8">Good to know</h2>

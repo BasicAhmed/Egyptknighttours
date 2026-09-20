@@ -7,8 +7,10 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { createItineraryDocument, emailDocument } from "@/lib/documents";
 import { saveSettings, DEFAULTS } from "@/lib/settings";
+import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
 import { createItineraryRecord } from "@/lib/itineraries";
+import { cleanImageRef } from "@/lib/media";
 import { parseJson } from "@/lib/format";
 import type { ItineraryContent } from "@/pdf/types";
 
@@ -45,7 +47,7 @@ const daySchema = z.object({ id: z.string().max(20), title: str(160), hook: str(
 const contentSchema = z.object({ title: str(160), subtitle: str(240), intro: str(1800), coverImageUrl: str(500), customerName: str(120), travelers: str(60), startDate: str(10), endDate: str(10), destinations: z.array(z.string().max(60)).max(12), highlights: z.array(z.string().max(160)).max(16), days: z.array(daySchema).max(45), included: z.array(z.string().max(240)).max(30), excluded: z.array(z.string().max(240)).max(30), important: z.array(z.string().max(400)).max(20), priceLabel: str(120), paymentTerms: str(400), ctaUrl: str(500), ctaLabel: str(60), sceneKind: str(20) });
 const safeUrl = (u: string) => (u === "" || /^(https?:\/\/|mailto:)/i.test(u) ? u : "");
 function clean(c: z.infer<typeof contentSchema>): ItineraryContent {
-  return { ...c, coverImageUrl: safeUrl(c.coverImageUrl), ctaUrl: safeUrl(c.ctaUrl), days: c.days.map((d) => ({ ...d, imageUrl: safeUrl(d.imageUrl), hotel: { ...d.hotel, link: safeUrl(d.hotel.link) }, blocks: d.blocks.map((b) => ({ ...b, link: safeUrl(b.link), imageUrl: safeUrl(b.imageUrl) })) })) };
+  return { ...c, coverImageUrl: cleanImageRef(c.coverImageUrl), ctaUrl: safeUrl(c.ctaUrl), days: c.days.map((d) => ({ ...d, imageUrl: cleanImageRef(d.imageUrl), hotel: { ...d.hotel, link: safeUrl(d.hotel.link) }, blocks: d.blocks.map((b) => ({ ...b, link: safeUrl(b.link), imageUrl: cleanImageRef(b.imageUrl) })) })) };
 }
 
 export async function createItinerary(fd: FormData) {
@@ -87,4 +89,32 @@ export async function attachItinerary(id: string, fd: FormData) {
   const u = await requireStaff("itineraries"); const bookingId = String(fd.get("bookingId") ?? "");
   await db.update(s.itineraries).set({ bookingId: bookingId || null }).where(eq(s.itineraries.id, id)); await audit(u.uid, "ATTACH", "itinerary", id);
   return go(`/admin/itineraries/${id}`, bookingId ? "Attached to booking" : "Detached from booking");
+}
+
+// ---------- Publish an itinerary as a website tour ----------
+const slugify = (t: string) => t.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "tour";
+const publishSchema = z.object({ destinationId: z.string().min(1), price: z.coerce.number().min(0).max(1_000_000), pricingModel: z.enum(["PER_PERSON", "PER_GROUP"]), status: z.enum(["DRAFT", "PUBLISHED"]), slug: z.string().trim().max(90).optional().default("") });
+export async function publishItineraryAsTour(id: string, fd: FormData) {
+  const u = await requireStaff("tours"); const back = `/admin/itineraries/${id}`;
+  const p = publishSchema.safeParse(Object.fromEntries(fd.entries())); if (!p.success) return go(back, p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "), true);
+  const [it] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!it) return go("/admin/itineraries", "Not found", true);
+  const c = parseJson<ItineraryContent>(it.content, blankItinerary()); const n = c.days.length || 1;
+  const title = (c.title || it.name).slice(0, 160); if (title.length < 3) return go(back, "Give the itinerary a title first (Trip details)", true);
+  const short = (c.subtitle || c.intro || title).slice(0, 300); const long = (c.intro || short).slice(0, 8000);
+  const days = c.days.map((d, i) => ({ title: `Day ${i + 1}: ${d.title || d.location || "Your day"}`.slice(0, 160), text: [d.hook, ...d.blocks.filter((b) => b.title).map((b) => b.title + (b.description ? `: ${b.description}` : ""))].filter(Boolean).join(" ").slice(0, 900) }));
+  const cancel = (await getSettings())["invoice.cancellation"].split("\n").map((x) => x.trim()).filter(Boolean).join(" ");
+  const category = n > 1 ? (/cruise/i.test(title + " " + c.destinations.join(" ")) ? "NILE_CRUISE" : "MULTI_DAY") : "DAY";
+  const base = { title, shortDescription: short, longDescription: long, destinationId: p.data.destinationId, category, durationDays: n, durationHours: n > 1 ? 24 : 8, price: p.data.price, pricingModel: p.data.pricingModel, isPrivateAvailable: true, isGroupAvailable: p.data.pricingModel === "PER_PERSON",
+    highlights: JSON.stringify(c.highlights), itinerary: JSON.stringify(days), included: JSON.stringify(c.included), excluded: JSON.stringify(c.excluded),
+    pickupInfo: "Pickup and transfers are arranged for each day of your trip. We confirm exact times after you book.", meetingPoint: "We meet you at your hotel or airport arrival. Details are sent on WhatsApp.", whatToBring: "Comfortable shoes, sun hat, sunscreen, water bottle, and your passport for hotel and ship check-in.",
+    cancellationPolicy: cancel.slice(0, 900), imageUrl: cleanImageRef(c.coverImageUrl) || null, seoTitle: `${title} | Egypt Knight Tours`.slice(0, 70), seoDescription: `${short}. Book direct with Egypt Knight Tours.`.slice(0, 168), status: p.data.status, updatedAt: new Date() };
+  let tourId = it.tourId; let existing = tourId ? (await db.select().from(s.tours).where(eq(s.tours.id, tourId)))[0] : undefined;
+  if (existing) { await db.update(s.tours).set(base).where(eq(s.tours.id, existing.id)); }
+  else {
+    let slug = slugify(p.data.slug || title); for (let i = 2; (await db.select({ id: s.tours.id }).from(s.tours).where(eq(s.tours.slug, slug))).length; i++) slug = `${slugify(p.data.slug || title)}-${i}`;
+    const [t] = await db.insert(s.tours).values({ ...base, slug, audience: "ALL", activityLevel: "EASY", maxTravelers: 12, faqs: "[]" }).returning(); tourId = t.id;
+  }
+  await db.update(s.itineraries).set({ tourId }).where(eq(s.itineraries.id, id));
+  await audit(u.uid, existing ? "UPDATE" : "CREATE", "tour_from_itinerary", tourId!); revalidatePath("/tours"); revalidatePath("/");
+  return go(back, existing ? `Tour updated from this itinerary (${p.data.status === "PUBLISHED" ? "live on the website" : "saved as draft"}).` : p.data.status === "PUBLISHED" ? "Tour created and live on the website." : "Tour created as a draft. Publish it when you're ready.");
 }

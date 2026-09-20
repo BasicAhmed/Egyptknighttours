@@ -4,6 +4,7 @@ import OrderModal, { prefetchOrder } from "./OrderModal";
 import Modal from "./Modal";
 import { PILL, STATUS_LABEL, stageOf, money, shortDate, ago, daysUntil, nextStep, rowFromOrder, type Focus, type Stage } from "./order-ui";
 import { orderCreate } from "@/app/admin/order-actions";
+import { COUNTRIES } from "@/lib/countries";
 import type { Order, OrderRow } from "@/lib/orders";
 
 const TABS: { key: string; label: string; stages: Stage[] | null }[] = [
@@ -77,7 +78,7 @@ export default function OrdersBoard({ initial, tours, openId }: { initial: Order
 }
 
 function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: string }[]; onClose: () => void; onCreated: (o: Order) => void }) {
-  const [v, setV] = useState({ name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: "", adults: "2", children: "0", total: "", currency: "USD", depositPercent: "50", hotel: "", notes: "" });
+  const [v, setV] = useState({ name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: "", adults: "2", children: "0", total: "", currency: "USD", depositPercent: "50", hotel: "", notes: "", nationality: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
@@ -89,7 +90,7 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
     <Modal onClose={onClose} title="New order" subtitle="For customers who booked by WhatsApp, phone or email">
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <F k="name" label="Customer name" req /><F k="whatsapp" label="WhatsApp number (with country code)" type="tel" req ph="+351 912 345 678" />
-        <F k="email" label="Email" type="email" req /><F k="country" label="Country" />
+        <F k="email" label="Email" type="email" req /><div><label className="label" htmlFor="n-nat">Nationality</label><input id="n-nat" list="n-countries" className="input !py-2.5" value={v.nationality} onChange={set("nationality")} /><datalist id="n-countries">{COUNTRIES.map((x) => <option key={x} value={x} />)}</datalist></div><F k="country" label="Country of residence" />
         <div className="sm:col-span-2"><label className="label" htmlFor="n-tour">Experience</label><select id="n-tour" className="input !py-2.5" value={v.tourId} onChange={set("tourId")}><option value="custom">Custom experience (type the name)</option>{tours.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></div>
         {v.tourId === "custom" && <F k="customTitle" label="Experience name" req cls="sm:col-span-2" ph="Cruise 4 Days 3 Nights MS Ciela" />}
         <F k="travelDate" label="Travel date" type="date" req /><F k="hotel" label="Pickup (hotel or airport)" ph="Aswan Airport" />
