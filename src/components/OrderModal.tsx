@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import CopyButton from "./CopyButton";
 import Modal from "./Modal";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
@@ -13,7 +14,7 @@ async function fetchOrder(id: string): Promise<Order> { const r = await fetch(`/
 export function prefetchOrder(id: string) { if (!cache.has(id)) fetchOrder(id).catch(() => {}); }
 
 type Res = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
-const Card = ({ title, children, id, action }: { title: string; children: React.ReactNode; id?: string; action?: React.ReactNode }) => <section id={id} className="rounded-2xl border border-ink/10 p-4"><div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-display text-base font-extrabold">{title}</h3>{action}</div>{children}</section>;
+const Card = ({ title, children, id, action }: { title: string; children: React.ReactNode; id?: string; action?: React.ReactNode }) => <section id={id} className="rounded-2xl border border-ink/10 p-4"><div className="mb-3 flex items-center justify-between gap-2"><h2 className="font-display text-base font-extrabold">{title}</h2>{action}</div>{children}</section>;
 const Row = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="flex justify-between gap-4 py-1 text-sm"><span className="text-ink/65">{k}</span><span className="text-right font-medium">{v}</span></div>;
 const Small = "btn btn-outline !min-h-[38px] !py-1.5 !px-3 !text-[13px]";
 
@@ -24,6 +25,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
   const [toast, setToast] = useState<{ t: string; ok: boolean; warn?: boolean } | null>(null);
   const [invOpen, setInvOpen] = useState(focus === "invoice"); const [editOpen, setEditOpen] = useState(false);
   const [tab, setTab] = useState<"overview" | "travelers" | "ops" | "money" | "notes">(focus ? "money" : "overview");
+  const [dirty, setDirty] = useState(false);
   const refs = { invoice: useRef<HTMLDivElement>(null), payment: useRef<HTMLDivElement>(null), itinerary: useRef<HTMLDivElement>(null) };
 
   useEffect(() => { let alive = true; fetchOrder(row.id).then((x) => alive && setO(x)).catch(() => alive && setErr(true)); return () => { alive = false; }; }, [row.id]);
@@ -31,9 +33,10 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
 
   async function run(fn: () => Promise<Res>) {
     setBusy(true); setToast(null);
-    try { const r = await fn(); if (r.order) { cache.set(row.id, r.order); setO(r.order); onChanged(r.order); } setToast({ t: r.message, ok: r.ok, warn: r.warn }); return r; }
+    try { const r = await fn(); if (r.order) { cache.set(row.id, r.order); setO(r.order); onChanged(r.order); } setToast({ t: r.message, ok: r.ok, warn: r.warn }); if (r.ok) setDirty(false); return r; }
     catch { setToast({ t: "Something went wrong. Please try again.", ok: false }); return null; } finally { setBusy(false); }
   }
+  const guardedClose = () => { if (dirty && !window.confirm("You have unsaved changes in this order. Close without saving?")) return; onClose(); };
   const refresh = async () => { const x = await fetchOrder(row.id); setO(x); onChanged(x); };
   useEffect(() => { if (o && o.travelers.length < o.adults + o.children + o.infants) void orderSyncTravelers(row.id).then((r) => { if (r.order) { cache.set(row.id, r.order); setO(r.order); onChanged(r.order); } }); /* eslint-disable-next-line */ }, [o?.id]);
   const first = (o?.customer.name ?? row.name).split(" ")[0];
@@ -43,7 +46,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
   const phone = o ? o.customer.whatsapp || o.customer.phone : row.whatsapp;
 
   return (
-    <Modal onClose={onClose} wide title={<span className="flex flex-wrap items-center gap-2">{row.ref}<span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PILL[stage]}`}>{STATUS_LABEL[status] ?? status}</span></span>} subtitle={`${o?.title ?? row.title} · ${row.name}`}>
+    <Modal onClose={guardedClose} wide title={<span className="flex flex-wrap items-center gap-2">{row.ref}<span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PILL[stage]}`}>{STATUS_LABEL[status] ?? status}</span></span>} subtitle={`${o?.title ?? row.title} · ${row.name}`}>
       {toast && <p role={toast.ok ? "status" : "alert"} className={`mb-4 rounded-xl p-3 text-sm font-semibold ${toast.warn ? "bg-[#FFF3D6] text-[#7A4B00]" : toast.ok ? "bg-[#E9F6EE] text-[#17663A]" : "bg-red-50 text-red-800"}`}>{toast.t}</p>}
       {err && !o && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">Couldn't load this order. Close and try again.</p>}
       {!o && !err && <div className="animate-pulse space-y-3" aria-label="Loading"><div className="h-20 rounded-2xl bg-ink/5" /><div className="h-32 rounded-2xl bg-ink/5" /><div className="h-24 rounded-2xl bg-ink/5" /></div>}
@@ -53,6 +56,7 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
           {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
           <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
           <a className="btn btn-outline !min-h-[44px]" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
+          <CopyButton text={o.ref} label="Copy booking ID" /><CopyButton text={o.trackUrl} label="Copy customer link" />
         </div>
 
         <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
@@ -75,8 +79,8 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[.04] p-3"><label className="text-sm font-semibold" htmlFor="st">Change status</label>
           <select id="st" className="input !w-auto !py-2" value={STATUS_OPTIONS.includes(o.status) ? o.status : "PENDING"} disabled={busy} onChange={(e) => run(() => orderSetStatus(o.id, e.target.value))}>{STATUS_OPTIONS.map((x) => <option key={x} value={x}>{STATUS_LABEL[x]}</option>)}</select></div>
         </div>}
-        {tab === "travelers" && <TravelersPanel o={o} busy={busy} run={run} refresh={refresh} />}
-        {tab === "ops" && <OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} />}
+        <div hidden={tab !== "travelers"} onInput={() => setDirty(true)}><TravelersPanel o={o} busy={busy} run={run} refresh={refresh} /></div>
+        <div hidden={tab !== "ops"} onInput={() => setDirty(true)}><OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} /></div>
         {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
           <div className="flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>

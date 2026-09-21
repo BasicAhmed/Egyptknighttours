@@ -14,15 +14,17 @@ const ICON = {
 };
 const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inquiries"], ["Tours", "/admin/tours", "tours"], ["Itineraries", "/admin/itineraries", "itineraries"], ["Reports", "/admin/reports", "reports"], ["Settings", "/admin/settings", "settings"]] as const;
 
-export default function AdminShell({ user, logout, credit, children }: { user: { name: string; role: string }; logout: () => Promise<void>; credit?: React.ReactNode; children: React.ReactNode }) {
+export default function AdminShell({ user, logout, credit, creditLight, badges = {}, children }: { user: { name: string; role: string }; logout: () => Promise<void>; credit?: React.ReactNode; creditLight?: React.ReactNode; badges?: Record<string, number>; children: React.ReactNode }) {
   const path = usePathname() ?? "";
   const items = NAV.filter(([, , k]) => k !== "settings" || ["SUPER_ADMIN", "MANAGER"].includes(user.role));
+  const badge = (h: string, cls: string) => (badges[h] ? <span className={cls}><span aria-hidden="true">{badges[h] > 99 ? "99+" : badges[h]}</span><span className="sr-only"> {badges[h]} waiting</span></span> : null);
   const on = (h: string) => (h === "/admin" ? path === "/admin" : path.startsWith(h));
   return (
     <div className="min-h-screen bg-[#F5F4F0] md:pl-60">
+      <a href="#admin-content" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-ink focus:px-4 focus:py-3 focus:font-semibold focus:text-white">Skip to content</a>
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/10 bg-white md:flex">
         <div className="flex h-16 items-center gap-2 border-b border-ink/10 px-4"><Image src="/logo.webp" alt="" width={56} height={42} className="h-9 w-auto" /><div className="leading-tight"><p className="font-display text-[15px] font-extrabold">Egypt Knight</p><p className="text-[11px] text-ink/65">Staff panel</p></div></div>
-        <nav aria-label="Admin" className="flex-1 space-y-1 p-3">{items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition ${on(h) ? "bg-gold-500 text-ink" : "text-ink/70 hover:bg-ink/5"}`}>{I(ICON[k])}{l}</Link>)}</nav>
+        <nav aria-label="Admin" className="flex-1 space-y-1 p-3">{items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-semibold transition ${on(h) ? "bg-gold-500 text-ink" : "text-ink/70 hover:bg-ink/5"}`}>{I(ICON[k])}{l}{badge(h, "ml-auto rounded-full bg-ink px-2 py-0.5 text-xs font-bold text-white")}</Link>)}</nav>
         <div className="border-t border-ink/10 p-3">{credit && <div className="mb-2 rounded-xl bg-ink px-3 py-2 text-[11px] leading-snug text-white/70">{credit}</div>}<p className="truncate px-2 text-sm font-semibold">{user.name}</p><p className="px-2 text-xs text-ink/65">{user.role.replace("_", " ").toLowerCase()}</p>
           <div className="mt-2 flex gap-2"><a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-outline !min-h-[38px] !flex-1 !py-1.5 !text-[13px]">View site</a><form action={logout}><button className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]">Log out</button></form></div></div>
       </aside>
@@ -30,9 +32,9 @@ export default function AdminShell({ user, logout, credit, children }: { user: {
         <Link href="/admin" className="flex items-center gap-2"><Image src="/logo.webp" alt="" width={48} height={36} className="h-8 w-auto" /><span className="font-display text-[15px] font-extrabold">Staff panel</span></Link>
         <form action={logout}><button className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm font-semibold">Log out</button></form>
       </header>
-      <div className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 md:px-8 md:pb-12 md:pt-8">{children}<div className="mt-12 text-center text-xs text-ink/65 md:hidden">{credit}</div></div>
+      <div id="admin-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 outline-none md:px-8 md:pb-12 md:pt-8">{children}<div className="mt-12 text-center text-xs text-ink/65 md:hidden">{creditLight ?? credit}</div></div>
       <nav aria-label="Admin (mobile)" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-ink/10 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/65"}`}><span className={`flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}</span>{l}</Link>)}
+        {items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/65"}`}><span className={`relative flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}{badge(h, "absolute -right-0.5 -top-1 min-w-[18px] rounded-full bg-ink px-1 text-center text-[10px] font-bold leading-[18px] text-white")}</span>{l}</Link>)}
       </nav>
     </div>
   );

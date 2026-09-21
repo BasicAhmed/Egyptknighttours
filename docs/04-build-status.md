@@ -21,6 +21,10 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
 - Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
 
+## Ease of use and accessibility (audited with axe: 0 violations on 42 customer and admin screens, desktop and phone)
+- **Customer:** floating WhatsApp help button (hidden where a page has its own booking bar), skip link and a clear keyboard focus ring on every page, booking steps announced to screen readers.
+- **Admin:** windows trap keyboard focus and give it back when closed; order tabs keep what you typed and warn before closing with unsaved changes; live "waiting" counts on the menu (new orders, new inquiries); orders and inquiries refresh by themselves every 45 seconds when idle (never while typing or with a window open); copy buttons for the booking ID and customer link; skip link; readable credit on phones; fixed heading order and two unlabeled settings fields.
+
 ## Migration tools (moving from another website)
 - **Redirects** (Settings > Redirects): old address to new page, paste many at once, test box, built-in rules for WordPress tour-site addresses. Old addresses that match no page now flow through a catch-all that applies them; otherwise a normal 404.
 - **Tour import** (Tours > Import CSV): creates draft tours from a spreadsheet, copies photos from a named https website (private networks blocked), creates missing destinations. **+ New destination** in Destinations.

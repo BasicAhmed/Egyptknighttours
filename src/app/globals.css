@@ -36,3 +36,6 @@ body { background: #fff; color: #141010; -webkit-font-smoothing: antialiased; fo
 
 /* Skip rendering work for sections far below the fold until they are near the screen (still searchable and accessible). */
 .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 720px; }
+
+/* A clear focus ring for keyboard users that is visible on light and dark backgrounds. */
+:where(a, button, summary, select, textarea, input, [role="button"], [role="tab"], [tabindex]):focus-visible { outline: 3px solid #F0B050; outline-offset: 2px; box-shadow: 0 0 0 2px #141010; }

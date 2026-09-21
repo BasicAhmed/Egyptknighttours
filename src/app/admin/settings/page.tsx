@@ -16,7 +16,7 @@ function MethodForm({ m }: { m?: M }) {
   const act = savePaymentMethod.bind(null, m?.id ?? null);
   return (
     <form action={act} className="grid gap-3 sm:grid-cols-2">
-      <div><label className="label">Type</label><select name="kind" defaultValue={m?.kind ?? "BANK"} className="input"><option value="BANK">Bank transfer</option><option value="LINK">Payment link</option><option value="WISE">Wise</option><option value="CARD">Card</option><option value="OTHER">Other</option></select></div>
+      <div><label className="label">Type</label><select name="kind" aria-label="Payment method type" defaultValue={m?.kind ?? "BANK"} className="input"><option value="BANK">Bank transfer</option><option value="LINK">Payment link</option><option value="WISE">Wise</option><option value="CARD">Card</option><option value="OTHER">Other</option></select></div>
       <F name="label" label="Label shown to customers" v={m?.label} ph="Bank transfer (EUR)" />
       <F name="currency" label="Currency (blank = any)" v={m?.currency} ph="EUR" />
       <F name="sortOrder" label="Order" type="number" v={m?.sortOrder ?? 0} />
@@ -25,7 +25,7 @@ function MethodForm({ m }: { m?: M }) {
       <F name="swift" label="SWIFT / BIC" v={m?.swift} /><F name="branch" label="Branch" v={m?.branch} />
       <div className="sm:col-span-2"><F name="bankAddress" label="Bank address" v={m?.bankAddress} /></div>
       <div className="sm:col-span-2"><F name="paymentUrl" label="Payment link (https://…), makes the PDF button clickable" v={m?.paymentUrl} /></div>
-      <div className="sm:col-span-2"><label className="label">Extra payment instructions</label><textarea name="instructions" rows={2} defaultValue={m?.instructions} className="input" /></div>
+      <div className="sm:col-span-2"><label className="label">Extra payment instructions</label><textarea name="instructions" aria-label="Extra payment instructions" rows={2} defaultValue={m?.instructions} className="input" /></div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={m?.active ?? true} className="h-5 w-5 accent-black" />Show on new invoices</label>
       <div className="flex gap-2 sm:justify-end"><button className="btn btn-dark">{m ? "Save" : "Add payment method"}</button></div>
     </form>

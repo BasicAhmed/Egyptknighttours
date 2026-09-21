@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import OrderModal, { prefetchOrder } from "./OrderModal";
 import Modal from "./Modal";
 import { PILL, STATUS_LABEL, stageOf, money, shortDate, ago, daysUntil, nextStep, rowFromOrder, type Focus, type Stage } from "./order-ui";
@@ -14,7 +14,7 @@ const TABS: { key: string; label: string; stages: Stage[] | null }[] = [
 ];
 
 export default function OrdersBoard({ initial, tours, openId }: { initial: OrderRow[]; tours: { id: string; title: string }[]; openId?: string }) {
-  const [rows, setRows] = useState(initial);
+  const [rows, setRows] = useState(initial); useEffect(() => { setRows(initial); }, [initial]);
   const [tab, setTab] = useState("todo"); const [q, setQ] = useState(""); const [sort, setSort] = useState<"new" | "trip">("new"); const [soon, setSoon] = useState(false);
   const [open, setOpen] = useState<{ id: string; focus: Focus | null } | null>(openId ? { id: openId, focus: null } : null);
   const [creating, setCreating] = useState(false);

@@ -118,6 +118,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
     <div className="container-x scroll-mt-24 pb-36 pt-6 lg:pb-14" ref={top}>
       <Link href={`/tours/${tour.slug}`} className="text-sm font-medium text-ink/65 hover:text-ink">← Back to tour</Link>
       <h1 className="h2 mt-2">{tour.title}</h1>
+      <p className="sr-only" role="status" aria-live="polite">Step {step} of {STEPS.length}: {STEPS[step - 1]}</p>
       <ol className="mt-5 grid grid-cols-4 gap-2" aria-label="Booking progress">
         {STEPS.map((l, i) => { const n = i + 1, done = n < step, cur = n === step; return (
           <li key={l}><button type="button" onClick={() => goTo(n)} disabled={!done} aria-current={cur ? "step" : undefined} className="block w-full text-left">

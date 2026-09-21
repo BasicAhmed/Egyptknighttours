@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ChromeGate from "@/components/ChromeGate";
 import ConsoleBadge from "@/components/ConsoleBadge";
 import { SITE } from "@/lib/format";
@@ -23,8 +24,8 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${bricolage.variable}`}><body>
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3">Skip to content</a>
-      <ChromeGate><Header /></ChromeGate><ConsoleBadge /><main id="main">{children}</main><ChromeGate><Footer /></ChromeGate>
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-ink focus:px-4 focus:py-3 focus:font-semibold focus:text-white">Skip to main content</a>
+      <ChromeGate><Header /></ChromeGate><ConsoleBadge /><main id="main" tabIndex={-1} className="outline-none">{children}</main><ChromeGate><Footer /></ChromeGate><ChromeGate><FloatingWhatsApp /></ChromeGate>
       
     </body></html>
   );

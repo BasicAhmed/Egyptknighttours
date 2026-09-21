@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Modal from "./Modal";
 import { ago, waUrl } from "./order-ui";
 import { setLead } from "@/app/admin/actions";
@@ -12,7 +12,7 @@ const TABS: [string, string, string[] | null][] = [["open", "Open", ["NEW", "CON
 const tone = (s: string) => (s === "NEW" || s === "ABANDONED" ? "bg-gold-500/25 text-[#6B4A0C]" : s === "LOST" ? "bg-red-100 text-red-800" : ["BOOKED", "TRAVELING", "COMPLETED", "REPEAT_CUSTOMER"].includes(s) ? "bg-[#DFF3E6] text-[#17663A]" : "bg-[#E3EEFB] text-[#1D4E89]");
 
 export default function LeadsBoard({ initial, canEdit }: { initial: LeadRow[]; canEdit: boolean }) {
-  const [rows, setRows] = useState(initial); const [tab, setTab] = useState("open"); const [q, setQ] = useState(""); const [open, setOpen] = useState<string | null>(null);
+  const [rows, setRows] = useState(initial); useEffect(() => { setRows(initial); }, [initial]); const [tab, setTab] = useState("open"); const [q, setQ] = useState(""); const [open, setOpen] = useState<string | null>(null);
   const list = useMemo(() => { const t = TABS.find((x) => x[0] === tab)!; const n = q.trim().toLowerCase(); return rows.filter((r) => (!t[2] || t[2].includes(r.status)) && (!n || `${r.name} ${r.email} ${r.whatsapp} ${r.message} ${r.source}`.toLowerCase().includes(n))); }, [rows, tab, q]);
   const cur = rows.find((r) => r.id === open) ?? null;
   return (
