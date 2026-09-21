@@ -6,12 +6,13 @@ import { getSettings, companyFrom } from "./settings";
 import { signDoc, signRef } from "./booking-token";
 import { sendEmail, brandedEmail } from "./email";
 import { SITE, parseJson } from "./format";
+import { linkOrigin } from "./origin";
 import { renderInvoice, renderItinerary } from "@/pdf/render";
 import { prepareImages } from "@/pdf/images";
 import type { InvoiceData, ItineraryContent, ItineraryPdfData } from "@/pdf/types";
 
 const AUTO_FROM = ["INQUIRY", "QUOTE_SENT", "PENDING", "CONFIRMED"];
-export const docUrl = (id: string) => `${SITE}/api/documents/${id}/pdf?t=${signDoc(id)}`;
+export const docUrl = (id: string, origin: string = SITE) => `${origin}/api/documents/${id}/pdf?t=${signDoc(id)}`;
 
 export async function setBookingStatus(bookingId: string, status: string) {
   await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, bookingId));
@@ -48,7 +49,7 @@ export async function createItineraryDocument(itineraryId: string, userId: strin
   let ref = `IT-${it.id.slice(0, 6).toUpperCase()}`; let ctaUrl = content.ctaUrl || "";
   if (it.bookingId) {
     const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, it.bookingId));
-    if (b) { ref = b.ref; if (!ctaUrl) ctaUrl = `${SITE}/track/${b.ref}?t=${signRef(b.ref)}`; }
+    if (b) { ref = b.ref; if (!ctaUrl) ctaUrl = `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`; }
   }
   const [{ n }] = await db.select({ n: sql<number>`count(*)` }).from(s.documents).where(eq(s.documents.itineraryId, itineraryId));
   const version = Number(n) + 1;
@@ -70,7 +71,7 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
   if (!to) return { ok: false as const, message: "No customer email on this booking. Enter one first." };
   const g = await getSettings(); const company = g["company.name"]; const builder = BUILDER_NAME;
   const inv = doc.kind === "INVOICE";
-  const link = docUrl(doc.id);
+  const link = docUrl(doc.id, await linkOrigin());
   const mail = brandedEmail(inv
     ? { greeting: `Hi ${name}, your Egypt adventure is almost confirmed.`, lines: [`Your invoice ${doc.number} is attached. It shows exactly what's due and how to pay.`, doc.amount != null ? `Amount due now: ${new Intl.NumberFormat("en-US", { style: "currency", currency: doc.currency }).format(doc.amount)}.` : "", "Once you've paid, send us a quick message with your receipt and we'll confirm right away."].filter(Boolean), buttonLabel: "Open your invoice", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.`, builder }
     : { greeting: `Hi ${name}, here's your Egypt itinerary.`, lines: ["We've put your trip together day by day. Have a look, and tell us what you'd like to change.", "When you're ready to make it official, the last page has everything you need."], buttonLabel: "Open your itinerary", buttonUrl: link, footer: `${company}. Questions? Just reply to this email.`, builder });

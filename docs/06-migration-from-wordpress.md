@@ -44,7 +44,9 @@ WordPress with a tour plugin, addresses like `/tours/<name>/`, `/tour-destinatio
 - Run `npm run smoke` against the staging site. Run Google's Rich Results Test on a tour and the homepage.
 - The new sitemap is `/sitemap.xml` and robots.txt is ready. Nothing else to configure.
 
-## Phase 4: switching the domain (cPanel specifics)
+> **Links before the switch.** Every private link the system creates (customer tracker, guide sheet, invoice and itinerary downloads, email buttons) uses the address the team is logged in on. Until the domain is switched, log in to the admin on the Vercel address (`your-project.vercel.app`) and the links will open the new site. After the switch, use `egyptknight.com`. Documents created earlier keep the address they were made on.
+
+## Phase 4: switching the domain (DNS at Spaceship)
 Choose a quiet day. Expect **5 to 60 minutes** of mixed old and new site while DNS updates.
 1. **48 hours before:** in cPanel Zone Editor (or wherever your DNS is managed) lower the TTL of the `@` and `www` records to 300 seconds.
 2. In **Vercel**: Project > Settings > Domains > add `egyptknight.com` and `www.egyptknight.com`. Vercel shows the exact DNS values to use (normally an **A record** for `@` and a **CNAME** for `www`).

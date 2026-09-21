@@ -2,7 +2,8 @@ import { db, schema as s } from "@/db";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getSettings } from "./settings";
 import { signDoc } from "./booking-token";
-import { SITE, parseJson } from "./format";
+import { parseJson } from "./format";
+import { linkOrigin } from "./origin";
 import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
 import { signGuide } from "./booking-token";
@@ -56,6 +57,7 @@ const DOC_EVENT_TEXT = (type: string, kind: string, number: string, note: string
 };
 
 export async function loadOrder(id: string): Promise<Order | null> {
+  const origin = await linkOrigin();
   const [main, payments, docs, events, docEvents, its, templates, methods, g, travelerRows, fileRows, guideRows] = await Promise.all([
     db.select({ b: s.bookings, tour: s.tours, dest: s.destinations, c: s.customers }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.destinations, eq(s.tours.destinationId, s.destinations.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, id)),
     db.select().from(s.payments).where(eq(s.payments.bookingId, id)).orderBy(desc(s.payments.createdAt)),
@@ -89,9 +91,9 @@ export async function loadOrder(id: string): Promise<Order | null> {
     travelDate: b.travelDate, adults: b.adults, children: b.children, infants: b.infants, isPrivate: b.isPrivate, hotel: b.hotel ?? "", pickupNotes: b.pickupLocation ?? "", requests: b.specialRequests ?? "", dietary: b.dietary ?? "", accessibility: b.accessibility ?? "",
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "",
     payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
-    documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${SITE}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
+    documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
-    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${SITE}/track/${b.ref}`, guideUrl: `${SITE}/guide/${b.id}?t=${signGuide(b.id)}`,
+    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${origin}/track/${b.ref}`, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),
     ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "" },

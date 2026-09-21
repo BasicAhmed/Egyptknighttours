@@ -1,6 +1,7 @@
 import { db, schema as s } from "@/db";
 import { and, asc, eq } from "drizzle-orm";
-import { SITE, parseJson } from "./format";
+import { parseJson } from "./format";
+import { linkOrigin } from "./origin";
 import { getSettings, companyFrom } from "./settings";
 import { signRef } from "./booking-token";
 import type { InvoiceData, PayMethod } from "@/pdf/types";
@@ -54,7 +55,7 @@ export async function buildInvoiceData(bookingId: string, opts: InvoiceOptions =
     customer: { name: c.name, email: c.email, phone: c.whatsapp || c.phone || "", country: c.country || "" },
     trip: { title: b.titleOverride || tour.title, destination: dest.name, date: b.travelDate, travelers, style: b.isPrivate ? "Private" : "Shared", pickup: [b.hotel, b.pickupLocation].filter(Boolean).join(" · "), includes: parseJson<string[]>(tour.included, []) },
     lines: [{ label: `${b.titleOverride || tour.title} (${travelers})`, amount: tourAmount }, ...addonLines], subtotal: r2(b.subtotal), discount: r2(b.discount), extras,
-    total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: linkMethod?.paymentUrl ?? "", trackUrl: `${SITE}/track/${b.ref}?t=${signRef(b.ref)}`,
+    total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: linkMethod?.paymentUrl ?? "", trackUrl: `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`,
     terms: { payment: list("invoice.paymentTerms"), documents: list("invoice.documents"), cancellation: list("invoice.cancellation"), note: g["invoice.note"] },
     company: companyFrom(g), notes: opts.notes ?? "",
   };

@@ -3,6 +3,7 @@ import { leadSchema } from "@/lib/validation";
 import { db, schema as s } from "@/db";
 import { rateLimitPersistent, clientIp } from "@/lib/rate-limit";
 import { notifyNewLead } from "@/lib/notifications";
+import { linkOrigin } from "@/lib/origin";
 import { and, eq } from "drizzle-orm";
 
 const DAY = 86400000;
@@ -27,6 +28,6 @@ export async function POST(req: Request) {
     ? ([["day0", 0], ["day1", 1], ["day3", 3], ["day5", 5]] as const)
     : ([["day0", 0], ["day5", 5]] as const);
   await db.insert(s.followUps).values(cadence.map(([templateKey, days]) => ({ leadId: lead.id, templateKey, dueAt: new Date(Date.now() + days * DAY) })));
-  after(() => notifyNewLead(lead.id));
+  const origin = await linkOrigin(); after(() => notifyNewLead(lead.id, origin));
   return NextResponse.json({ ok: true });
 }

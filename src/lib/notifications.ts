@@ -31,21 +31,21 @@ export function leadEmail(d: LeadMailData) {
 }
 
 // Called after the response has been sent, so a slow email service never slows the customer down. Failures are logged, never shown.
-export async function notifyNewBooking(ref: string, token: string) {
+export async function notifyNewBooking(ref: string, token: string, origin: string = SITE) {
   try {
     const [r] = await db.select({ b: s.bookings, c: s.customers, t: s.tours }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.ref, ref)); if (!r) return;
     const g = await getSettings();
-    const m = bookingEmails({ ref, name: r.c.name, email: r.c.email, whatsapp: r.c.whatsapp ?? "", tour: r.b.titleOverride || r.t.title, travelDate: r.b.travelDate, adults: r.b.adults, children: r.b.children, infants: r.b.infants, total: r.b.total, deposit: r.b.deposit, currency: r.b.currency, hotel: r.b.hotel ?? "", company: g["company.name"], trackUrl: `${SITE}/track/${ref}?t=${token}`, adminUrl: `${SITE}/admin?open=${r.b.id}`, builder: BUILDER_NAME });
+    const m = bookingEmails({ ref, name: r.c.name, email: r.c.email, whatsapp: r.c.whatsapp ?? "", tour: r.b.titleOverride || r.t.title, travelDate: r.b.travelDate, adults: r.b.adults, children: r.b.children, infants: r.b.infants, total: r.b.total, deposit: r.b.deposit, currency: r.b.currency, hotel: r.b.hotel ?? "", company: g["company.name"], trackUrl: `${origin}/track/${ref}?t=${token}`, adminUrl: `${origin}/admin?open=${r.b.id}`, builder: BUILDER_NAME });
     const staffTo = g["company.email"];
     const a = await sendEmail({ to: r.c.email, subject: m.customer.subject, html: m.customer.html, text: m.customer.text, replyTo: staffTo });
     const b = staffTo ? await sendEmail({ to: staffTo, subject: m.staff.subject, html: m.staff.html, text: m.staff.text, replyTo: r.c.email }) : null;
     for (const [who, res] of [["customer", a], ["staff", b]] as const) if (res && !res.ok && res.reason !== "NOT_CONFIGURED") console.error(`booking ${ref}: ${who} email failed: ${res.message}`);
   } catch (e) { console.error("notifyNewBooking failed", e instanceof Error ? e.message : e); }
 }
-export async function notifyNewLead(leadId: string) {
+export async function notifyNewLead(leadId: string, origin: string = SITE) {
   try {
     const [l] = await db.select().from(s.leads).where(eq(s.leads.id, leadId)); if (!l) return; const g = await getSettings(); const to = g["company.email"]; if (!to) return;
-    const m = leadEmail({ name: l.name, email: l.email, whatsapp: l.whatsapp ?? "", kind: l.kind, country: l.country ?? "", message: l.message ?? l.interests ?? "", travelDates: l.travelDates ?? "", travelers: l.travelers ? String(l.travelers) : "", adminUrl: `${SITE}/admin/leads` });
+    const m = leadEmail({ name: l.name, email: l.email, whatsapp: l.whatsapp ?? "", kind: l.kind, country: l.country ?? "", message: l.message ?? l.interests ?? "", travelDates: l.travelDates ?? "", travelers: l.travelers ? String(l.travelers) : "", adminUrl: `${origin}/admin/leads` });
     const res = await sendEmail({ to, subject: m.subject, html: m.html, text: m.text, replyTo: l.email });
     if (!res.ok && res.reason !== "NOT_CONFIGURED") console.error(`lead ${leadId}: staff email failed: ${res.message}`);
   } catch (e) { console.error("notifyNewLead failed", e instanceof Error ? e.message : e); }
