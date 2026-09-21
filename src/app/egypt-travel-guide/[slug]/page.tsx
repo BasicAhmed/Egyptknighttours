@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { legacyOrNotFound } from "@/lib/legacy-server";
 import { listTours, guideBySlug, publishedGuides } from "@/lib/queries";
 import { parseGuideBody, wordCount } from "@/lib/guide-body";
 import { parseJson, SITE, waLink } from "@/lib/format";
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   return { title: { absolute: g.seoTitle }, description: g.seoDescription, keywords: g.keywords ? g.keywords.split(",").map((k) => k.trim()) : undefined, alternates: { canonical: `/egypt-travel-guide/${g.slug}` }, openGraph: { type: "article", title: g.seoTitle, description: g.seoDescription, modifiedTime: g.updatedAt.toISOString() } };
 }
 export default async function Guide({ params }: P) {
-  const g = await get((await params).slug); if (!g) notFound();
+  const slug = (await params).slug; const g = await get(slug); if (!g) return legacyOrNotFound("/egypt-travel-guide/" + slug);
   const faqs = parseJson<{ q: string; a: string }[]>(g.faqs, []);
   const relSlugs = g.related.split(",").map((x) => x.trim()).filter(Boolean);
   const [allG, tours] = await Promise.all([publishedGuides(), listTours(g.destinationSlug ? { destination: g.destinationSlug } : {}, 3)]);

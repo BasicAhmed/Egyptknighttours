@@ -256,3 +256,9 @@ export const followUpsRelations = relations(followUps, ({ one }) => ({ lead: one
 
 // Persistent request counters for rate limiting (works across serverless instances).
 export const rateLimits = sqliteTable("rate_limits", { key: text("key").primaryKey(), count: integer("count").notNull().default(0), windowStart: integer("window_start").notNull() });
+
+// Old website addresses (for example from a WordPress site) that permanently redirect to the right new page.
+export const redirects = sqliteTable("redirects", {
+  id: id(), fromPath: text("from_path").notNull().unique(), toPath: text("to_path").notNull(), status: integer("status").notNull().default(301),
+  note: text("note").notNull().default(""), createdAt: createdAt(),
+});

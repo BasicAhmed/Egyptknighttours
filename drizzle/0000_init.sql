@@ -311,6 +311,16 @@ CREATE TABLE `rate_limits` (
 	`window_start` integer NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `redirects` (
+	`id` text PRIMARY KEY NOT NULL,
+	`from_path` text NOT NULL,
+	`to_path` text NOT NULL,
+	`status` integer DEFAULT 301 NOT NULL,
+	`note` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `redirects_from_path_unique` ON `redirects` (`from_path`);--> statement-breakpoint
 CREATE TABLE `reviews` (
 	`id` text PRIMARY KEY NOT NULL,
 	`tour_id` text NOT NULL,

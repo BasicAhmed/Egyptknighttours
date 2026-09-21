@@ -25,5 +25,6 @@ for (const p of PAGES) {
 for (const [p, want] of [["/robots.txt", /Disallow: \/admin/], ["/sitemap.xml", /egypt-travel-guide/], ["/manifest.webmanifest", /Egypt Knight/], ["/humans.txt", /Nino Techy/]]) { const r = await get(p); const t = await r.text(); if (r.status !== 200 || !want.test(t)) fail(`${p} missing or wrong`); else console.log("  ok  ", p); }
 const guard = [["/admin", [302, 307, 308]], ["/api/admin/export/orders", [404]], ["/api/admin/files/nope", [404]], ["/api/cron/maintenance", [401]], ["/api/health", [200]]];
 for (const [p, ok] of guard) { const r = await get(p); if (!ok.includes(r.status)) fail(`${p} returned ${r.status}, expected ${ok.join("/")}`); else console.log("  ok  ", p, r.status); }
+{ const r = await fetch(base + "/tour-destination/luxor/", { redirect: "follow" }); if (r.status !== 200 || !r.url.endsWith("/destinations/luxor")) fail(`old WordPress address /tour-destination/luxor/ ended at ${r.url} (${r.status})`); else console.log("  ok   old WordPress address redirects to the new destination page"); }
 { const r = await get("/api/admin/media", { method: "POST" }); if (![401, 400].includes(r.status)) fail(`upload without login returned ${r.status}`); else console.log("  ok   media upload is staff-only"); }
 console.log(failed ? `\n${failed} problem(s) found` : "\nAll smoke checks passed"); process.exit(failed ? 1 : 0);

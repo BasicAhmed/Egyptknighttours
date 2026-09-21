@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { legacyOrNotFound } from "@/lib/legacy-server";
 import { listTours, destinationBySlug, publishedGuides } from "@/lib/queries";
 import TourCard from "@/components/TourCard";
 import SiteImage from "@/components/SiteImage";
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   return { title: { absolute: d.seoTitle }, description: d.seoDescription, alternates: { canonical: `/destinations/${d.slug}` }, openGraph: { title: d.seoTitle, description: d.seoDescription, images: d.imageUrl ? [d.imageUrl] : undefined } };
 }
 export default async function Destination({ params }: P) {
-  const d = await get((await params).slug); if (!d) notFound();
+  const slug = (await params).slug; const d = await get(slug); if (!d) return legacyOrNotFound("/destinations/" + slug);
   const [tours, allG] = await Promise.all([listTours({ destination: d.slug }), publishedGuides()]);
   const guides = allG.filter((x) => x.destinationSlug === d.slug);
   const facts: [string, string, string][] = [[`Best time to visit ${d.name}`, d.bestTime, "☀"], [`How to get to ${d.name}`, d.howToGet, "✈"], [`Where to stay in ${d.name}`, d.whereToStay, "⌂"], [`Local tips for ${d.name}`, d.tips, "✓"]];

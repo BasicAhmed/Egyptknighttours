@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { jsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { legacyOrNotFound } from "@/lib/legacy-server";
 import { getTourBySlug, listTours } from "@/lib/queries";
 import { money, parseJson, waLink, SITE, duration, CATEGORY_LABEL, toDateInput } from "@/lib/format";
 import AvailabilityCard from "@/components/AvailabilityCard";
@@ -20,8 +21,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
 const List = ({ items, mark }: { items: string[]; mark: string }) => <ul className="space-y-1.5 text-sm">{items.map((i) => <li key={i}>{mark} {i}</li>)}</ul>;
 
 export default async function TourPage({ params }: P) {
-  const d = await getTourBySlug((await params).slug);
-  if (!d) notFound();
+  const slug = (await params).slug; const d = await getTourBySlug(slug);
+  if (!d) return legacyOrNotFound("/tours/" + slug);
   const { tour: t, dest, addons, reviews, rating } = d;
   const hl = parseJson<string[]>(t.highlights, []); const it = parseJson<{ title: string; text: string }[]>(t.itinerary, []);
   const inc = parseJson<string[]>(t.included, []); const exc = parseJson<string[]>(t.excluded, []); const faqs0 = parseJson<{ q: string; a: string }[]>(t.faqs, []);

@@ -47,6 +47,8 @@ export const MIGRATION: string[] = [
  "CREATE TABLE IF NOT EXISTS `payments` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`booking_id` text NOT NULL,\n\t`provider` text DEFAULT 'MANUAL' NOT NULL,\n\t`kind` text NOT NULL,\n\t`amount` real NOT NULL,\n\t`status` text DEFAULT 'PENDING' NOT NULL,\n\t`provider_ref` text,\n\t`created_at` integer DEFAULT (unixepoch()) NOT NULL,\n\tFOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action\n);",
  "CREATE INDEX IF NOT EXISTS `payments_booking_idx` ON `payments` (`booking_id`);",
  "CREATE TABLE IF NOT EXISTS `rate_limits` (\n\t`key` text PRIMARY KEY NOT NULL,\n\t`count` integer DEFAULT 0 NOT NULL,\n\t`window_start` integer NOT NULL\n);",
+ "CREATE TABLE IF NOT EXISTS `redirects` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`from_path` text NOT NULL,\n\t`to_path` text NOT NULL,\n\t`status` integer DEFAULT 301 NOT NULL,\n\t`note` text DEFAULT '' NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch()) NOT NULL\n);",
+ "CREATE UNIQUE INDEX IF NOT EXISTS `redirects_from_path_unique` ON `redirects` (`from_path`);",
  "CREATE TABLE IF NOT EXISTS `reviews` (\n\t`id` text PRIMARY KEY NOT NULL,\n\t`tour_id` text NOT NULL,\n\t`author_name` text NOT NULL,\n\t`country` text,\n\t`rating` integer NOT NULL,\n\t`title` text NOT NULL,\n\t`body` text NOT NULL,\n\t`trip_date` text,\n\t`status` text DEFAULT 'PENDING' NOT NULL,\n\t`created_at` integer DEFAULT (unixepoch()) NOT NULL,\n\tFOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action\n);",
  "CREATE INDEX IF NOT EXISTS `reviews_tour_idx` ON `reviews` (`tour_id`,`status`);",
  "CREATE TABLE IF NOT EXISTS `settings` (\n\t`key` text PRIMARY KEY NOT NULL,\n\t`value` text DEFAULT '' NOT NULL\n);",

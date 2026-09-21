@@ -9,7 +9,7 @@ export default async function AdminDestinations({ searchParams }: { searchParams
   const rows = await db.select().from(s.destinations).orderBy(asc(s.destinations.name));
   return (
     <div>
-      <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Destinations</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Destinations</h1>{can && <Link href="/admin/destinations/new" className="btn btn-primary !min-h-[46px]">+ New destination</Link>}</div>
       <div className="mt-3 flex gap-2"><Link href="/admin/tours" className="rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink/70">Tours</Link><span className="rounded-full border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white">Destinations</span></div>
       {sp.saved && <p className="mt-4 rounded-xl bg-[#E9F6EE] p-3 text-sm font-semibold text-[#17663A]">Destination saved.</p>}
       <p className="mt-4 text-sm text-ink/65">The photo you upload here appears on the homepage, the destination page, and on any tour in that destination that has no photo of its own.</p>

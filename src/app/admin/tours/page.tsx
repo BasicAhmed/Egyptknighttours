@@ -11,7 +11,7 @@ export default async function AdminTours() {
   const rows = await db.select().from(s.tours).where(ne(s.tours.slug, "custom-experience")).orderBy(desc(s.tours.updatedAt));
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Tours</h1><p className="text-sm text-ink/65">What customers can book on the website.</p></div>{can && <Link href="/admin/tours/new" className="btn btn-primary !min-h-[46px]">+ New tour</Link>}</div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Tours</h1><p className="text-sm text-ink/65">What customers can book on the website.</p></div>{can && <div className="flex gap-2"><Link href="/admin/tours/import" className="btn btn-outline !min-h-[46px]">Import CSV</Link><Link href="/admin/tours/new" className="btn btn-primary !min-h-[46px]">+ New tour</Link></div>}</div>
       <div className="mt-3 flex gap-2"><span className="rounded-full border border-ink bg-ink px-4 py-2 text-sm font-semibold text-white">Tours</span><Link href="/admin/destinations" className="rounded-full border border-ink/15 bg-white px-4 py-2 text-sm font-semibold text-ink/70">Destinations</Link></div>
       <ul className="mt-5 space-y-2.5">{rows.map((t) => (
         <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white p-4">

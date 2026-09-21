@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { db, schema as s } from "@/db";
-import { asc } from "drizzle-orm";
+import { asc, desc } from "drizzle-orm";
 import { requireStaff } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { saveCompanySettings, savePaymentMethod, deletePaymentMethod } from "../doc-actions";
 import Notice from "@/components/Notice";
 import ImageField from "@/components/ImageField";
-import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides } from "../site-actions";
+import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides, saveRedirect, deleteRedirect, bulkAddRedirects } from "../site-actions";
+import { resolveLegacy } from "@/lib/legacy-server";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -31,11 +32,14 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
+  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["wording", "Invoice wording"], ["system", "System status"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["wording", "Invoice wording"], ["system", "System status"]];
+  const redirectRows = tab === "redirects" ? await db.select().from(s.redirects).orderBy(desc(s.redirects.createdAt)).limit(500) : [];
+  const testPath = tab === "redirects" ? String((sp as Record<string, string | undefined>).t ?? "").trim() : "";
+  const testResult = testPath ? await resolveLegacy(testPath) : null;
   const guidesList = tab === "guides" ? await db.select().from(s.tourGuides).orderBy(asc(s.tourGuides.name)) : [];
   const reviews = tab === "reviews" ? await db.select().from(s.testimonials).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)) : [];
   return (
@@ -52,7 +56,8 @@ export default async function Settings({ searchParams }: { searchParams: Promise
         </div></section>}
       {tab === "reviews" && <ReviewsAdmin reviews={reviews} />}
       {tab === "guides" && <GuidesAdmin guides={guidesList} />}
-      {tab !== "payment" && tab !== "reviews" && tab !== "guides" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+      {tab === "redirects" && <RedirectsAdmin rows={redirectRows} testPath={testPath} testResult={testResult} />}
+      {tab !== "payment" && tab !== "reviews" && tab !== "guides" && tab !== "redirects" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
         {tab === "company" && <>
           <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
@@ -127,6 +132,24 @@ function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] 
       {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/65">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
         <div className="mt-4"><Form g={g} /><form action={deleteGuide.bind(null, g.id)} className="mt-3"><button className="btn btn-outline !min-h-[40px] !py-2 text-red-700">Delete guide</button></form></div></details>)}
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={guides.length === 0}><summary className="cursor-pointer font-semibold">+ Add a guide</summary><div className="mt-4"><Form /></div></details>
+    </section>
+  );
+}
+
+function RedirectsAdmin({ rows, testPath, testResult }: { rows: (typeof s.redirects.$inferSelect)[]; testPath: string; testResult: { to: string; status: number; source: string } | null }) {
+  return (
+    <section className="space-y-4">
+      <div className="rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4 text-sm"><p className="font-semibold">Why this matters</p><p className="mt-1 text-ink/70">When you move from an old website, every old address that people or Google know must lead to the right new page, or you lose visitors and search rankings. Add each old address here. Common WordPress tour-site addresses are already covered automatically (destinations, cruises, the custom trip page and language versions).</p></div>
+      <form method="get" className="flex flex-wrap items-end gap-2 rounded-2xl border border-ink/10 bg-white p-4"><input type="hidden" name="tab" value="redirects" />
+        <label className="block min-w-[240px] flex-1"><span className="label">Test an old address</span><input name="t" defaultValue={testPath} placeholder="/tour-destination/luxor/  or  https://old-site.com/tours/my-tour/" className="input" /></label><button className="btn btn-dark !min-h-[46px]">Test</button>
+        {testPath && <p className="w-full text-sm font-semibold">{testResult ? <>→ <span className="text-[#17663A]">{testResult.to}</span> <span className="font-normal text-ink/65">({testResult.status}, {testResult.source === "manual" ? "your redirect" : "built-in rule"})</span></> : <span className="text-[#8A4B0A]">No redirect. This address would show a 404 page.</span>}</p>}</form>
+      <details className="rounded-2xl border border-ink/10 bg-white p-4" open={rows.length === 0}><summary className="cursor-pointer font-semibold">Paste many redirects at once</summary>
+        <form action={bulkAddRedirects} className="mt-3 grid gap-3"><label className="block"><span className="label">One per line: old address, then new address (space, comma or tab between them). Full web addresses are fine.</span><textarea name="bulk" rows={8} className="input" placeholder={"/tours/nile-cruise-aswan-luxor-3-days-2-nights-2/  /tours/nile-cruise-3-days\nhttps://old-site.com/blog/best-time-to-visit-egypt/  /egypt-travel-guide/best-time-to-visit-egypt"} /></label><button className="btn btn-dark w-fit">Save all</button></form></details>
+      <details className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer font-semibold">+ Add one redirect</summary>
+        <form action={saveRedirect} className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block"><span className="label">Old address</span><input name="from" className="input" placeholder="/old-page/" required /></label><label className="block"><span className="label">New page on this site</span><input name="to" className="input" placeholder="/tours/new-page" required /></label>
+          <label className="block"><span className="label">Type</span><select name="status" className="input"><option value="301">Permanent (301), recommended</option><option value="302">Temporary (302)</option></select></label><label className="block"><span className="label">Note (optional)</span><input name="note" className="input" /></label><div className="sm:col-span-2"><button className="btn btn-dark">Save redirect</button></div></form></details>
+      <div className="rounded-2xl border border-ink/10 bg-white"><p className="border-b border-ink/10 p-4 font-semibold">{rows.length} saved redirect{rows.length === 1 ? "" : "s"}</p>
+        <ul className="divide-y divide-ink/10">{rows.map((r) => <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"><span className="min-w-0 break-all"><b>{r.fromPath}</b> <span className="text-ink/50">→</span> {r.toPath} <span className="text-ink/60">({r.status}){r.note ? ` · ${r.note}` : ""}</span></span><form action={deleteRedirect.bind(null, r.id)}><button className="text-sm font-semibold text-red-700 underline">Remove</button></form></li>)}</ul></div>
     </section>
   );
 }

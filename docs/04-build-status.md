@@ -21,6 +21,11 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - Sections: Orders, Inquiries (modal), Tours, Itineraries, Reports, Settings (tabs). Sidebar on desktop, bottom tabs on phones.
 - Speed: the server region is set next to the database (`vercel.json`, Dublin), pages run their queries in parallel, and the order modal loads in one round trip and opens instantly from a cache.
 
+## Migration tools (moving from another website)
+- **Redirects** (Settings > Redirects): old address to new page, paste many at once, test box, built-in rules for WordPress tour-site addresses. Old addresses that match no page now flow through a catch-all that applies them; otherwise a normal 404.
+- **Tour import** (Tours > Import CSV): creates draft tours from a spreadsheet, copies photos from a named https website (private networks blocked), creates missing destinations. **+ New destination** in Destinations.
+- **`npm run check-migration`** lists every old address that would 404 on the new site. Plan: `docs/06-migration-from-wordpress.md`.
+
 ## Website content and SEO
 - Photos are uploaded from a phone or computer (no links): tours, destinations, itinerary cover/day/activity photos and the homepage photo. Stored in the database, resized, served from `/api/media/[id]` with year-long caching and responsive sizes.
 - **Destinations** admin: change each destination photo and text. Tours without a photo use their destination's photo.
