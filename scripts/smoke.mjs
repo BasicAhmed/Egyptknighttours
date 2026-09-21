@@ -14,6 +14,10 @@ for (const p of PAGES) {
   const h1 = (html.match(/<h1[\s>]/g) || []).length; if (h1 !== 1) fail(`${p}: ${h1} <h1> tags`);
   for (const m of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) { try { JSON.parse(m[1]); } catch { fail(`${p}: invalid JSON-LD`); } }
   if (!/Nino Techy/.test(html)) fail(`${p}: Nino Techy credit missing`);
+  const cc = r.headers.get("cache-control") ?? ""; const priv = ["/track"].includes(p);
+  if (priv && !/no-store|private/.test(cc)) fail(`${p}: personal page must not be cached (${cc})`);
+  if (!priv && !/s-maxage=\d+/.test(cc)) fail(`${p}: public page is not CDN-cacheable (${cc})`);
+  if (r.headers.get("set-cookie") && !priv) fail(`${p}: public page sets a cookie, so it cannot be shared-cached`);
   if (/undefined|\[object Object\]|NaN/.test(html.replace(/<script[\s\S]*?<\/script>/g, ""))) fail(`${p}: contains "undefined", "[object Object]" or "NaN"`);
   for (const h of ["content-security-policy", "strict-transport-security", "x-content-type-options"]) if (!r.headers.get(h)) fail(`${p}: missing ${h} header`);
   if (failed === before) console.log("  ok  ", p);

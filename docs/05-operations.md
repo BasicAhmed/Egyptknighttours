@@ -30,10 +30,18 @@ Rotate `AUTH_SECRET` and the admin password if a staff member leaves. Changing `
 - **Reviews:** Settings → Reviews.
 
 ## Scaling notes
-- The site is read-heavy and cached, and can serve large traffic on Vercel without changes.
-- If orders grow into tens of thousands, keep the database and functions in the same region, and export old orders to archive.
-- Uploaded website photos live in the database (resized to about 200 KB). For very large photo libraries, move them to object storage (Vercel Blob or S3).
-- Add error monitoring (for example Sentry) and uptime monitoring on `/api/health` for early warnings.
+**How traffic is handled.** Public pages (home, tours, destinations, guides, landing pages, legal pages) are sent with `Cache-Control: s-maxage=120, stale-while-revalidate=600`. Vercel's CDN keeps each finished page for 2 minutes and refreshes it in the background, so a traffic spike is served from the CDN, not by rendering the page again for every visitor. Private pages (booking tracker, booking flow, admin, API) are never cached.
+
+**What we measured (September 2026, one CPU core, local).** Rendering a page on the server costs roughly 15 to 35 ms of CPU (home about 30 ms). That is the real limit when nothing is cached: 100 simultaneous visitors straight at one server gave about 30 pages per second and timeouts. Behind a cache that follows the same headers, the same test gave about 700 to 1,700 pages per second with no errors, and only 302 of 44,000 requests reached the server. These are simulation figures, not Vercel benchmarks. Re-test on the live site (for example with `npx autocannon`) before a big campaign.
+
+**Freshness.** After you edit a tour, destination, review or setting, the change is visible to everyone within about 2 minutes (up to 12 in the worst case, while the CDN refreshes). Staff inside the admin always see live data.
+
+**Ways to go further if needed**
+- Shrink the homepage: it renders a lot of markup. Uploading real photos in place of illustrations helps.
+- Keep the database and functions in the same region (`vercel.json` uses `dub1`).
+- If orders grow into tens of thousands, export old orders to archive.
+- Uploaded website photos live in the database (resized to about 200 KB). For a very large photo library, move them to object storage (Vercel Blob or S3).
+- Add error monitoring (for example Sentry) and uptime monitoring on `/api/health`.
 
 ## Quality gates
 To turn on automatic checks, in GitHub create the file `.github/workflows/ci.yml` and paste in `docs/ci-workflow.yml` (GitHub blocks tokens from creating workflow files, so it has to be added through the website or a normal login).

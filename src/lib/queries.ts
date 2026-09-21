@@ -23,7 +23,8 @@ async function listToursRaw(f: Filters = {}, limit = 60) {
   if (f.maxDays) conds.push(lte(s.tours.durationDays, f.maxDays));
   if (f.q) conds.push(or(like(s.tours.title, `%${f.q}%`), like(s.tours.shortDescription, `%${f.q}%`))!);
   const order = f.sort === "price-asc" ? asc(sql`coalesce(${s.tours.discountPrice}, ${s.tours.price})`) : f.sort === "price-desc" ? desc(sql`coalesce(${s.tours.discountPrice}, ${s.tours.price})`) : desc(s.tours.popularity);
-  const rows = await db.select({ t: s.tours, destinationName: s.destinations.name, destinationSlug: s.destinations.slug, destinationImage: s.destinations.imageUrl })
+  // Only the fields cards and lists need. Full tour rows (long text, itinerary, FAQs) are loaded only on the tour page itself.
+  const rows = await db.select({ t: { id: s.tours.id, slug: s.tours.slug, title: s.tours.title, shortDescription: s.tours.shortDescription, category: s.tours.category, price: s.tours.price, discountPrice: s.tours.discountPrice, durationHours: s.tours.durationHours, durationDays: s.tours.durationDays, pricingModel: s.tours.pricingModel, isPrivateAvailable: s.tours.isPrivateAvailable, isGroupAvailable: s.tours.isGroupAvailable, imageUrl: s.tours.imageUrl, updatedAt: s.tours.updatedAt }, destinationName: s.destinations.name, destinationSlug: s.destinations.slug, destinationImage: s.destinations.imageUrl })
     .from(s.tours).innerJoin(s.destinations, eq(s.tours.destinationId, s.destinations.id)).where(and(...conds)).orderBy(order).limit(limit);
   const ratings = await getRatings(rows.map((r) => r.t.id));
   return rows.map((r) => ({ ...r.t, destinationName: r.destinationName, destinationSlug: r.destinationSlug, destinationImage: r.destinationImage, rating: ratings.get(r.t.id) ?? null }));
@@ -44,6 +45,7 @@ export const listTours = cachedQuery("listTours", listToursRaw, ["tours", "desti
 export const getTourBySlug = cachedQuery("getTourBySlug", getTourBySlugRaw, ["tours", "destinations"]);
 export const allDestinations = cachedQuery("allDestinations", async () => db.select().from(s.destinations).orderBy(asc(s.destinations.name)), ["destinations"]);
 export const destinationBySlug = cachedQuery("destinationBySlug", async (slug: string) => (await db.select().from(s.destinations).where(eq(s.destinations.slug, slug)))[0] ?? null, ["destinations"]);
-export const publishedGuides = cachedQuery("publishedGuides", async () => db.select().from(s.guides).where(eq(s.guides.status, "PUBLISHED")), ["guides"]);
+// Lists never need the article text, so it is left out (each guide body is several KB).
+export const publishedGuides = cachedQuery("publishedGuides", async () => db.select({ id: s.guides.id, slug: s.guides.slug, title: s.guides.title, cluster: s.guides.cluster, summary: s.guides.summary, isPillar: s.guides.isPillar, destinationSlug: s.guides.destinationSlug, updatedAt: s.guides.updatedAt }).from(s.guides).where(eq(s.guides.status, "PUBLISHED")), ["guides"]);
 export const guideBySlug = cachedQuery("guideBySlug", async (slug: string) => (await db.select().from(s.guides).where(and(eq(s.guides.slug, slug), eq(s.guides.status, "PUBLISHED"))))[0] ?? null, ["guides"]);
 export const activeTestimonials = cachedQuery("activeTestimonials", async (limit: number) => db.select().from(s.testimonials).where(eq(s.testimonials.active, true)).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)).limit(limit), ["testimonials"]);

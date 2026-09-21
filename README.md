@@ -46,9 +46,11 @@ See `.env.example`. Required: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `AUTH_SECRE
 - Dependencies are audited in CI on every change.
 
 ## Scalability
-- Public pages read through a cache that staff edits clear instantly; images are cached for a year and served in responsive sizes.
+- Public pages are CDN-cacheable (2 minutes, refreshed in the background); personal pages and the admin are never cached.
+- Database reads for the public site are cached and cleared instantly when staff edit content; images are cached for a year and served in responsive sizes.
 - Database indexes on every frequently filtered column; a nightly job prunes old logs.
-- Startup does two small reads once the schema is current.
+- Startup does one small read once the schema is current.
+- Measured figures and limits are in `docs/05-operations.md`.
 
 See `docs/` for the full operations guide. To enable the automatic checks (type check, tests, audit, build, smoke test on every push), add `docs/ci-workflow.yml` as `.github/workflows/ci.yml`.
 

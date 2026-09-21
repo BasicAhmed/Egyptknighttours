@@ -1,6 +1,7 @@
 import { db, schema as s } from "@/db";
 import { eq } from "drizzle-orm";
 import type { Company } from "@/pdf/types";
+import { cache } from "react";
 import { cachedQuery, invalidate } from "./cache";
 
 export const DEFAULTS: Record<string, string> = {
@@ -21,7 +22,7 @@ async function loadSettings(): Promise<Record<string, string>> {
   const rows = await db.select().from(s.settings);
   return { ...DEFAULTS, ...Object.fromEntries(rows.map((r) => [r.key, r.value])) };
 }
-const cachedSettings = cachedQuery("settings", loadSettings, ["settings"]);
+const cachedSettings = cache(cachedQuery("settings", loadSettings, ["settings"])); // read once per request, even though several components ask
 // If the database can't be reached (for example while building, or during a brief outage) the site falls back to safe defaults instead of failing.
 export async function getSettings(): Promise<Record<string, string>> {
   try { return await cachedSettings(); } catch (e) { if (process.env.NEXT_PHASE !== "phase-production-build") console.error("getSettings failed, using defaults", e instanceof Error ? e.message : e); return { ...DEFAULTS }; }

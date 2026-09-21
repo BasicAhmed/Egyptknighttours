@@ -44,7 +44,12 @@ export default {
   webpack(config) { config.resolve.alias["@"] = path.join(root, "src"); return config; },
   async headers() {
     const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }];
+    // Public pages are the same for every visitor, so the CDN may keep them for 2 minutes and refresh in the background.
+    // Pages with personal content (track, book, booking, admin, api) are deliberately left out.
+    const edge = [{ key: "Cache-Control", value: "public, max-age=0, s-maxage=120, stale-while-revalidate=600" }];
+    const publicPages = ["/", "/tours", "/tours/:slug", "/destinations", "/destinations/:slug", "/egypt-travel-guide", "/egypt-travel-guide/:slug", "/egypt-tours/:slug", "/faq", "/contact", "/plan-my-trip", "/terms", "/privacy-policy"];
     return [
+      ...publicPages.map((source) => ({ source, headers: edge })),
       { source: "/:path*", headers: security },
       { source: "/admin/:path*", headers: noindex },
       { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },
