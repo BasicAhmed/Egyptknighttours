@@ -57,6 +57,10 @@ export default {
     ];
   },
   async redirects() {
-    return [{ source: "/egypt-travel-guide/giza-pyramids-visitor-guide", destination: "/egypt-travel-guide/egypt-pyramids-guide", permanent: true }];
+    return [
+      // One address for Google: www.egyptknight.com always goes to egyptknight.com
+      { source: "/:path*", has: [{ type: "host", value: "www.egyptknight.com" }], destination: "https://egyptknight.com/:path*", permanent: true },
+      { source: "/egypt-travel-guide/giza-pyramids-visitor-guide", destination: "/egypt-travel-guide/egypt-pyramids-guide", permanent: true },
+    ];
   },
 };

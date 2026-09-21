@@ -6,7 +6,7 @@ import { BUILDER_NAME } from "./builder";
 import { cachedQuery, invalidate } from "./cache";
 
 export const DEFAULTS: Record<string, string> = {
-  "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.phone": "+2 01001339220", "company.whatsapp": "+2 01128348803",
+  "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.phone": "+2 01001339220", "company.whatsapp": "+20 112 834 8803",
   "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "",
   "privacy.passportRetentionDays": "0",
   "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "https://www.tripadvisor.com/Attraction_Review-g294204-d15602266-Reviews-Egypt_knight_tours-Aswan_Aswan_Governorate_Nile_River_Valley.html",
