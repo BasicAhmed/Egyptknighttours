@@ -1,6 +1,7 @@
 import { db, schema as s } from "@/db";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { buildInvoiceData, type InvoiceOptions } from "./invoice";
+import { BUILDER_NAME } from "./builder";
 import { getSettings, companyFrom } from "./settings";
 import { signDoc, signRef } from "./booking-token";
 import { sendEmail, brandedEmail } from "./email";
@@ -67,7 +68,7 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
     if (c) { to ||= c.c.email; name = c.c.name.split(" ")[0]; }
   }
   if (!to) return { ok: false as const, message: "No customer email on this booking. Enter one first." };
-  const g = await getSettings(); const company = g["company.name"]; const builder = g["builder.show"] === "0" ? "" : (g["builder.name"] || "Nino Techy");
+  const g = await getSettings(); const company = g["company.name"]; const builder = BUILDER_NAME;
   const inv = doc.kind === "INVOICE";
   const link = docUrl(doc.id);
   const mail = brandedEmail(inv

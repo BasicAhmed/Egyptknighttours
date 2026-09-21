@@ -12,6 +12,7 @@ import { waLink, money } from "@/lib/format";
 import { asc, eq } from "drizzle-orm";
 import type { Metadata } from "next";
 import { LANDINGS } from "@/lib/landing";
+import { BUILDER_NAME } from "@/lib/builder";
 import { SITE } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,7 @@ export default async function Home() {
   const sameAs = [g["site.instagram"], g["site.facebook"], g["site.tiktok"], g["site.youtube"], g["site.tripadvisorUrl"]].map(https).filter(Boolean);
   const ld = [
     { "@context": "https://schema.org", "@type": "TravelAgency", name: g["company.name"], url: SITE, logo: `${SITE}/logo.webp`, image: `${SITE}/logo.webp`, description: "Egypt tours and travel packages by a local team: private pyramids tours, Nile cruises, Cairo, Luxor and Aswan.", areaServed: { "@type": "Country", name: "Egypt" }, email: g["company.email"], telephone: g["company.phone"] || g["company.whatsapp"], ...(sameAs.length ? { sameAs } : {}) },
-    { "@context": "https://schema.org", "@type": "WebSite", name: g["company.name"], url: SITE, creator: { "@type": "Organization", name: g["builder.name"] || "Nino Techy" }, potentialAction: { "@type": "SearchAction", target: `${SITE}/tours?q={search_term_string}`, "query-input": "required name=search_term_string" } },
+    { "@context": "https://schema.org", "@type": "WebSite", name: g["company.name"], url: SITE, creator: { "@type": "Organization", name: BUILDER_NAME }, potentialAction: { "@type": "SearchAction", target: `${SITE}/tours?q={search_term_string}`, "query-input": "required name=search_term_string" } },
     { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) },
   ];
   return (<>

@@ -62,9 +62,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Privacy</h2>
           <F name="privacy.passportRetentionDays" label="Delete passport files this many days after the trip (0 = never)" type="number" v={g["privacy.passportRetentionDays"]} />
           <p className="self-end text-sm text-ink/65">Runs nightly. Deletes uploaded passport and visa files and the stored passport number.</p>
-          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Website credit</h2>
-          <F name="builder.name" label="Built by (name)" v={g["builder.name"]} /><F name="builder.url" label="Built by (website link, https://…)" v={g["builder.url"]} />
-          <div><label className="label" htmlFor="bshow">Show the credit</label><select id="bshow" name="builder.show" defaultValue={g["builder.show"]} className="input"><option value="1">Yes: footer, admin and documents</option><option value="0">No</option></select></div></>}
+</>}
         {tab === "website" && <>
           <p className="text-sm text-ink/65 sm:col-span-2">These numbers and links appear on the homepage. Only use figures you can back up.</p>
           <div className="sm:col-span-2"><ImageField name="site.heroImage" label="Homepage main photo" value={g["site.heroImage"]} hint="Large landscape or portrait photo shown next to the headline." /></div>

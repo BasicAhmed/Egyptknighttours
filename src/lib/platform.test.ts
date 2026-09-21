@@ -13,3 +13,10 @@ test("cached data gets its dates back", () => {
   assert.ok(r.createdAt instanceof Date); assert.ok(r.nested[0].at instanceof Date); assert.equal(r.label, "2026-09-20"); assert.equal(r.id, "x");
 });
 test("phone numbers keep their meaning", () => { assert.equal(normalizePhone("0100 000 0000"), "+201000000000"); });
+
+import fs from "node:fs";
+test("the Nino Techy credit is not an admin setting", () => {
+  assert.ok(!/builder\./.test(fs.readFileSync("src/app/admin/settings/page.tsx", "utf8")), "settings page must not expose the credit");
+  assert.ok(!/builder\./.test(fs.readFileSync("src/lib/settings.ts", "utf8")), "settings defaults must not include the credit");
+  assert.ok(/BUILDER_NAME = "Nino Techy"/.test(fs.readFileSync("src/lib/builder.ts", "utf8")));
+});
