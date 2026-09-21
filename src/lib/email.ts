@@ -4,7 +4,7 @@ export async function sendEmail(o: { to: string; subject: string; html: string; 
   const key = (process.env.RESEND_API_KEY ?? "").trim(); const from = (process.env.EMAIL_FROM ?? "").trim();
   if (!key || !from) return { ok: false, reason: "NOT_CONFIGURED", message: "Email isn't set up yet. Add RESEND_API_KEY and EMAIL_FROM in your hosting settings." };
   try {
-    const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    const r = await fetch(process.env.RESEND_API_URL || "https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from, to: [o.to], subject: o.subject, html: o.html, text: o.text, reply_to: o.replyTo || undefined, attachments: o.attachments?.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })) }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return { ok: false, reason: "FAILED", message: String((j as { message?: string }).message ?? `Email provider returned ${r.status}`).slice(0, 200) };
