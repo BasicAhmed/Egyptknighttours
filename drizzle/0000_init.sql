@@ -79,6 +79,7 @@ CREATE TABLE `bookings` (
 	`occasion` text,
 	`emergency_contact` text,
 	`visa_status` text,
+	`guide_notes` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,

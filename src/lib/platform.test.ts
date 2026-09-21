@@ -31,3 +31,27 @@ test("inquiry email lists what was asked and escapes input", () => {
   const e = leadEmail({ name: "Bob", email: "b@example.com", whatsapp: "", kind: "TRIP_BUILDER", country: "UK", message: "<script>x</script>", travelDates: "March", travelers: "2", adminUrl: "https://x.test/admin/leads" });
   assert.ok(e.html.includes("&lt;script&gt;")); assert.ok(!e.html.includes("<script>")); assert.ok(e.subject.includes("Bob"));
 });
+
+test("form fields are never defined inside a component (that rebuilds the input on every letter and closes the phone keyboard)", () => {
+  for (const f of ["src/components/OrderPeople.tsx", "src/components/OrdersBoard.tsx"]) {
+    const src = fs.readFileSync(f, "utf8");
+    assert.ok(!/\n\s+const F = \(/.test(src), `${f} defines a field component inside another component`);
+    assert.ok(/FieldCtx/.test(src), `${f} should use the shared FormField`);
+  }
+});
+
+import { signGuide, verifyGuide, signRef } from "./booking-token";
+import { buildGuideMessage } from "./guide-message";
+import type { Order, Guide } from "./orders";
+test("guide links only open their own booking, and are not the customer's tracking token", () => {
+  process.env.AUTH_SECRET ||= "unit-test-secret-1234567890"; const t = signGuide("booking-1"); assert.ok(verifyGuide("booking-1", t)); assert.ok(!verifyGuide("booking-2", t)); assert.ok(!verifyGuide("booking-1", signRef("booking-1"))); assert.ok(!verifyGuide("booking-1", "")); assert.ok(!verifyGuide("booking-1", t + "x"));
+});
+test("the guide's WhatsApp message carries the full trip and the private link, but never passport data", () => {
+  const o = { id: "b1", ref: "EK-ABC234", title: "Giza Pyramids Tour", travelDate: "2026-11-20", adults: 2, children: 1, infants: 0, isPrivate: true, hotel: "Marriott Mena House", pickupNotes: "Lobby", requests: "Birthday cake", dietary: "No pork", accessibility: "", currency: "USD", total: 200, paid: 100, balance: 100,
+    customer: { name: "Sarah Johnson", whatsapp: "+14155550123", phone: "", nationality: "United States", email: "s@x.com", country: "" },
+    ops: { pickupTime: "08:00", preferredLanguage: "English", driver: "Ahmed", vehicle: "Van", flightArrival: "MS 985", flightDeparture: "", roomType: "", occasion: "Birthday", emergencyContact: "Mark +1 415 555 0188", guideId: "g1", visaStatus: "", guideNotes: "Collect the balance in cash", flightsX: "" },
+    travelers: [{ name: "Sarah Johnson", type: "ADULT", age: null, nationality: "United States", passportNumber: "P1234567", passportExpiry: "2029-01-01", files: [{ id: "f1", kind: "PASSPORT" }] }, { name: "Emma Johnson", type: "CHILD", age: 7, nationality: "United States", passportNumber: "P7654321", files: [] }] } as unknown as Order;
+  const m = buildGuideMessage(o, { id: "g1", name: "Omar Hassan", phone: "+201000000001", languages: "English", active: true } as Guide, "https://x.test/guide/b1?t=tok");
+  for (const want of ["Notes from the office: Collect the balance in cash", "Hi Omar", "Giza Pyramids Tour", "EK-ABC234", "08:00", "Marriott Mena House", "2 adults, 1 child (ages 7)", "(private)", "English", "Sarah Johnson", "No pork", "Birthday", "Balance", "1. Sarah Johnson", "2. Emma Johnson (child 7)", "https://x.test/guide/b1?t=tok", "Emergency contact: Mark"]) assert.ok(m.includes(want), `missing: ${want}`);
+  assert.ok(!/P1234567|P7654321|passport/i.test(m), "passport data must never be in the message");
+});

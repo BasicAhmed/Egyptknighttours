@@ -5,6 +5,7 @@ import { signDoc } from "./booking-token";
 import { SITE, parseJson } from "./format";
 import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
+import { signGuide } from "./booking-token";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
@@ -12,7 +13,7 @@ export type OrderDoc = { id: string; kind: string; number: string; sentAt: numbe
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
 export type Traveler = { id: string; name: string; type: string; age: number | null; nationality: string; dob: string; passportNumber: string; passportExpiry: string; notes: string; files: TravelerFile[] };
 export type Guide = { id: string; name: string; phone: string; languages: string; active: boolean };
-export type Ops = { preferredLanguage: string; guideId: string; driver: string; vehicle: string; flightArrival: string; flightDeparture: string; roomType: string; pickupTime: string; occasion: string; emergencyContact: string; visaStatus: string };
+export type Ops = { preferredLanguage: string; guideId: string; driver: string; vehicle: string; flightArrival: string; flightDeparture: string; roomType: string; pickupTime: string; occasion: string; emergencyContact: string; visaStatus: string; guideNotes: string };
 export type Order = {
   id: string; ref: string; status: string; title: string; tourId: string; tourTitle: string; destination: string;
   customer: { name: string; email: string; whatsapp: string; phone: string; country: string; nationality: string };
@@ -21,7 +22,7 @@ export type Order = {
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
   documents: OrderDoc[]; itineraries: { id: string; name: string; status: string }[];
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
-  trackUrl: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
+  trackUrl: string; guideUrl: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
 };
 
 // One query for the whole list. Payment and document counts are computed inside it, so the page needs a single round trip.
@@ -90,9 +91,9 @@ export async function loadOrder(id: string): Promise<Order | null> {
     payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${SITE}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
-    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${SITE}/track/${b.ref}`,
+    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${SITE}/track/${b.ref}`, guideUrl: `${SITE}/guide/${b.id}?t=${signGuide(b.id)}`,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),
-    ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "" },
+    ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "" },
   };
 }

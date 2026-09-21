@@ -5,6 +5,7 @@ import Modal from "./Modal";
 import { PILL, STATUS_LABEL, stageOf, money, shortDate, ago, daysUntil, nextStep, rowFromOrder, type Focus, type Stage } from "./order-ui";
 import { orderCreate } from "@/app/admin/order-actions";
 import { COUNTRIES } from "@/lib/countries";
+import { F, FieldCtx, fieldApi } from "./FormField";
 import type { Order, OrderRow } from "@/lib/orders";
 
 const TABS: { key: string; label: string; stages: Stage[] | null }[] = [
@@ -85,8 +86,9 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
     e.preventDefault(); setBusy(true); setErr("");
     try { const r = await orderCreate(v); if (r.ok && r.order) onCreated(r.order); else setErr(r.message); } catch { setErr("Something went wrong. Please try again."); } finally { setBusy(false); }
   }
-  const F = ({ k, label, type = "text", req = false, cls = "", ph }: { k: keyof typeof v; label: string; type?: string; req?: boolean; cls?: string; ph?: string }) => <div className={cls}><label className="label" htmlFor={`n-${k}`}>{label}</label><input id={`n-${k}`} className="input !py-2.5" type={type} required={req} placeholder={ph} value={v[k]} onChange={set(k)} /></div>;
+  const ctx = fieldApi(v, set, "n-", "!py-2.5");
   return (
+    <FieldCtx.Provider value={ctx}>
     <Modal onClose={onClose} title="New order" subtitle="For customers who booked by WhatsApp, phone or email">
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <F k="name" label="Customer name" req /><F k="whatsapp" label="WhatsApp number (with country code)" type="tel" req ph="+351 912 345 678" />
@@ -103,5 +105,6 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
         <p className="text-xs text-ink/65 sm:col-span-2">After creating, you'll go straight to the invoice.</p>
       </form>
     </Modal>
+    </FieldCtx.Provider>
   );
 }

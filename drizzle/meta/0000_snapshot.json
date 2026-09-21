@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "34b6f87d-5533-468e-a114-767acdc91080",
+  "id": "3e881510-1f39-443c-80fa-e5f7b6750984",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -559,6 +559,13 @@
         },
         "visa_status": {
           "name": "visa_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "guide_notes": {
+          "name": "guide_notes",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

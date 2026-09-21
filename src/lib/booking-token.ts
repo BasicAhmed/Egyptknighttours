@@ -23,3 +23,9 @@ export function verifyDoc(id: string, token?: string | null) {
   const a = Buffer.from(signDoc(id)), b = Buffer.from(token);
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+// A private link for the tour guide of one booking. It only opens that booking's guide sheet.
+export const signGuide = (id: string) => createHmac("sha256", secret()).update("guide:" + id).digest("base64url").slice(0, 22);
+export function verifyGuide(id: string, token?: string | null) {
+  if (!token) return false; const a = Buffer.from(signGuide(id)), b = Buffer.from(token); return a.length === b.length && timingSafeEqual(a, b);
+}

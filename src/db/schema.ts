@@ -87,7 +87,7 @@ export const bookings = sqliteTable("bookings", {
   titleOverride: text("title_override"), // custom experiences created by staff (e.g. a specific cruise)
   preferredLanguage: text("preferred_language"), guideId: text("guide_id"), driver: text("driver"), vehicle: text("vehicle"),
   flightArrival: text("flight_arrival"), flightDeparture: text("flight_departure"), roomType: text("room_type"), pickupTime: text("pickup_time"),
-  occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"),
+  occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"), guideNotes: text("guide_notes"),
   createdAt: createdAt(),
 }, (t) => [index("bookings_customer_idx").on(t.customerId), index("bookings_tour_idx").on(t.tourId), index("bookings_status_idx").on(t.status), index("bookings_travel_idx").on(t.travelDate), index("bookings_created_idx").on(t.createdAt)]);
 

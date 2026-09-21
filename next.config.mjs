@@ -54,6 +54,7 @@ export default {
       { source: "/admin/:path*", headers: noindex },
       { source: "/api/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex" }] },
       { source: "/track/:path*", headers: noindex }, { source: "/booking/:path*", headers: noindex }, { source: "/book/:path*", headers: noindex },
+      { source: "/guide/:path*", headers: [...noindex, { key: "Cache-Control", value: "private, no-store" }] },
     ];
   },
   async redirects() {
