@@ -1,6 +1,6 @@
 "use server";
 import { db, schema as s } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -67,20 +67,40 @@ export async function saveItinerary(id: string, payload: string) {
   const p = z.object({
     name: z.string().trim().min(1).max(120), description: str(300), bookingId: z.string().max(60).nullable().optional(), content: contentSchema,
     costPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(), marginPercent: z.coerce.number().min(0).max(500).nullable().optional(),
+    force: z.boolean().optional(),
   }).safeParse(raw);
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
   const priced = costPrice != null && marginPercent != null;
   const content = clean(p.data.content);
   let bookingNote = "";
+  let price: number | null = null; let currency = "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;
+
+  if (priced && p.data.bookingId) {
+    const [b] = await db.select({ currency: s.bookings.currency, status: s.bookings.status }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
+    if (b) { currency = b.currency; bookingStatus = b.status; }
+    const [row] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, p.data.bookingId), eq(s.payments.status, "PAID")));
+    paidSoFar = row?.paid ?? 0;
+  }
+  if (priced) price = calcSellPrice(costPrice!, marginPercent!);
+
+  // Repricing a cancelled or completed trip, or one that already has money paid on it, needs a clear "are you sure" — it is easy to do by
+  // accident (editing an old itinerary as a starting point) and the change is otherwise silent.
+  if (priced && p.data.bookingId && !p.data.force) {
+    const reasons: string[] = [];
+    if (bookingStatus === "CANCELLED") reasons.push("this order is cancelled");
+    if (bookingStatus === "COMPLETED") reasons.push("this trip is already marked completed");
+    if (paidSoFar > 0) reasons.push(`${money(paidSoFar, currency)} has already been paid on it`);
+    if (reasons.length) return { ok: false, needsConfirm: true, message: `This will change the price on an order where ${reasons.join(" and ")}. The total will become ${money(price!, currency)}. Update it anyway?` };
+  }
+
   if (priced) {
-    // The price shown to the guest is always calculated here, from the cost and margin just entered, never trusted from the browser.
-    const price = calcSellPrice(costPrice, marginPercent);
-    let currency = "USD"; if (p.data.bookingId) { const [b] = await db.select({ currency: s.bookings.currency }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)); if (b) currency = b.currency; }
-    content.priceLabel = `${money(price, currency)} for this trip`;
+    content.priceLabel = `${money(price!, currency)} for this trip`;
     if (p.data.bookingId) {
-      await db.update(s.bookings).set({ subtotal: price, total: price, costTotal: costPrice }).where(eq(s.bookings.id, p.data.bookingId));
-      bookingNote = ` The linked order's total is now ${money(price, currency)}.`;
+      const [before] = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
+      await db.update(s.bookings).set({ subtotal: price!, total: price!, costTotal: costPrice! }).where(eq(s.bookings.id, p.data.bookingId));
+      if (before && before.total !== price) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Price changed from ${money(before.total, currency)} to ${money(price!, currency)} via the itinerary (cost ${money(costPrice!, currency)}, margin ${marginPercent}%) by ${u.email ?? u.uid}.` });
+      bookingNote = ` The linked order's total is now ${money(price!, currency)}.`;
     }
   }
   await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, updatedAt: new Date() }).where(eq(s.itineraries.id, id));

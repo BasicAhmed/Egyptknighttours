@@ -27,8 +27,9 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const upd = (fn: (n: ItineraryContent) => void) => setC((p) => { const n = structuredClone(p); fn(n); return n; });
   const updDay = (i: number, fn: (d: Day) => void) => upd((n) => fn(n.days[i]));
 
-  async function save(): Promise<boolean> {
-    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin) }));
+  async function save(force = false): Promise<boolean> {
+    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), force }));
+    if (!r.ok && r.needsConfirm) { if (window.confirm(r.message)) return save(true); setMsg({ t: "Not saved — the order was left as it was.", err: true }); return false; }
     setMsg({ t: r.message, err: !r.ok }); return r.ok;
   }
   const run = (fn: () => Promise<unknown>) => start(async () => { if (await save()) await fn(); });

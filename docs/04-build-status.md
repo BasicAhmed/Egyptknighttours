@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Safety check before repricing a sensitive order
+Saving cost + profit % on an itinerary that is linked to an order which is cancelled, already marked completed, or already has a payment recorded now asks "are you sure?" first, naming the reason and the new total, instead of silently overwriting it. Confirming applies the change and leaves a note in that order's activity timeline recording the old total, the new total, who changed it and when. Declining leaves the order exactly as it was. An order with no payments and a normal status still saves instantly, with no prompt.
+
 ## Itinerary creation, redesigned for clarity
 Itineraries > + New itinerary opens one picker page with four clear, self-contained cards instead of a single buried form:
 - **For a customer**: pick one of your orders; name, dates and traveler count are filled in automatically.
