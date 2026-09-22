@@ -1,6 +1,6 @@
 import { db, schema as s } from "@/db";
 import { and, eq, sql } from "drizzle-orm";
-import { calculateQuote, type Quote } from "./pricing";
+import { calculateQuote, tourBaseAmount, type Quote } from "./pricing";
 import { z } from "zod";
 import { quoteSchema, bookingSchema } from "./validation";
 import { signRef } from "./booking-token";
@@ -74,6 +74,8 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
       dietary: input.dietary ?? null, accessibility: input.accessibility ?? null,
       addonsJson: JSON.stringify(chosen.map((a) => ({ id: a.id, name: a.name, price: a.price, unit: a.unit }))),
       subtotal: quote.subtotal, discount: quote.discount, total: quote.total, deposit: quote.deposit, payMode: input.payMode,
+      // A snapshot of what this trip costs to run, at the moment of booking, so later cost or margin edits never change past profit figures. Null when the tour has no cost set.
+      costTotal: tour.costPrice != null ? tourBaseAmount(tour.costPrice, tour.pricingModel, input.adults, input.children, tour.childPercent) : null,
       couponId: coupon?.id ?? null, source: input.source ?? null, status: "PENDING",
     }).returning();
 

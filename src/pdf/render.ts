@@ -2,7 +2,8 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import InvoicePdf from "./InvoicePdf";
 import ItineraryPdf from "./ItineraryPdf";
-import type { InvoiceData, ItineraryPdfData } from "./types";
+import FinanceReportPdf from "./FinanceReportPdf";
+import type { InvoiceData, ItineraryPdfData, FinanceReportData } from "./types";
 
 // The embedded fonts cover Latin text. Swap arrows and strip emoji so nothing renders as a broken glyph.
 export function pdfSafe<T>(v: T): T {
@@ -17,4 +18,8 @@ export async function renderInvoice(d: InvoiceData): Promise<Buffer> {
 
 export async function renderItinerary(d: ItineraryPdfData): Promise<Buffer> {
   return renderToBuffer(React.createElement(ItineraryPdf, { d: { ...pdfSafe({ ...d, images: {} }), images: d.images } }) as never);
+}
+
+export async function renderFinanceReport(d: FinanceReportData): Promise<Buffer> {
+  return renderToBuffer(React.createElement(FinanceReportPdf, { d: pdfSafe(d) }) as never);
 }

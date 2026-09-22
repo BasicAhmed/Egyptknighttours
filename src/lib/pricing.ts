@@ -14,22 +14,28 @@ export type Quote = {
   lines: { label: string; amount: number }[];
 };
 export const DEPOSIT_PERCENT = 50;
-const r2 = (n: number) => Math.round(n * 100) / 100;
+export const r2 = (n: number) => Math.round(n * 100) / 100;
+
+// The base tour amount for a unit price under a tour's pricing rules (per person with a discounted child rate, or a flat per-group price).
+// Used both for the price customers pay and, with the tour's cost instead of its price, for the cost snapshot behind profit reporting.
+export function tourBaseAmount(unit: number, pricingModel: string, adults: number, children: number, childPercent: number): number {
+  if (pricingModel === "PER_GROUP") return r2(unit);
+  return r2(unit * adults + unit * (childPercent / 100) * children);
+}
+
+// The list price shown to customers when a tour is priced as cost + profit margin.
+export function calcSellPrice(costPrice: number, marginPercent: number): number { return r2(costPrice * (1 + marginPercent / 100)); }
 
 export function calculateQuote(i: QuoteInput): Quote {
   const t = i.tour;
   const unit = t.discountPrice ?? t.price;
   const lines: Quote["lines"] = [];
-  let base: number;
+  const base = tourBaseAmount(unit, t.pricingModel, i.adults, i.children, t.childPercent);
   if (t.pricingModel === "PER_GROUP") {
-    base = unit;
-    lines.push({ label: `Tour (up to ${t.maxTravelers} travelers)`, amount: r2(base) });
+    lines.push({ label: `Tour (up to ${t.maxTravelers} travelers)`, amount: base });
   } else {
-    const adultsAmt = unit * i.adults;
-    const childAmt = unit * (t.childPercent / 100) * i.children;
-    base = adultsAmt + childAmt;
-    lines.push({ label: `${i.adults} adult${i.adults === 1 ? "" : "s"} × ${unit}`, amount: r2(adultsAmt) });
-    if (i.children > 0) lines.push({ label: `${i.children} child${i.children === 1 ? "" : "ren"} × ${r2(unit * t.childPercent / 100)}`, amount: r2(childAmt) });
+    lines.push({ label: `${i.adults} adult${i.adults === 1 ? "" : "s"} × ${unit}`, amount: r2(unit * i.adults) });
+    if (i.children > 0) lines.push({ label: `${i.children} child${i.children === 1 ? "" : "ren"} × ${r2(unit * t.childPercent / 100)}`, amount: r2(unit * (t.childPercent / 100) * i.children) });
     if (i.infants > 0) lines.push({ label: `${i.infants} infant${i.infants === 1 ? "" : "s"} (free)`, amount: 0 });
   }
   const privateExtra = i.isPrivate ? t.privateSurcharge : 0;

@@ -43,6 +43,9 @@ export const tours = sqliteTable("tours", {
   seoTitle: text("seo_title").notNull().default(""), seoDescription: text("seo_description").notNull().default(""),
   status: text("status").notNull().default("DRAFT"), // DRAFT PUBLISHED ARCHIVED
   popularity: integer("popularity").notNull().default(0),
+  // Cost-based pricing (owner/manager only). priceMode MARGIN means `price` above is calculated as costPrice * (1 + marginPercent/100) and kept in sync on every save.
+  priceMode: text("price_mode").notNull().default("MANUAL"), // MANUAL | MARGIN
+  costPrice: real("cost_price"), marginPercent: real("margin_percent"),
   createdAt: createdAt(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (t) => [index("tours_status_idx").on(t.status), index("tours_destination_idx").on(t.destinationId)]);
@@ -88,6 +91,8 @@ export const bookings = sqliteTable("bookings", {
   preferredLanguage: text("preferred_language"), guideId: text("guide_id"), driver: text("driver"), vehicle: text("vehicle"),
   flightArrival: text("flight_arrival"), flightDeparture: text("flight_departure"), roomType: text("room_type"), pickupTime: text("pickup_time"),
   occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"), guideNotes: text("guide_notes"),
+  // Snapshot of the tour's cost for this booking's people count, taken at booking time so later cost changes never rewrite past profit. Null when the tour had no cost set, or for a manually-priced custom order.
+  costTotal: real("cost_total"),
   createdAt: createdAt(),
 }, (t) => [index("bookings_customer_idx").on(t.customerId), index("bookings_tour_idx").on(t.tourId), index("bookings_status_idx").on(t.status), index("bookings_travel_idx").on(t.travelDate), index("bookings_created_idx").on(t.createdAt)]);
 

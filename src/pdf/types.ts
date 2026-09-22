@@ -20,3 +20,10 @@ export type ItineraryContent = {
   priceLabel: string; paymentTerms: string; ctaUrl: string; ctaLabel: string; sceneKind: string;
 };
 export type ItineraryPdfData = { content: ItineraryContent; ref: string; company: Company; ctaUrl: string; generatedAt: string; images: Record<string, string> };
+
+export type FinanceReportData = {
+  label: string; from: string; to: string; currency: string; generatedAt: string; company: Company;
+  revenue: number; cost: number; profit: number; margin: number | null;
+  paymentCount: number; bookingCount: number; noCostCount: number; noCostRevenue: number;
+  byTour: { title: string; bookings: number; revenue: number; cost: number; profit: number; margin: number | null }[];
+};

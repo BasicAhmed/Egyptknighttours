@@ -49,5 +49,8 @@ export const tourSchema = z.object({
   maxTravelers: z.coerce.number().int().min(1).max(100),
   imageUrl: z.string().trim().max(500).refine((v) => v === "" || /^\/api\/media\/[\w-]{8,64}$/.test(v) || /^https:\/\//i.test(v), "Use the Upload photo button").optional().or(z.literal("")),
   status: z.enum(TOUR_STATUS), seoTitle: z.string().trim().max(70), seoDescription: z.string().trim().max(170),
+  priceMode: z.enum(["MANUAL", "MARGIN"]).default("MANUAL"),
+  costPrice: z.coerce.number().min(0).max(100000).optional().nullable(),
+  marginPercent: z.coerce.number().min(0).max(500).optional().nullable(),
 });
 export const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1).max(200) });

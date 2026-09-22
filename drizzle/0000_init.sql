@@ -80,6 +80,7 @@ CREATE TABLE `bookings` (
 	`emergency_contact` text,
 	`visa_status` text,
 	`guide_notes` text,
+	`cost_total` real,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`tour_id`) REFERENCES `tours`(`id`) ON UPDATE no action ON DELETE no action,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,
@@ -402,6 +403,9 @@ CREATE TABLE `tours` (
 	`seo_description` text DEFAULT '' NOT NULL,
 	`status` text DEFAULT 'DRAFT' NOT NULL,
 	`popularity` integer DEFAULT 0 NOT NULL,
+	`price_mode` text DEFAULT 'MANUAL' NOT NULL,
+	`cost_price` real,
+	`margin_percent` real,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`destination_id`) REFERENCES `destinations`(`id`) ON UPDATE no action ON DELETE no action
