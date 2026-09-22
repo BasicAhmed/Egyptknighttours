@@ -20,7 +20,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
     pdf: "Fill in the trip details and the day-by-day plan, then use Preview above to download the PDF.",
   };
   const [it] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!it) notFound();
-  const bookings = await db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(60);
+  const bookings = await db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(60);
   const linkedCurrency = it.bookingId ? (await db.select({ currency: s.bookings.currency }).from(s.bookings).where(eq(s.bookings.id, it.bookingId)))[0]?.currency ?? "USD" : "USD";
   const docs = await db.select().from(s.documents).where(eq(s.documents.itineraryId, id)).orderBy(desc(s.documents.createdAt));
   const dests = await db.select({ id: s.destinations.id, name: s.destinations.name }).from(s.destinations).orderBy(s.destinations.name);
@@ -33,7 +33,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
       {sp.flow && flowTip[sp.flow] && <div className="mt-3 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4 text-sm"><b>Next step: </b>{flowTip[sp.flow]}</div>}
       <ItineraryEditor id={it.id} isTemplate={it.isTemplate} status={it.status} currency={linkedCurrency} initial={{ name: it.name, description: it.description, bookingId: it.bookingId, costPrice: it.costPrice, marginPercent: it.marginPercent, content: parseJson<ItineraryContent>(it.content, null as never) }}
-        bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}` }))}
+        bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}`, travelers: Math.max(1, b.adults + b.children) }))}
         docs={docs.map((d) => ({ id: d.id, number: d.number, sent: d.sentAt ? d.sentAt.toISOString().slice(0, 10) : null, created: d.createdAt.toISOString().slice(0, 10) }))} />
       {canTour && (
         <section className="mt-6 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-5">

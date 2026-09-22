@@ -37,6 +37,11 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Prices are per person, and the itinerary editor is now tabs, not one long scroll
+Cost and margin (tours, itineraries) are always per person. When an itinerary is linked to an order, the price per person is multiplied automatically by that order's travelers (adults + children, infants free) to get the total — add or remove a traveler on the order and the price follows, nothing to recalculate by hand. The itinerary PDF's price line states both, e.g. "$90 per person — $360 total for 4 travelers".
+
+The itinerary editor is now four tabs — Content, Days, Price, Booking & sharing — instead of one long page. Price settings has its own tab, entirely separate from the trip content. Every section within a tab is its own collapsible panel, so nothing forces a long scroll to find one field.
+
 ## One rule for pricing: cost + profit margin, everywhere, no manual price
 Redesigned so price always comes from a cost and a profit margin, never typed in directly, and lives in exactly one place per situation:
 - **Tours** (the public catalog price, before any customer exists): cost + profit % is now the only way to price a tour. Content editors can see the current price but cannot set or change it — only Super Admin/Manager can, and a brand-new tour a content editor creates is forced to stay a Draft, at $0, until a manager prices it.
