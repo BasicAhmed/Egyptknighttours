@@ -31,6 +31,14 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - **Cost snapshot per booking**: each booking stores the tour's cost at the moment it was booked, so editing a tour's cost or margin later never changes the profit already recorded for past bookings.
 - **Finance page** (`/admin/finance`, Super Admin/Manager only): a month picker, revenue/cost/profit/margin for the month on a cash basis (a payment counts in the month it was recorded as paid; each payment carries its proportional share of that booking's cost), a per-tour breakdown, and a flag for bookings with no cost recorded. A matching branded PDF can be downloaded for any month.
 
+## Itinerary creation, redesigned for clarity
+Itineraries > + New itinerary opens one picker page with four clear, self-contained cards instead of a single buried form:
+- **For a customer**: pick one of your orders; name, dates and traveler count are filled in automatically.
+- **For the website (a tour)**: build the plan, then a highlighted panel below lets you publish it as a tour.
+- **Create a template**: name required up front, since that is how you will find it again; can start from another template.
+- **Generate a quick PDF**: a one-off, not linked to anything.
+Each one can start blank or from an existing template. After creating, the editor shows a one-line "Next step" tip matching what was chosen, so nobody has to guess what to do after clicking Create. Importing from an existing PDF is still available, tucked under "Or import from a PDF you already have" on the list page.
+
 ## Migration tools (moving from another website)
 - **Redirects** (Settings > Redirects): old address to new page, paste many at once, test box, built-in rules for WordPress tour-site addresses. Old addresses that match no page now flow through a catch-all that applies them; otherwise a normal 404.
 - **Tour import** (Tours > Import CSV): creates draft tours from a spreadsheet, copies photos from a named https website (private networks blocked), creates missing destinations. **+ New destination** in Destinations.

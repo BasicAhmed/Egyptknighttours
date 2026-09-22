@@ -13,17 +13,14 @@ export default async function Itineraries({ searchParams }: { searchParams: Prom
   const u = await requireStaff(); const sp = await searchParams; const can = PERMS.itineraries.includes(u.role);
   const tab = sp.tab === "templates" ? "templates" : "mine";
   const rows = await db.select({ i: s.itineraries, ref: s.bookings.ref }).from(s.itineraries).leftJoin(s.bookings, eq(s.itineraries.bookingId, s.bookings.id)).where(eq(s.itineraries.isTemplate, tab === "templates")).orderBy(desc(s.itineraries.updatedAt));
-  const templates = await db.select().from(s.itineraries).where(and(eq(s.itineraries.isTemplate, true)));
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="h2">Itineraries</h1>
-        <div className="flex gap-2"><Link href="/admin/itineraries" className={`btn ${tab === "mine" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Itineraries</Link><Link href="/admin/itineraries?tab=templates" className={`btn ${tab === "templates" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Templates</Link></div></div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h1 className="h2">Itineraries</h1><div className="mt-2 flex gap-2"><Link href="/admin/itineraries" className={`btn ${tab === "mine" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Itineraries</Link><Link href="/admin/itineraries?tab=templates" className={`btn ${tab === "templates" ? "btn-dark" : "btn-outline"} !min-h-[40px] !py-2`}>Templates</Link></div></div>
+        {can && <Link href="/admin/itineraries/new" className="btn btn-primary !min-h-[46px]">+ New itinerary</Link>}
+      </div>
       <div className="mt-4"><Notice n={sp.n} e={sp.e} /></div>
-      {can && <div className="mt-2"><PdfImport defaultTemplate={tab === "templates"} /></div>}
-      {can && tab === "mine" && <form action={createItinerary} className="mt-3 grid gap-3 rounded-2xl border border-ink/10 bg-white p-4 sm:grid-cols-[1fr_1fr_auto]">
-        <div><label className="label">Start from</label><select name="templateId" aria-label="Start from" className="input"><option value="">Blank itinerary</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
-        <div><label className="label">Name</label><input name="name" placeholder="e.g. Ahmed family, October" className="input" /></div>
-        <div className="flex items-end"><button className="btn btn-primary w-full">Create</button></div></form>}
+      {can && <details className="mt-2 rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer text-sm font-semibold text-ink/70">Or import from a PDF you already have</summary><div className="mt-3"><PdfImport defaultTemplate={tab === "templates"} /></div></details>}
       <ul className="mt-5 space-y-3">
         {rows.map(({ i, ref }) => { const c = parseJson<ItineraryContent>(i.content, { days: [] } as never); return (
           <li key={i.id} className="card p-4"><div className="flex flex-wrap items-center justify-between gap-3">

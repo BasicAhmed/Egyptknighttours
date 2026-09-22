@@ -11,8 +11,14 @@ import Notice from "@/components/Notice";
 import type { ItineraryContent } from "@/pdf/types";
 export const dynamic = "force-dynamic";
 
-export default async function EditItinerary({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ n?: string; e?: string }> }) {
+export default async function EditItinerary({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ n?: string; e?: string; flow?: string }> }) {
   const u = await requireStaff("itineraries"); const { id } = await params; const sp = await searchParams;
+  const flowTip: Record<string, string> = {
+    customer: "This is set up for your customer, with their name, dates and travelers filled in. Build the day-by-day plan, then use Payment & documents on their order to send the PDF.",
+    tour: "Build the day-by-day plan here. When it looks right, scroll down to \u201cAdd this itinerary as a tour on the website\u201d to publish it.",
+    template: "This is a template. Fill it in with your usual plan for this trip, then use it to start new itineraries from the New itinerary page.",
+    pdf: "Fill in the trip details and the day-by-day plan, then use Preview above to download the PDF.",
+  };
   const [it] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!it) notFound();
   const bookings = await db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(60);
   const docs = await db.select().from(s.documents).where(eq(s.documents.itineraryId, id)).orderBy(desc(s.documents.createdAt));
@@ -23,6 +29,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
     <div>
       <Link href={it.isTemplate ? "/admin/itineraries?tab=templates" : "/admin/itineraries"} className="text-sm text-ink/65">← Itineraries</Link>
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
+      {sp.flow && flowTip[sp.flow] && <div className="mt-3 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4 text-sm"><b>Next step: </b>{flowTip[sp.flow]}</div>}
       <ItineraryEditor id={it.id} isTemplate={it.isTemplate} status={it.status} initial={{ name: it.name, description: it.description, bookingId: it.bookingId, content: parseJson<ItineraryContent>(it.content, null as never) }}
         bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}` }))}
         docs={docs.map((d) => ({ id: d.id, number: d.number, sent: d.sentAt ? d.sentAt.toISOString().slice(0, 10) : null, created: d.createdAt.toISOString().slice(0, 10) }))} />

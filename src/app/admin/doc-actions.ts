@@ -53,8 +53,12 @@ function clean(c: z.infer<typeof contentSchema>): ItineraryContent {
 
 export async function createItinerary(fd: FormData) {
   const u = await requireStaff("itineraries");
-  const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId: String(fd.get("bookingId") ?? ""), name: String(fd.get("name") ?? ""), userId: u.uid });
-  await audit(u.uid, "CREATE", "itinerary", it.id); return redirect(`/admin/itineraries/${it.id}`);
+  const kind = String(fd.get("kind") ?? ""); // customer | tour | template | pdf — decides the starting point, chosen on the "New itinerary" picker
+  const bookingId = String(fd.get("bookingId") ?? "");
+  if (kind === "customer" && !bookingId) return go("/admin/itineraries/new", "Choose an order first", true);
+  const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId, name: String(fd.get("name") ?? ""), userId: u.uid, isTemplate: kind === "template" });
+  await audit(u.uid, "CREATE", "itinerary", it.id);
+  return redirect(`/admin/itineraries/${it.id}${kind ? `?flow=${kind}` : ""}`);
 }
 export async function saveItinerary(id: string, payload: string) {
   const u = await requireStaff("itineraries");
