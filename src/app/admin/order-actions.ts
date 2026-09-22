@@ -1,4 +1,5 @@
 "use server";
+import { calcSellPrice } from "../../lib/pricing";
 import { db, schema as s } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -82,6 +83,9 @@ export async function orderUpdate(id: string, input: Record<string, unknown>): P
 }
 
 const newSchema = z.object({
+  priceMode: z.enum(["MANUAL", "MARGIN"]).optional().default("MANUAL"),
+  costPrice: z.coerce.number().min(0).max(10_000_000).optional().nullable(),
+  marginPercent: z.coerce.number().min(0).max(500).optional().nullable(),
   name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200), whatsapp: z.string().trim().min(5).max(30), country: z.string().trim().max(80).optional().default(""), nationality: z.string().trim().max(60).optional().default(""),
   tourId: z.string().min(1).max(60), customTitle: z.string().trim().max(160).optional().default(""), travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), total: z.coerce.number().min(0).max(10_000_000), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
@@ -100,11 +104,17 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
   const d = p.data; const email = d.email.toLowerCase();
   const custom = d.tourId === "custom"; if (custom && d.customTitle.length < 3) return { ok: false, message: "Enter the name of the experience" };
   const tourId = custom ? await ensureCustomTour() : d.tourId;
+  // A quoted price for a one-off custom trip: cost and profit % are entered by whoever builds the quote, but the total charged to
+  // the customer is always calculated here on the server, so it can never be tampered with from the browser.
+  const useMargin = d.priceMode === "MARGIN" && d.costPrice != null && d.marginPercent != null;
+  if (d.priceMode === "MARGIN" && !useMargin) return { ok: false, message: "Enter both the cost and the profit percentage, or switch back to a manual total." };
+  const total = useMargin ? calcSellPrice(d.costPrice!, d.marginPercent!) : d.total;
+  const costTotal = useMargin ? d.costPrice! : null;
   const ref = await newBookingRef();
   const id = await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: d.name, whatsapp: d.whatsapp, phone: d.whatsapp, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
-    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: d.total, discount: 0, total: d.total, deposit: Math.round(d.total * d.depositPercent) / 100, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
+    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: total, discount: 0, total, costTotal, deposit: Math.round(total * d.depositPercent) / 100, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
     await tx.insert(s.travelers).values([{ bookingId: b.id, fullName: d.name, type: "ADULT", nationality: d.nationality || null }]);
     await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
     return b.id;
