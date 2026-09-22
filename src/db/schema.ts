@@ -121,6 +121,8 @@ export const itineraries = sqliteTable("itineraries", {
   status: text("status").notNull().default("DRAFT"), // DRAFT READY SENT
   bookingId: text("booking_id").references(() => bookings.id), sourceTemplateId: text("source_template_id"), tourId: text("tour_id"),
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
+  // What this specific trip costs and the profit margin on it. Every itinerary can have its own, since the same tour can cost differently for different guests.
+  costPrice: real("cost_price"), marginPercent: real("margin_percent"),
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (t) => [index("itineraries_template_idx").on(t.isTemplate), index("itineraries_booking_idx").on(t.bookingId)]);
 

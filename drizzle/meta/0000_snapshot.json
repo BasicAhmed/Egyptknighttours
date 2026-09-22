@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5120d795-870f-48e3-b272-fa6852bfb218",
+  "id": "4fdf2b95-566c-4b07-96d9-8100f85857e3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -1501,6 +1501,20 @@
         "created_by_id": {
           "name": "created_by_id",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "cost_price": {
+          "name": "cost_price",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "margin_percent": {
+          "name": "margin_percent",
+          "type": "real",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

@@ -10,9 +10,10 @@ import { saveSettings, DEFAULTS } from "@/lib/settings";
 import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
 import { createItineraryRecord } from "@/lib/itineraries";
+import { calcSellPrice } from "@/lib/pricing";
 import { cleanImageRef } from "@/lib/media";
 import { invalidate } from "@/lib/cache";
-import { parseJson } from "@/lib/format";
+import { parseJson, money } from "@/lib/format";
 import type { ItineraryContent } from "@/pdf/types";
 
 const go = (path: string, msg: string, err = false): never => redirect(`${path}${path.includes("?") ? "&" : "?"}${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
@@ -63,10 +64,27 @@ export async function createItinerary(fd: FormData) {
 export async function saveItinerary(id: string, payload: string) {
   const u = await requireStaff("itineraries");
   let raw: unknown; try { raw = JSON.parse(payload); } catch { return { ok: false, message: "Could not read the itinerary data" }; }
-  const p = z.object({ name: z.string().trim().min(1).max(120), description: str(300), bookingId: z.string().max(60).nullable().optional(), content: contentSchema }).safeParse(raw);
+  const p = z.object({
+    name: z.string().trim().min(1).max(120), description: str(300), bookingId: z.string().max(60).nullable().optional(), content: contentSchema,
+    costPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(), marginPercent: z.coerce.number().min(0).max(500).nullable().optional(),
+  }).safeParse(raw);
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
-  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(clean(p.data.content)), updatedAt: new Date() }).where(eq(s.itineraries.id, id));
-  await audit(u.uid, "UPDATE", "itinerary", id); return { ok: true, message: "Saved" };
+  const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
+  const priced = costPrice != null && marginPercent != null;
+  const content = clean(p.data.content);
+  let bookingNote = "";
+  if (priced) {
+    // The price shown to the guest is always calculated here, from the cost and margin just entered, never trusted from the browser.
+    const price = calcSellPrice(costPrice, marginPercent);
+    let currency = "USD"; if (p.data.bookingId) { const [b] = await db.select({ currency: s.bookings.currency }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)); if (b) currency = b.currency; }
+    content.priceLabel = `${money(price, currency)} for this trip`;
+    if (p.data.bookingId) {
+      await db.update(s.bookings).set({ subtotal: price, total: price, costTotal: costPrice }).where(eq(s.bookings.id, p.data.bookingId));
+      bookingNote = ` The linked order's total is now ${money(price, currency)}.`;
+    }
+  }
+  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, updatedAt: new Date() }).where(eq(s.itineraries.id, id));
+  await audit(u.uid, "UPDATE", "itinerary", id); return { ok: true, message: bookingNote ? `Saved.${bookingNote}` : "Saved" };
 }
 export async function duplicateItinerary(id: string) {
   const u = await requireStaff("itineraries"); const [t] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!t) return go("/admin/itineraries", "Not found", true);

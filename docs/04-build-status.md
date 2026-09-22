@@ -31,6 +31,12 @@ All demo tours, prices, destination text and guides in the seed are **placeholde
 - **Cost snapshot per booking**: each booking stores the tour's cost at the moment it was booked, so editing a tour's cost or margin later never changes the profit already recorded for past bookings.
 - **Finance page** (`/admin/finance`, Super Admin/Manager only): a month picker, revenue/cost/profit/margin for the month on a cash basis (a payment counts in the month it was recorded as paid; each payment carries its proportional share of that booking's cost), a per-tour breakdown, and a flag for bookings with no cost recorded. A matching branded PDF can be downloaded for any month.
 
+## Cost + profit % pricing on the itinerary itself
+Every itinerary (not just tours or custom orders) can carry its own cost and profit margin, since the same trip can genuinely cost differently for different guests. In the editor's "Closing page" section, a Price settings panel lets staff enter the true cost and a margin; the price shown to the guest is calculated on the server, the same tamper-proof way as tours and custom orders. Saving it:
+- writes the calculated price into the itinerary PDF's price line automatically ("$520 for this trip"),
+- and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
+Leaving both fields blank keeps the old free-text price line, unchanged.
+
 ## Itinerary creation, redesigned for clarity
 Itineraries > + New itinerary opens one picker page with four clear, self-contained cards instead of a single buried form:
 - **For a customer**: pick one of your orders; name, dates and traveler count are filled in automatically.
