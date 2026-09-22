@@ -24,8 +24,8 @@ export default async function TourForm({ tour, error, canFinance = false }: { to
     {sel("activityLevel", [["EASY", "Easy"], ["MODERATE", "Moderate"], ["ACTIVE", "Active"]], tour?.activityLevel)}
     {inp("durationHours", "Duration (hours)", tour?.durationHours ?? 8, "number")}{inp("durationDays", "Duration (days)", tour?.durationDays ?? 1, "number")}
     {sel("pricingModel", [["PER_PERSON", "Per person"], ["PER_GROUP", "Per group"]], tour?.pricingModel)}
-    {canFinance ? <TourPricingFields priceMode={tour?.priceMode ?? "MANUAL"} price={tour?.price} discountPrice={tour?.discountPrice} costPrice={tour?.costPrice} marginPercent={tour?.marginPercent} />
-      : <>{inp("price", "Price (USD)", tour?.price, "number")}{inp("discountPrice", "Discount price (optional)", tour?.discountPrice, "number")}</>}
+    {canFinance ? <TourPricingFields discountPrice={tour?.discountPrice} costPrice={tour?.costPrice} marginPercent={tour?.marginPercent} />
+      : <div className="sm:col-span-2 rounded-xl bg-ink/5 p-3 text-sm text-ink/65">Price: <b className="text-ink">{tour?.price != null ? `$${tour.price}` : "not set"}</b>. Only a manager can set the cost and profit margin that decide this price.</div>}
     {inp("childPercent", "Child price % of adult", tour?.childPercent ?? 50, "number")}{inp("privateSurcharge", "Private upgrade (flat, USD)", tour?.privateSurcharge ?? 0, "number")}
     {inp("maxTravelers", "Max travelers", tour?.maxTravelers ?? 12, "number")}
     <div className="flex items-center gap-6 pt-6 text-sm"><label className="flex items-center gap-2"><input type="checkbox" name="isPrivateAvailable" defaultChecked={tour?.isPrivateAvailable ?? true} className="h-5 w-5 accent-black" />Private</label><label className="flex items-center gap-2"><input type="checkbox" name="isGroupAvailable" defaultChecked={tour?.isGroupAvailable ?? true} className="h-5 w-5 accent-black" />Shared</label></div>

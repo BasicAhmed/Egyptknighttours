@@ -216,6 +216,7 @@ CREATE TABLE `itineraries` (
 	`created_by_id` text,
 	`cost_price` real,
 	`margin_percent` real,
+	`intent` text DEFAULT 'pdf' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`updated_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action,

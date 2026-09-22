@@ -37,6 +37,15 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## One rule for pricing: cost + profit margin, everywhere, no manual price
+Redesigned so price always comes from a cost and a profit margin, never typed in directly, and lives in exactly one place per situation:
+- **Tours** (the public catalog price, before any customer exists): cost + profit % is now the only way to price a tour. Content editors can see the current price but cannot set or change it — only Super Admin/Manager can, and a brand-new tour a content editor creates is forced to stay a Draft, at $0, until a manager prices it.
+- **"+ New order"**: no longer asks for any price at all — no manual total, no cost + margin, no deposit %. It only captures the customer and trip, then goes straight to the itinerary picker with that order pre-selected, because that is the next and only place to price it.
+- **The itinerary**: the single source of guest-specific pricing. Cost + profit % is required the moment an itinerary is linked to a real order — saving is blocked with a clear message until both are filled in. There is no manual price line anywhere anymore.
+- **Editing an order's details** no longer includes a total field either — only an itinerary's cost + margin can change what an order is worth.
+- **Every order now shows its own cost, profit and margin** directly in the Payment tab (Super Admin/Manager only), instead of that being invisible outside the monthly Finance report.
+- **An itinerary can only ever become a website tour if it was started that way.** Each itinerary now remembers why it was created (for a customer, for the website, or a quick PDF); the "publish as a tour" option only appears for ones made with "For the website (a tour)", so a customer's private itinerary can never accidentally go public.
+
 ## Safety check before repricing a sensitive order
 Saving cost + profit % on an itinerary that is linked to an order which is cancelled, already marked completed, or already has a payment recorded now asks "are you sure?" first, naming the reason and the new total, instead of silently overwriting it. Confirming applies the change and leaves a note in that order's activity timeline recording the old total, the new total, who changed it and when. Declining leaves the order exactly as it was. An order with no payments and a normal status still saves instantly, with no prompt.
 

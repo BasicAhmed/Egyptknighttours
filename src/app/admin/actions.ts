@@ -14,19 +14,25 @@ const lines = (v: FormDataEntryValue | null) => String(v ?? "").split("\n").map(
 const pairs = (v: FormDataEntryValue | null, a: string, b: string) => lines(v).map((l) => { const [x, ...y] = l.split("|"); return { [a]: x.trim(), [b]: y.join("|").trim() }; }).filter((o) => o[a]);
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
 
-function tourFromForm(fd: FormData, canFinance: boolean) {
+function tourFromForm(fd: FormData, canFinance: boolean, existing?: { price: number; discountPrice: number | null; costPrice: number | null; marginPercent: number | null }) {
   const raw = Object.fromEntries(fd.entries());
-  const priceMode = canFinance && raw.priceMode === "MARGIN" ? "MARGIN" : "MANUAL";
-  const costPrice = canFinance && raw.costPrice ? Number(raw.costPrice) : null;
-  const marginPercent = canFinance && raw.marginPercent ? Number(raw.marginPercent) : null;
-  if (priceMode === "MARGIN" && (costPrice == null || marginPercent == null)) return { error: "Enter both the cost and the profit percentage, or switch back to a manual price." };
-  // The price shown to customers is never taken from the form when cost + margin pricing is on: it is always calculated here, so it can never drift from the numbers staff entered.
-  const price = priceMode === "MARGIN" ? calcSellPrice(costPrice!, marginPercent!) : raw.price;
-  const parsed = tourSchema.safeParse({ ...raw, price, discountPrice: raw.discountPrice === "" ? null : raw.discountPrice, priceMode, costPrice, marginPercent });
+  let price: unknown; let costPrice: number | null; let marginPercent: number | null; let discountPrice: unknown;
+  if (canFinance) {
+    // Every tour is priced as cost + profit margin. The price shown to customers is never taken from the form: it is always calculated
+    // here, from the cost and margin just entered, so it can never drift from the numbers staff typed.
+    costPrice = raw.costPrice ? Number(raw.costPrice) : null; marginPercent = raw.marginPercent ? Number(raw.marginPercent) : null;
+    if (costPrice == null || marginPercent == null) return { error: "Enter the cost and the profit margin — every tour is priced from those, not typed in directly." };
+    price = calcSellPrice(costPrice, marginPercent); discountPrice = raw.discountPrice === "" ? null : raw.discountPrice;
+  } else {
+    // Content editors never see or touch price — whatever was already there stays exactly as it was (0 for a brand-new tour, kept as a draft until a manager prices it).
+    price = existing?.price ?? 0; costPrice = existing?.costPrice ?? null; marginPercent = existing?.marginPercent ?? null; discountPrice = existing?.discountPrice ?? null;
+  }
+  const status = !canFinance && !existing ? "DRAFT" : raw.status;
+  const parsed = tourSchema.safeParse({ ...raw, price, discountPrice, priceMode: "MARGIN", costPrice, marginPercent, status });
   if (!parsed.success) return { error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
   return { data: {
     ...parsed.data, discountPrice: parsed.data.discountPrice ?? null, imageUrl: parsed.data.imageUrl || null,
-    priceMode, costPrice: canFinance ? parsed.data.costPrice ?? null : undefined, marginPercent: canFinance ? parsed.data.marginPercent ?? null : undefined,
+    priceMode: "MARGIN" as const, costPrice, marginPercent,
     isPrivateAvailable: fd.get("isPrivateAvailable") === "on", isGroupAvailable: fd.get("isGroupAvailable") === "on",
     highlights: JSON.stringify(lines(fd.get("highlights"))), included: JSON.stringify(lines(fd.get("included"))), excluded: JSON.stringify(lines(fd.get("excluded"))),
     itinerary: JSON.stringify(pairs(fd.get("itinerary"), "title", "text")), faqs: JSON.stringify(pairs(fd.get("faqs"), "q", "a")),
@@ -35,20 +41,15 @@ function tourFromForm(fd: FormData, canFinance: boolean) {
   } };
 }
 export async function saveTour(id: string | null, fd: FormData) {
-  const u = await requireStaff("tours");
-  const r = tourFromForm(fd, PERMS.finance.includes(u.role));
+  const u = await requireStaff("tours"); const canFinance = PERMS.finance.includes(u.role);
+  const existing = id ? (await db.select({ price: s.tours.price, discountPrice: s.tours.discountPrice, costPrice: s.tours.costPrice, marginPercent: s.tours.marginPercent }).from(s.tours).where(eq(s.tours.id, id)))[0] : undefined;
+  const r = tourFromForm(fd, canFinance, existing);
   const back = id ? `/admin/tours/${id}` : "/admin/tours/new";
   if (r.error || !r.data) redirect(`${back}?error=${encodeURIComponent(r.error ?? "Invalid")}`);
   const dupe = await db.select({ id: s.tours.id }).from(s.tours).where(eq(s.tours.slug, r.data.slug));
   if (dupe.length && dupe[0].id !== id) redirect(`${back}?error=${encodeURIComponent("Slug already used")}`);
-  // A staff member who cannot see cost and margin (Content editor) must never blank out those numbers just by saving other fields.
-  const data = { ...r.data }; if (data.costPrice === undefined) delete (data as Record<string, unknown>).costPrice; if (data.marginPercent === undefined) delete (data as Record<string, unknown>).marginPercent;
-  const canFinance = PERMS.finance.includes(u.role);
-  if (id) {
-    // A staff member who cannot see cost and margin must never flip a tour's pricing mode back to manual just by saving other fields.
-    if (!canFinance) delete (data as Record<string, unknown>).priceMode;
-    await db.update(s.tours).set(data).where(eq(s.tours.id, id)); await audit(u.uid, "UPDATE", "tour", id);
-  } else { const [n] = await db.insert(s.tours).values({ ...data, priceMode: data.priceMode ?? "MANUAL" }).returning(); await audit(u.uid, "CREATE", "tour", n.id); }
+  if (id) { await db.update(s.tours).set(r.data).where(eq(s.tours.id, id)); await audit(u.uid, "UPDATE", "tour", id); }
+  else { const [n] = await db.insert(s.tours).values(r.data).returning(); await audit(u.uid, "CREATE", "tour", n.id); }
   revalidatePath("/tours"); revalidatePath("/"); invalidate("tours");
   redirect("/admin/tours?saved=1");
 }

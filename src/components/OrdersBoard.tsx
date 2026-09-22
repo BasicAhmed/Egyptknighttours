@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import OrderModal, { prefetchOrder } from "./OrderModal";
 import Modal from "./Modal";
@@ -13,7 +14,8 @@ const TABS: { key: string; label: string; stages: Stage[] | null }[] = [
   { key: "paid", label: "Confirmed", stages: ["PAID"] }, { key: "done", label: "Completed", stages: ["DONE"] }, { key: "all", label: "All", stages: null }, { key: "cancelled", label: "Cancelled", stages: ["CANCELLED"] },
 ];
 
-export default function OrdersBoard({ initial, tours, openId }: { initial: OrderRow[]; tours: { id: string; title: string }[]; openId?: string }) {
+export default function OrdersBoard({ initial, tours, openId, canFinance = false }: { initial: OrderRow[]; tours: { id: string; title: string }[]; openId?: string; canFinance?: boolean }) {
+  const router = useRouter();
   const [rows, setRows] = useState(initial); useEffect(() => { setRows(initial); }, [initial]);
   const [tab, setTab] = useState("todo"); const [q, setQ] = useState(""); const [sort, setSort] = useState<"new" | "trip">("new"); const [soon, setSoon] = useState(false);
   const [open, setOpen] = useState<{ id: string; focus: Focus | null } | null>(openId ? { id: openId, focus: null } : null);
@@ -72,22 +74,19 @@ export default function OrdersBoard({ initial, tours, openId }: { initial: Order
         {!list.length && <li className="rounded-2xl border border-dashed border-ink/20 bg-white p-10 text-center text-ink/65">{q ? "No orders match your search." : "Nothing here. You're all caught up."}</li>}
       </ul>
 
-      {openRow && <OrderModal key={openRow.id} row={openRow} focus={open?.focus} onClose={() => setOpen(null)} onChanged={update} />}
-      {creating && <NewOrder tours={tours} onClose={() => setCreating(false)} onCreated={(o) => { setRows((rs) => [rowFromOrder(o), ...rs]); setTab("todo"); setCreating(false); setOpen({ id: o.id, focus: "invoice" }); }} />}
+      {openRow && <OrderModal key={openRow.id} row={openRow} focus={open?.focus} onClose={() => setOpen(null)} onChanged={update} canFinance={canFinance} />}
+      {creating && <NewOrder tours={tours} onClose={() => setCreating(false)} onCreated={(o) => { setCreating(false); router.push(`/admin/itineraries/new?bookingId=${o.id}`); }} />}
     </div>
   );
 }
 
 function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: string }[]; onClose: () => void; onCreated: (o: Order) => void }) {
-  const [v, setV] = useState({ name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: "", adults: "2", children: "0", total: "", currency: "USD", depositPercent: "50", hotel: "", notes: "", nationality: "" });
-  const [priceMode, setPriceMode] = useState<"MANUAL" | "MARGIN">("MANUAL");
-  const [cost, setCost] = useState(""); const [margin, setMargin] = useState("");
-  const calc = cost !== "" && margin !== "" && Number(cost) >= 0 && Number(margin) >= 0 ? Math.round(Number(cost) * (1 + Number(margin) / 100) * 100) / 100 : null;
+  const [v, setV] = useState({ name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: "", adults: "2", children: "0", currency: "USD", hotel: "", notes: "", nationality: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setErr("");
-    try { const r = await orderCreate({ ...v, priceMode, costPrice: cost === "" ? null : cost, marginPercent: margin === "" ? null : margin }); if (r.ok && r.order) onCreated(r.order); else setErr(r.message); } catch { setErr("Something went wrong. Please try again."); } finally { setBusy(false); }
+    try { const r = await orderCreate(v); if (r.ok && r.order) onCreated(r.order); else setErr(r.message); } catch { setErr("Something went wrong. Please try again."); } finally { setBusy(false); }
   }
   const ctx = fieldApi(v, set, "n-", "!py-2.5");
   return (
@@ -100,23 +99,11 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
         {v.tourId === "custom" && <F k="customTitle" label="Experience name" req cls="sm:col-span-2" ph="Cruise 4 Days 3 Nights MS Ciela" />}
         <F k="travelDate" label="Travel date" type="date" req /><F k="hotel" label="Pickup (hotel or airport)" ph="Aswan Airport" />
         <F k="adults" label="Adults" type="number" req /><F k="children" label="Children" type="number" />
-        <div className="sm:col-span-2">
-          <span className="label">How this trip is priced</span>
-          <div className="flex gap-2" role="radiogroup" aria-label="Pricing method">
-            <button type="button" role="radio" aria-checked={priceMode === "MANUAL"} onClick={() => setPriceMode("MANUAL")} className={`btn !min-h-[42px] !py-2 !text-[14px] ${priceMode === "MANUAL" ? "btn-dark" : "btn-outline"}`}>Manual total</button>
-            <button type="button" role="radio" aria-checked={priceMode === "MARGIN"} onClick={() => setPriceMode("MARGIN")} className={`btn !min-h-[42px] !py-2 !text-[14px] ${priceMode === "MARGIN" ? "btn-dark" : "btn-outline"}`}>Cost + profit %</button>
-          </div>
-        </div>
-        {priceMode === "MANUAL"
-          ? <F k="total" label="Total price" type="number" req />
-          : <div><label className="label" htmlFor="n-cost">Cost of this trip (no profit)</label><input id="n-cost" type="number" min={0} step="any" className="input !py-2.5" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>}
-        {priceMode === "MARGIN" && <div><label className="label" htmlFor="n-margin">Profit margin (%)</label><input id="n-margin" type="number" min={0} step="any" className="input !py-2.5" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>}
-        {priceMode === "MARGIN" && <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm"><span className="font-semibold">Total charged to the customer: </span>{calc != null ? `$${calc.toFixed(2)}` : "Enter a cost and a profit % to see it"}</div>}<div><label className="label" htmlFor="n-cur">Currency</label><select id="n-cur" className="input !py-2.5" value={v.currency} onChange={set("currency")}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
-        <F k="depositPercent" label="Deposit required (%)" type="number" />
+        <div><label className="label" htmlFor="n-cur">Currency</label><select id="n-cur" className="input !py-2.5" value={v.currency} onChange={set("currency")}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="n-notes">Notes / special requests</label><textarea id="n-notes" className="input !py-2.5" rows={2} value={v.notes} onChange={set("notes")} /></div>
+        <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm">No price yet — the next screen creates an itinerary for this customer, where you enter the cost and profit margin that set the price.</div>
         {err && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800 sm:col-span-2">{err}</p>}
         <div className="flex gap-2 sm:col-span-2"><button disabled={busy} className="btn btn-primary !min-h-[48px] flex-1">{busy ? "Creating…" : "Create order"}</button><button type="button" onClick={onClose} className="btn btn-outline !min-h-[48px]">Cancel</button></div>
-        <p className="text-xs text-ink/65 sm:col-span-2">After creating, you'll go straight to the invoice.</p>
       </form>
     </Modal>
     </FieldCtx.Provider>

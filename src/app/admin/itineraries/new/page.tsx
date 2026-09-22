@@ -15,7 +15,7 @@ function Card({ title, blurb, children }: { title: string; blurb: string; childr
   );
 }
 
-export default async function NewItinerary({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
+export default async function NewItinerary({ searchParams }: { searchParams: Promise<{ e?: string; bookingId?: string }> }) {
   await requireStaff("itineraries"); const sp = await searchParams;
   const [bookings, templates] = await Promise.all([
     db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(80),
@@ -32,15 +32,16 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
       <Link href="/admin/itineraries" className="text-sm text-ink/65">← Itineraries</Link>
       <h1 className="mt-2 font-display text-2xl font-extrabold sm:text-3xl">New itinerary</h1>
       <p className="mt-1 max-w-2xl text-sm text-ink/65">Pick what this itinerary is for. Each one takes you straight to the day-by-day editor, ready to fill in.</p>
+      {sp.bookingId && <p className="mt-2 text-sm font-semibold text-[#17663A]">Order created. Now price it: choose "For a customer" below to build its itinerary and set the cost and profit margin.</p>}
       <div className="mt-3"><Notice e={sp.e} /></div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Card title="For a customer" blurb="Attach it to one of your orders. Their name, dates and travelers are filled in for you.">
+        <Card title="For a customer" blurb="Attach it to one of your orders. Their name, dates and travelers are filled in for you. This is where you set the price — enter the cost and profit margin and the order's total is set for you.">
           {bookings.length ? (
             <form action={createItinerary} className="grid gap-3">
               <input type="hidden" name="kind" value="customer" />
               <div><label className="label" htmlFor="c-booking">Choose the order</label>
-                <select id="c-booking" name="bookingId" required defaultValue="" className="input">
+                <select id="c-booking" name="bookingId" required defaultValue={sp.bookingId ?? ""} className="input">
                   <option value="" disabled>Search by name or booking ID…</option>
                   {bookings.map((b) => <option key={b.id} value={b.id}>{b.ref} · {b.name} · {b.date}</option>)}
                 </select>
@@ -53,7 +54,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
           )}
         </Card>
 
-        <Card title="For the website (a tour)" blurb="Build the day-by-day plan first. You can publish it as a tour on the website once it's ready.">
+        <Card title="For the website (a tour)" blurb="Build the day-by-day plan and price it, then publish it as a tour. Only an itinerary started here can ever become a website tour.">
           <form action={createItinerary} className="grid gap-3">
             <input type="hidden" name="kind" value="tour" />
             <TemplatePicker idAttr="w-template" />
@@ -70,7 +71,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
           </form>
         </Card>
 
-        <Card title="Generate a quick PDF" blurb="A one-off itinerary to fill in and download. Not linked to a customer, an order, or the website.">
+        <Card title="Generate a quick PDF" blurb="A one-off itinerary to fill in and download. Not linked to a customer or an order, and can never become a website tour.">
           <form action={createItinerary} className="grid gap-3">
             <input type="hidden" name="kind" value="pdf" />
             <TemplatePicker idAttr="p-template" />

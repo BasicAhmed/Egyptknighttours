@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "4fdf2b95-566c-4b07-96d9-8100f85857e3",
+  "id": "143b34fc-f7a5-4542-babd-67878094154d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -1518,6 +1518,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "intent": {
+          "name": "intent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pdf'"
         },
         "created_at": {
           "name": "created_at",

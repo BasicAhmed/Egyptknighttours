@@ -25,7 +25,8 @@ export default async function EditItinerary({ params, searchParams }: { params: 
   const docs = await db.select().from(s.documents).where(eq(s.documents.itineraryId, id)).orderBy(desc(s.documents.createdAt));
   const dests = await db.select({ id: s.destinations.id, name: s.destinations.name }).from(s.destinations).orderBy(s.destinations.name);
   const tour = it.tourId ? (await db.select().from(s.tours).where(eq(s.tours.id, it.tourId)))[0] : undefined;
-  const canTour = PERMS.tours.includes(u.role) && !it.isTemplate;
+  // Only an itinerary created with "For the website (a tour)" can ever be published as a tour — that has to be a deliberate choice, made at creation, never an accident on a customer's private itinerary.
+  const canTour = PERMS.tours.includes(u.role) && !it.isTemplate && (it.intent === "tour" || !!it.tourId);
   return (
     <div>
       <Link href={it.isTemplate ? "/admin/itineraries?tab=templates" : "/admin/itineraries"} className="text-sm text-ink/65">← Itineraries</Link>

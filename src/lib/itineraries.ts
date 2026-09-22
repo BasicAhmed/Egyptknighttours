@@ -4,7 +4,7 @@ import { blankItinerary, reid } from "./itinerary-templates";
 import { parseJson } from "./format";
 import type { ItineraryContent } from "@/pdf/types";
 
-export async function createItineraryRecord(o: { templateId?: string; bookingId?: string; name?: string; userId: string; isTemplate?: boolean }) {
+export async function createItineraryRecord(o: { templateId?: string; bookingId?: string; name?: string; userId: string; isTemplate?: boolean; intent?: "customer" | "tour" | "pdf" }) {
   let content: ItineraryContent = blankItinerary(); let name = (o.name ?? "").trim(); let sourceTemplateId: string | null = null;
   if (o.templateId) { const [t] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, o.templateId)); if (t) { content = reid(parseJson<ItineraryContent>(t.content, content)); sourceTemplateId = t.id; if (!name) name = o.isTemplate ? `${t.name} (copy)` : t.name; } }
   let customerLabel = "";
@@ -19,6 +19,6 @@ export async function createItineraryRecord(o: { templateId?: string; bookingId?
     }
   }
   if (!name) name = customerLabel || (o.isTemplate ? "New template" : "New itinerary");
-  const [it] = await db.insert(s.itineraries).values({ name, content: JSON.stringify(content), bookingId: o.bookingId || null, sourceTemplateId, createdById: o.userId, isTemplate: !!o.isTemplate }).returning();
+  const [it] = await db.insert(s.itineraries).values({ name, content: JSON.stringify(content), bookingId: o.bookingId || null, sourceTemplateId, createdById: o.userId, isTemplate: !!o.isTemplate, intent: o.intent ?? "pdf" }).returning();
   return it;
 }

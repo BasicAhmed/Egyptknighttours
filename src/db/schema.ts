@@ -123,6 +123,8 @@ export const itineraries = sqliteTable("itineraries", {
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
   // What this specific trip costs and the profit margin on it. Every itinerary can have its own, since the same tour can cost differently for different guests.
   costPrice: real("cost_price"), marginPercent: real("margin_percent"),
+  // What this itinerary was made for. Only a "tour" one can ever be published as a website tour — this is what makes that an explicit choice, not an accident.
+  intent: text("intent").notNull().default("pdf"), // customer | tour | pdf
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (t) => [index("itineraries_template_idx").on(t.isTemplate), index("itineraries_booking_idx").on(t.bookingId)]);
 

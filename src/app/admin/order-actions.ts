@@ -1,5 +1,4 @@
 "use server";
-import { calcSellPrice } from "../../lib/pricing";
 import { db, schema as s } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -69,27 +68,27 @@ export async function orderItineraryPdf(id: string, itineraryId: string, sendNow
   if (sendNow) { const r = await emailDocument(doc.id, u.uid); return done(id, r.ok ? `Itinerary PDF created and emailed. ${r.message}` : `Itinerary PDF created, but the email wasn't sent: ${r.message}`, true, !r.ok); }
   return done(id, `Itinerary PDF ${doc.number} created`);
 }
-const editSchema = z.object({ travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), infants: z.coerce.number().int().min(0).max(50), total: z.coerce.number().min(0).max(10_000_000), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), hotel: z.string().trim().max(200), pickupNotes: z.string().trim().max(300), requests: z.string().trim().max(1000), titleOverride: z.string().trim().max(160) });
+const editSchema = z.object({ travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), infants: z.coerce.number().int().min(0).max(50), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/), hotel: z.string().trim().max(200), pickupNotes: z.string().trim().max(300), requests: z.string().trim().max(1000), titleOverride: z.string().trim().max(160) });
 export async function orderUpdate(id: string, input: Record<string, unknown>): Promise<R> {
   const u = await requireStaff("bookings");
   const p = editSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
   const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "Order not found" };
   const d = p.data;
-  await db.update(s.bookings).set({ travelDate: d.travelDate, adults: d.adults, children: d.children, infants: d.infants, subtotal: Math.round((d.total + b.discount) * 100) / 100, total: d.total, deposit: Math.min(b.deposit, d.total), currency: d.currency, hotel: d.hotel || null, pickupLocation: d.pickupNotes || null, specialRequests: d.requests || null, titleOverride: d.titleOverride || null }).where(eq(s.bookings.id, id));
+  // Price is never edited here — only an itinerary's cost and profit margin can change what this order is worth.
+  await db.update(s.bookings).set({ travelDate: d.travelDate, adults: d.adults, children: d.children, infants: d.infants, currency: d.currency, hotel: d.hotel || null, pickupLocation: d.pickupNotes || null, specialRequests: d.requests || null, titleOverride: d.titleOverride || null }).where(eq(s.bookings.id, id));
   await syncTravelers(id);
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Order details edited` });
   await audit(u.uid, "UPDATE", "booking", id); revalidatePath("/admin");
   return done(id, "Order updated");
 }
 
+// No price is entered when creating an order. Every order's price comes from its itinerary's cost and profit margin, entered afterwards — so an
+// order is never accidentally priced by hand, and there is always one clear answer to "how much does this cost and how much profit is on it".
 const newSchema = z.object({
-  priceMode: z.enum(["MANUAL", "MARGIN"]).optional().default("MANUAL"),
-  costPrice: z.coerce.number().min(0).max(10_000_000).optional().nullable(),
-  marginPercent: z.coerce.number().min(0).max(500).optional().nullable(),
   name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200), whatsapp: z.string().trim().min(5).max(30), country: z.string().trim().max(80).optional().default(""), nationality: z.string().trim().max(60).optional().default(""),
   tourId: z.string().min(1).max(60), customTitle: z.string().trim().max(160).optional().default(""), travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), total: z.coerce.number().min(0).max(10_000_000), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
-  depositPercent: z.coerce.number().min(0).max(100), hotel: z.string().trim().max(200).optional().default(""), notes: z.string().trim().max(1000).optional().default(""),
+  adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
+  hotel: z.string().trim().max(200).optional().default(""), notes: z.string().trim().max(1000).optional().default(""),
 });
 async function ensureCustomTour() {
   const [ex] = await db.select().from(s.tours).where(eq(s.tours.slug, "custom-experience")); if (ex) return ex.id;
@@ -104,17 +103,12 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
   const d = p.data; const email = d.email.toLowerCase();
   const custom = d.tourId === "custom"; if (custom && d.customTitle.length < 3) return { ok: false, message: "Enter the name of the experience" };
   const tourId = custom ? await ensureCustomTour() : d.tourId;
-  // A quoted price for a one-off custom trip: cost and profit % are entered by whoever builds the quote, but the total charged to
-  // the customer is always calculated here on the server, so it can never be tampered with from the browser.
-  const useMargin = d.priceMode === "MARGIN" && d.costPrice != null && d.marginPercent != null;
-  if (d.priceMode === "MARGIN" && !useMargin) return { ok: false, message: "Enter both the cost and the profit percentage, or switch back to a manual total." };
-  const total = useMargin ? calcSellPrice(d.costPrice!, d.marginPercent!) : d.total;
-  const costTotal = useMargin ? d.costPrice! : null;
   const ref = await newBookingRef();
   const id = await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: d.name, whatsapp: d.whatsapp, phone: d.whatsapp, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
-    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: total, discount: 0, total, costTotal, deposit: Math.round(total * d.depositPercent) / 100, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
+    // No price yet: subtotal, total, deposit and cost all start at 0. The next step is an itinerary, where the cost and profit margin set them for real.
+    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: 0, discount: 0, total: 0, costTotal: null, deposit: 0, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
     await tx.insert(s.travelers).values([{ bookingId: b.id, fullName: d.name, type: "ADULT", nationality: d.nationality || null }]);
     await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
     return b.id;

@@ -57,7 +57,8 @@ export async function createItinerary(fd: FormData) {
   const kind = String(fd.get("kind") ?? ""); // customer | tour | template | pdf — decides the starting point, chosen on the "New itinerary" picker
   const bookingId = String(fd.get("bookingId") ?? "");
   if (kind === "customer" && !bookingId) return go("/admin/itineraries/new", "Choose an order first", true);
-  const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId, name: String(fd.get("name") ?? ""), userId: u.uid, isTemplate: kind === "template" });
+  const intent = kind === "customer" || kind === "tour" ? kind : "pdf";
+  const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId, name: String(fd.get("name") ?? ""), userId: u.uid, isTemplate: kind === "template", intent });
   await audit(u.uid, "CREATE", "itinerary", it.id);
   return redirect(`/admin/itineraries/${it.id}${kind ? `?flow=${kind}` : ""}`);
 }
@@ -72,6 +73,8 @@ export async function saveItinerary(id: string, payload: string) {
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
   const priced = costPrice != null && marginPercent != null;
+  // A price is required for any itinerary attached to a real order — there is no manual price line to fall back on.
+  if (p.data.bookingId && !priced) return { ok: false, message: "Enter the cost and the profit margin to price this order — there is no manual price." };
   const content = clean(p.data.content);
   let bookingNote = "";
   let price: number | null = null; let currency = "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;

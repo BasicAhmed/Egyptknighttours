@@ -87,9 +87,9 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
               <div><label className="label" htmlFor="ip-margin">Profit margin (%)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
               <div><span className="label">Price shown to the guest</span><p className="input flex items-center !py-2 font-semibold">{calc != null ? new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: calc % 1 ? 2 : 0 }).format(calc) : "—"}</p></div>
             </div>
-            <p className="mt-2 text-xs text-ink/65">{bookingId ? "Saving will update the linked order's total and profit tracking to match, and fill in the price line below." : "Fills in the price line below. Link this itinerary to an order above to also update its total."} Leave both blank to write the price line yourself instead.</p>
+            <p className="mt-2 text-xs text-ink/65">{bookingId ? "Required: this fills in the price line below and sets the linked order's total and profit tracking." : "Fills in the price line below. Link this itinerary to an order above to also set its total."}</p>
           </div>
-          {!priced && <In label="Price line" value={c.priceLabel} onChange={(v) => upd((n) => { n.priceLabel = v; })} ph="1,700 EUR per person (double occupancy)" />}
+          
           <In label="Button text" value={c.ctaLabel} onChange={(v) => upd((n) => { n.ctaLabel = v; })} ph="Complete your booking" />
           <Ta cls="sm:col-span-2" label="Payment terms" value={c.paymentTerms} onChange={(v) => upd((n) => { n.paymentTerms = v; })} rows={2} />
           <In cls="sm:col-span-2" label="Button link (payment link). Leave blank to use the booking tracker or WhatsApp" value={c.ctaUrl} onChange={(v) => upd((n) => { n.ctaUrl = v; })} ph="https://" />

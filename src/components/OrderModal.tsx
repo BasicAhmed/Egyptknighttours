@@ -18,7 +18,7 @@ const Card = ({ title, children, id, action }: { title: string; children: React.
 const Row = ({ k, v }: { k: string; v: React.ReactNode }) => <div className="flex justify-between gap-4 py-1 text-sm"><span className="text-ink/65">{k}</span><span className="text-right font-medium">{v}</span></div>;
 const Small = "btn btn-outline !min-h-[38px] !py-1.5 !px-3 !text-[13px]";
 
-export default function OrderModal({ row, focus, onClose, onChanged }: { row: OrderRow; focus?: Focus | null; onClose: () => void; onChanged: (o: Order) => void }) {
+export default function OrderModal({ row, focus, onClose, onChanged, canFinance = false }: { row: OrderRow; focus?: Focus | null; onClose: () => void; onChanged: (o: Order) => void; canFinance?: boolean }) {
   const router = useRouter();
   const [o, setO] = useState<Order | null>(cache.get(row.id) ?? null);
   const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
@@ -83,6 +83,17 @@ export default function OrderModal({ row, focus, onClose, onChanged }: { row: Or
         <div hidden={tab !== "ops"} onInput={() => setDirty(true)}><OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} /></div>
         {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
+          {canFinance && (o.total > 0 ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-ink/5 p-3 text-sm">
+              {o.costTotal != null ? <>
+                <span>Cost <b className="text-ink">{money(o.costTotal, o.currency)}</b></span><span className="text-ink/30">·</span>
+                <span>Profit <b className={o.total - o.costTotal >= 0 ? "text-[#17663A]" : "text-red-700"}>{money(o.total - o.costTotal, o.currency)}</b></span><span className="text-ink/30">·</span>
+                <span>Margin <b className="text-ink">{Math.round(((o.total - o.costTotal) / o.total) * 100)}%</b></span>
+              </> : <span className="text-ink/65">No cost recorded, so profit is unknown for this order.</span>}
+            </div>
+          ) : (
+            <div className="mb-3 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm font-semibold">Not priced yet — add an itinerary and enter its cost and profit margin to set this order's price.</div>
+          ))}
           <div className="flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
           {o.payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{o.payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><b className={p.status === "PAID" ? "" : "text-ink/65"}>{money(p.amount, o.currency)}{p.status !== "PAID" && ` (${p.status.toLowerCase()})`}</b></li>)}</ul>}
@@ -176,13 +187,13 @@ function NoteForm({ busy, onAdd }: { busy: boolean; onAdd: (t: string) => void }
   return <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (t.trim()) { onAdd(t); setT(""); } }}><input aria-label="Add a note" className="input !py-2" value={t} onChange={(e) => setT(e.target.value)} placeholder="Add a note, e.g. customer will pay Friday" /><button disabled={busy || !t.trim()} className="btn btn-dark !min-h-[44px]">Add</button></form>;
 }
 function EditForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: Record<string, unknown>) => void }) {
-  const [v, setV] = useState({ travelDate: o.travelDate, adults: o.adults, children: o.children, infants: o.infants, total: o.total, currency: o.currency, hotel: o.hotel, pickupNotes: o.pickupNotes, requests: o.requests, titleOverride: o.titleOverride });
+  const [v, setV] = useState({ travelDate: o.travelDate, adults: o.adults, children: o.children, infants: o.infants, currency: o.currency, hotel: o.hotel, pickupNotes: o.pickupNotes, requests: o.requests, titleOverride: o.titleOverride });
   const f = (k: keyof typeof v, label: string, type = "text", cls = "") => <div className={cls}><label className="label" htmlFor={`e-${k}`}>{label}</label><input id={`e-${k}`} type={type} className="input !py-2" value={String(v[k])} onChange={(e) => setV({ ...v, [k]: type === "number" ? e.target.value : e.target.value })} /></div>;
   return (
     <form className="grid gap-2 rounded-2xl border border-gold-600 bg-gold-500/10 p-4 sm:grid-cols-4" onSubmit={(e) => { e.preventDefault(); onSave(v); }}>
       <h3 className="font-display font-extrabold sm:col-span-4">Edit order details</h3>
       {f("titleOverride", "Custom experience name (optional)", "text", "sm:col-span-4")}
-      {f("travelDate", "Travel date", "date", "sm:col-span-2")}{f("total", "Total price", "number")}{f("currency", "Currency")}
+      {f("travelDate", "Travel date", "date", "sm:col-span-2")}{f("currency", "Currency")}
       {f("adults", "Adults", "number")}{f("children", "Children", "number")}{f("infants", "Infants", "number")}{f("hotel", "Hotel / pickup")}
       {f("pickupNotes", "Pickup notes", "text", "sm:col-span-2")}{f("requests", "Requests", "text", "sm:col-span-2")}
       <div className="sm:col-span-4"><button disabled={busy} className="btn btn-dark !min-h-[44px]">Save changes</button></div>
