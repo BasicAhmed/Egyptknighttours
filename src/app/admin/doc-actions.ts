@@ -9,7 +9,7 @@ import { createItineraryDocument, emailDocument } from "@/lib/documents";
 import { saveSettings, DEFAULTS } from "@/lib/settings";
 import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
-import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
+import { createItineraryRecord, canLinkBooking, unlinkOthers } from "@/lib/itineraries";
 import { calcSellPrice } from "@/lib/pricing";
 import { cleanImageRef } from "@/lib/media";
 import { invalidate } from "@/lib/cache";
@@ -60,6 +60,7 @@ export async function createItinerary(fd: FormData) {
   if (kind === "customer") { const check = await canLinkBooking(bookingId); if (!check.ok) return go("/admin/itineraries/new", check.message, true); }
   const intent = kind === "customer" || kind === "tour" ? kind : "pdf";
   const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId, name: String(fd.get("name") ?? ""), userId: u.uid, isTemplate: kind === "template", intent });
+  if (bookingId) await unlinkOthers(bookingId, it.id); // this itinerary replaces whichever one was linked before, never sits alongside it
   await audit(u.uid, "CREATE", "itinerary", it.id);
   return redirect(`/admin/itineraries/${it.id}${kind ? `?flow=${kind}` : ""}`);
 }
@@ -138,7 +139,9 @@ export async function generateItineraryPdf(id: string, fd?: FormData) {
 export async function attachItinerary(id: string, fd: FormData) {
   const u = await requireStaff("itineraries"); const bookingId = String(fd.get("bookingId") ?? "");
   if (bookingId) { const check = await canLinkBooking(bookingId, id); if (!check.ok) return go(`/admin/itineraries/${id}`, check.message, true); }
-  await db.update(s.itineraries).set({ bookingId: bookingId || null }).where(eq(s.itineraries.id, id)); await audit(u.uid, "ATTACH", "itinerary", id);
+  await db.update(s.itineraries).set({ bookingId: bookingId || null }).where(eq(s.itineraries.id, id));
+  if (bookingId) await unlinkOthers(bookingId, id); // replaces whichever itinerary was linked before, so only one is ever attached at once
+  await audit(u.uid, "ATTACH", "itinerary", id);
   return go(`/admin/itineraries/${id}`, bookingId ? "Attached to booking" : "Detached from booking");
 }
 

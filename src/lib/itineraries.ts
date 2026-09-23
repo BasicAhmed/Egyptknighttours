@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { blankItinerary, reid } from "./itinerary-templates";
 import { parseJson } from "./format";
 import type { ItineraryContent } from "@/pdf/types";
@@ -33,4 +33,10 @@ export async function canLinkBooking(bookingId: string, excludeItineraryId?: str
   const other = existing.filter((r) => r.id !== excludeItineraryId);
   if (other.length) return { ok: false, message: "This order already has an itinerary. Only one is allowed until the trip is marked Completed." };
   return { ok: true };
+}
+
+// Keeps the "only one itinerary per order" rule true even after a swap: whichever itinerary was linked to this booking before is
+// unlinked, so attaching a different one always replaces it rather than sitting alongside it.
+export async function unlinkOthers(bookingId: string, exceptItineraryId: string) {
+  await db.update(s.itineraries).set({ bookingId: null }).where(and(eq(s.itineraries.bookingId, bookingId), ne(s.itineraries.id, exceptItineraryId)));
 }

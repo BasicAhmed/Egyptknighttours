@@ -37,6 +37,11 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Live site check, after the domain went live
+Tested the real production site at egyptknight.com: homepage, tours list, a tour page with real photo and pricing, a destination page, FAQ, privacy policy and contact all load correctly, www redirects to the apex in one hop, and private pages (/track, /admin/login) are correctly kept out of automated/search access by robots.txt.
+
+Found and fixed one real bug: the footer on every page, and the Contact page, showed a hardcoded "Address, licence and registration details: to be added by Egypt Knight" line — it was never actually wired to Settings, even though the homepage's own contact section already correctly showed the real address. Both now pull the real address, phone and licence number from Settings > Company info, live, with no delay after saving.
+
 ## One itinerary per order, until the trip is Completed
 An order can have only one itinerary linked to it while the trip is still upcoming. The "New itinerary" picker greys out any order that already has one, saying why; a direct attempt is also rejected on the server, the same message either way. Once the order's status is Completed, that restriction lifts — a second itinerary can be attached (for example, a proposal for their next trip), through either the picker or the "Attach to a booking" panel.
 
