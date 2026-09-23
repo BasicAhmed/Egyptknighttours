@@ -56,7 +56,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
           {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
           <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
           <a className="btn btn-outline !min-h-[44px]" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
-          <CopyButton text={o.ref} label="Copy booking ID" /><CopyButton text={o.trackUrl} label="Copy customer link" />{o.reviewUrl && <><CopyButton text={o.reviewUrl} label="Copy review link" /><a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with us! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a></>}
+          <CopyButton text={o.ref} label="Copy booking ID" /><CopyButton text={o.trackUrl} label="Copy customer link" />{o.reviewUrl && <><CopyButton text={o.reviewUrl} label="Copy review link" /><a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with ${o.companyName}! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a></>}
         </div>
 
         <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">

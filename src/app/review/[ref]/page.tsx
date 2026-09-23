@@ -18,9 +18,9 @@ export default async function ReviewPage({ params, searchParams }: { params: Pro
         <h1 className="mt-1 font-display text-2xl font-extrabold leading-tight sm:text-3xl">Thank you, {d.firstName}!</h1>
         <p className="mt-2 text-white/80">We hope {d.tourTitle} was everything you hoped for. Sharing your experience helps other travelers find us — and unlocks a reward for you.</p>
       </header>
-      <ReviewForm bookingRef={d.ref} token={t ?? ""} links={d.links} code={d.code} friendDiscount={d.friendDiscount} />
+      <ReviewForm bookingRef={d.ref} token={t ?? ""} links={d.links} code={d.code} friendDiscount={d.friendDiscount} rewardSummary={d.rewardSummary} company={d.company.name} />
       {d.code && (d.referralCount > 0 || d.balance > 0) && <div className="rounded-2xl border border-ink/10 bg-white p-4 text-sm text-ink/70">
-        {d.referralCount > 0 && <p>{d.referralCount} booking{d.referralCount === 1 ? "" : "s"} so far from friends who used your code.</p>}
+        {d.referralCount > 0 && <p>{d.referralCount} booking{d.referralCount === 1 ? "" : "s"} so far from friends who used your referral code.</p>}
         {d.balance > 0 && <p className="mt-1">Your reward balance: <b className="text-ink">{d.balance}</b>. Mention it next time you book with us.</p>}
       </div>}
       <p className="text-center text-xs text-ink/65">Questions? <Link href="/contact" className="underline">Contact us</Link></p>

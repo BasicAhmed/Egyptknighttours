@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Referral message fixes
+The "Share on WhatsApp" message on the unlocked-code panel was missing everything after the discount line — no brand name, no link. It now always names Egypt Knight Tours and links to the tours page, e.g. "I just had an amazing trip with Egypt Knight Tours! Use my referral code AMIRA2D2F for 10% off their first booking. Browse their tours and book yours: https://egyptknight.com/tours". Also fixed: the button was pre-addressed to the business's own WhatsApp number instead of letting the customer pick who to send it to; a fixed-amount discount or reward showed no currency symbol ("20 off" instead of "$20 off"); the earned-reward amount was calculated but never actually shown to the customer. The word "code" on the customer-facing page now reads "referral code" throughout. The staff "Send review link" WhatsApp message now also names the business instead of saying "us".
+
 ## Sending the review link without email set up
 Once a trip is marked Completed, its order window shows "Copy review link" and "Send review link" (opens WhatsApp with the message and link ready) — so the review page can be tested, or genuinely used, before email is connected. The invite email still sends automatically once RESEND_API_KEY and EMAIL_FROM are set; these buttons work either way, as a manual alternative or backup.
 

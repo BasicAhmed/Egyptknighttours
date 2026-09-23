@@ -27,7 +27,7 @@ export async function loadReviewPage(ref: string, token?: string | null): Promis
   if (g["site.facebook"]) links.push({ key: "facebook", label: "Facebook", url: g["site.facebook"] });
   if (g["site.instagram"]) links.push({ key: "instagram", label: "Instagram", url: g["site.instagram"] });
 
-  const rewardSummary = st.rewardType === "PERCENT" ? `${st.rewardValue}% of their booking` : `a fixed reward`;
+  const rewardSummary = st.rewardType === "PERCENT" ? `${st.rewardValue}% of their booking` : `$${st.rewardValue}`;
   let code: string | null = null; let referralCount = 0; let balance = 0;
   if (rp?.couponId) {
     const [coupon] = await db.select().from(s.coupons).where(eq(s.coupons.id, rp.couponId));
@@ -38,10 +38,11 @@ export async function loadReviewPage(ref: string, token?: string | null): Promis
     }
     balance = await rewardBalance(row.c.id);
   }
+  const money = (n: number) => `$${n % 1 ? n.toFixed(2) : n}`;
   return { state: "ok", data: {
     ref: row.b.ref, firstName: row.c.name.split(" ")[0], tourTitle: row.b.titleOverride || row.t.title, company, links,
     status: rp?.status === "COMPLETED" ? "COMPLETED" : "PENDING", platforms: rp ? parsePlatforms(rp.platforms) : [],
-    friendDiscount: st.friendDiscountType === "PERCENT" ? `${st.friendDiscountValue}% off their first booking` : `${st.friendDiscountValue} off their first booking`,
+    friendDiscount: st.friendDiscountType === "PERCENT" ? `${st.friendDiscountValue}% off their first booking` : `${money(st.friendDiscountValue)} off their first booking`,
     code, rewardSummary, balance, referralCount,
   } };
 }

@@ -2,26 +2,28 @@
 import { useState } from "react";
 import { submitReview } from "@/app/review/actions";
 import CopyButton from "./CopyButton";
-import { waLink } from "@/lib/format";
 
 const PLATFORM_LABEL: Record<string, string> = { google: "Google", tripadvisor: "Tripadvisor", facebook: "Facebook", instagram: "Instagram", other: "Somewhere else" };
 
-export default function ReviewForm({ bookingRef, token, links, code: initialCode, friendDiscount }: { bookingRef: string; token: string; links: { key: string; label: string; url: string }[]; code: string | null; friendDiscount: string }) {
+export default function ReviewForm({ bookingRef, token, links, code: initialCode, friendDiscount, rewardSummary, company }: { bookingRef: string; token: string; links: { key: string; label: string; url: string }[]; code: string | null; friendDiscount: string; rewardSummary: string; company: string }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [code, setCode] = useState(initialCode);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const toggle = (k: string) => setPicked((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k]));
 
   if (code) {
-    const shareText = `I just had an amazing trip! Use my code ${code} for ${friendDiscount}: `;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const toursUrl = `${origin}/tours`;
+    const shareText = `I just had an amazing trip with ${company}! Use my referral code ${code} for ${friendDiscount}. Browse their tours and book yours: ${toursUrl}`;
     return (
       <div className="rounded-2xl border-2 border-gold-600 bg-gold-500/15 p-5 text-center">
         <p className="text-sm font-bold uppercase tracking-wide text-[#8A5A0A]">Thank you!</p>
+        <p className="mt-2 text-xs font-bold uppercase tracking-wide text-ink/65">Your referral code</p>
         <p className="mt-1 font-display text-3xl font-extrabold">{code}</p>
-        <p className="mt-2 text-sm text-ink/70">Your code. Share it and friends get {friendDiscount} — and you earn a reward every time someone books with it.</p>
+        <p className="mt-2 text-sm text-ink/70">Share your referral code and friends get {friendDiscount} — you earn {rewardSummary} every time someone books with it.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <a className="btn btn-wa !min-h-[46px]" href={waLink(shareText)} target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
-          <CopyButton text={code} label="Copy code" />
+          <a className="btn btn-wa !min-h-[46px]" href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer">Share on WhatsApp</a>
+          <CopyButton text={code} label="Copy referral code" />
         </div>
       </div>
     );
@@ -43,7 +45,7 @@ export default function ReviewForm({ bookingRef, token, links, code: initialCode
         const r = await submitReview(bookingRef, token, picked);
         if (r.ok) setCode(r.code ?? null); else setErr(r.message ?? "Something went wrong.");
         setBusy(false);
-      }}>{busy ? "Saving…" : "I've left my review — unlock my code"}</button>
+      }}>{busy ? "Saving…" : "I've left my review — unlock my referral code"}</button>
     </div>
   );
 }
