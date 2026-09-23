@@ -22,3 +22,15 @@ export async function createItineraryRecord(o: { templateId?: string; bookingId?
   const [it] = await db.insert(s.itineraries).values({ name, content: JSON.stringify(content), bookingId: o.bookingId || null, sourceTemplateId, createdById: o.userId, isTemplate: !!o.isTemplate, intent: o.intent ?? "pdf" }).returning();
   return it;
 }
+
+// A booking can have only one itinerary linked to it while the trip is still going (so staff always know which one is the real plan).
+// Once the trip is marked Completed, that restriction lifts — a new itinerary can be attached, for example a proposal for their next trip.
+export async function canLinkBooking(bookingId: string, excludeItineraryId?: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const [b] = await db.select({ status: s.bookings.status }).from(s.bookings).where(eq(s.bookings.id, bookingId));
+  if (!b) return { ok: false, message: "That order was not found." };
+  if (b.status === "COMPLETED") return { ok: true };
+  const existing = await db.select({ id: s.itineraries.id }).from(s.itineraries).where(eq(s.itineraries.bookingId, bookingId));
+  const other = existing.filter((r) => r.id !== excludeItineraryId);
+  if (other.length) return { ok: false, message: "This order already has an itinerary. Only one is allowed until the trip is marked Completed." };
+  return { ok: true };
+}

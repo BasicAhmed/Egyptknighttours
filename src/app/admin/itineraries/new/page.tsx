@@ -17,10 +17,14 @@ function Card({ title, blurb, children }: { title: string; blurb: string; childr
 
 export default async function NewItinerary({ searchParams }: { searchParams: Promise<{ e?: string; bookingId?: string }> }) {
   await requireStaff("itineraries"); const sp = await searchParams;
-  const [bookings, templates] = await Promise.all([
-    db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(80),
+  const [bookingRows, templates, linkedRows] = await Promise.all([
+    db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate, status: s.bookings.status }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(80),
     db.select({ id: s.itineraries.id, name: s.itineraries.name }).from(s.itineraries).where(eq(s.itineraries.isTemplate, true)).orderBy(s.itineraries.name),
+    db.select({ bookingId: s.itineraries.bookingId }).from(s.itineraries),
   ]);
+  // Only one itinerary is allowed per order until the trip is marked Completed — after that, another can be attached (e.g. a proposal for their next trip).
+  const linked = new Set(linkedRows.map((r) => r.bookingId).filter(Boolean));
+  const bookings = bookingRows.map((b) => ({ ...b, blocked: linked.has(b.id) && b.status !== "COMPLETED" }));
   const TemplatePicker = ({ idAttr, emptyLabel = "Blank, start from scratch" }: { idAttr: string; emptyLabel?: string }) => (
     <div><label className="label" htmlFor={idAttr}>Start from a template (optional)</label>
       <select id={idAttr} name="templateId" defaultValue="" className="input"><option value="">{emptyLabel}</option>{templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
@@ -43,7 +47,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
               <div><label className="label" htmlFor="c-booking">Choose the order</label>
                 <select id="c-booking" name="bookingId" required defaultValue={sp.bookingId ?? ""} className="input">
                   <option value="" disabled>Search by name or booking ID…</option>
-                  {bookings.map((b) => <option key={b.id} value={b.id}>{b.ref} · {b.name} · {b.date}</option>)}
+                  {bookings.map((b) => <option key={b.id} value={b.id} disabled={b.blocked}>{b.ref} · {b.name} · {b.date}{b.blocked ? " (already has an itinerary)" : ""}</option>)}
                 </select>
               </div>
               <TemplatePicker idAttr="c-template" />

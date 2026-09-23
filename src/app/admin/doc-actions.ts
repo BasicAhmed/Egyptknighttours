@@ -9,7 +9,7 @@ import { createItineraryDocument, emailDocument } from "@/lib/documents";
 import { saveSettings, DEFAULTS } from "@/lib/settings";
 import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
-import { createItineraryRecord } from "@/lib/itineraries";
+import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
 import { calcSellPrice } from "@/lib/pricing";
 import { cleanImageRef } from "@/lib/media";
 import { invalidate } from "@/lib/cache";
@@ -57,6 +57,7 @@ export async function createItinerary(fd: FormData) {
   const kind = String(fd.get("kind") ?? ""); // customer | tour | template | pdf — decides the starting point, chosen on the "New itinerary" picker
   const bookingId = String(fd.get("bookingId") ?? "");
   if (kind === "customer" && !bookingId) return go("/admin/itineraries/new", "Choose an order first", true);
+  if (kind === "customer") { const check = await canLinkBooking(bookingId); if (!check.ok) return go("/admin/itineraries/new", check.message, true); }
   const intent = kind === "customer" || kind === "tour" ? kind : "pdf";
   const it = await createItineraryRecord({ templateId: String(fd.get("templateId") ?? ""), bookingId, name: String(fd.get("name") ?? ""), userId: u.uid, isTemplate: kind === "template", intent });
   await audit(u.uid, "CREATE", "itinerary", it.id);
@@ -136,6 +137,7 @@ export async function generateItineraryPdf(id: string, fd?: FormData) {
 }
 export async function attachItinerary(id: string, fd: FormData) {
   const u = await requireStaff("itineraries"); const bookingId = String(fd.get("bookingId") ?? "");
+  if (bookingId) { const check = await canLinkBooking(bookingId, id); if (!check.ok) return go(`/admin/itineraries/${id}`, check.message, true); }
   await db.update(s.itineraries).set({ bookingId: bookingId || null }).where(eq(s.itineraries.id, id)); await audit(u.uid, "ATTACH", "itinerary", id);
   return go(`/admin/itineraries/${id}`, bookingId ? "Attached to booking" : "Detached from booking");
 }

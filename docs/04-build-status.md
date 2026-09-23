@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## One itinerary per order, until the trip is Completed
+An order can have only one itinerary linked to it while the trip is still upcoming. The "New itinerary" picker greys out any order that already has one, saying why; a direct attempt is also rejected on the server, the same message either way. Once the order's status is Completed, that restriction lifts — a second itinerary can be attached (for example, a proposal for their next trip), through either the picker or the "Attach to a booking" panel.
+
 ## Whole-system audit
 A systematic pass over the whole platform for inconsistencies, not just the newest feature:
 - **Fixed:** an unpriced order (before an itinerary sets its price) showed "$0 of $0" on the Orders list, which read as broken. It now shows "Not priced yet" with a **Price it** button that goes straight to the itinerary picker with that order pre-selected — instead of the old "Create invoice" button, which made no sense for a $0 order.
