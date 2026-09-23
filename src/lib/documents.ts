@@ -7,6 +7,8 @@ import { signDoc, signRef } from "./booking-token";
 import { sendEmail, brandedEmail } from "./email";
 import { SITE, parseJson } from "./format";
 import { linkOrigin } from "./origin";
+import { signReview } from "./booking-token";
+import { creditReferralRewardIfDue } from "./referrals";
 import { renderInvoice, renderItinerary } from "@/pdf/render";
 import { prepareImages } from "@/pdf/images";
 import type { InvoiceData, ItineraryContent, ItineraryPdfData } from "@/pdf/types";
@@ -17,6 +19,24 @@ export const docUrl = (id: string, origin: string = SITE) => `${origin}/api/docu
 export async function setBookingStatus(bookingId: string, status: string) {
   await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, bookingId));
   await db.insert(s.bookingEvents).values({ bookingId, type: "STATUS_" + status });
+  // A trip marked completed for the first time starts the post-trip review flow: an invite email, and a page waiting for them when they click it.
+  if (status === "COMPLETED") {
+    const [existing] = await db.select({ id: s.postTripReviews.id }).from(s.postTripReviews).where(eq(s.postTripReviews.bookingId, bookingId));
+    if (!existing) {
+      const [row] = await db.select({ b: s.bookings, c: s.customers }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, bookingId));
+      if (row) {
+        await db.insert(s.postTripReviews).values({ bookingId, customerId: row.c.id });
+        const g = await getSettings(); const origin = await linkOrigin();
+        const url = `${origin}/review/${row.b.ref}?t=${signReview(row.b.ref)}`;
+        const em = brandedEmail({
+          greeting: `Hi ${row.c.name.split(" ")[0]}, welcome home!`,
+          lines: [`We hope you had an unforgettable trip with ${companyFrom(g).name}. It would mean a lot if you shared a quick review of your experience.`, "As a thank-you, sharing your review unlocks a personal discount code you can give to friends and family — and you earn a reward every time someone books with it."],
+          buttonLabel: "Share your experience", buttonUrl: url, footer: `${companyFrom(g).name}. Thank you for traveling with us.`, builder: BUILDER_NAME,
+        });
+        await sendEmail({ to: row.c.email, subject: "How was your trip? Share a review and unlock a reward", html: em.html, text: em.text });
+      }
+    }
+  }
 }
 
 export async function createInvoiceDocument(bookingId: string, userId: string, opts: InvoiceOptions & { status?: string } = {}) {
@@ -100,6 +120,7 @@ export async function recordPayment(bookingId: string, userId: string, o: { amou
   const paid = rows.reduce((a, p) => a + p.amount, 0);
   const next = paid >= b.total - 0.005 ? "PAID" : "PARTIALLY_PAID";
   if (!["COMPLETED", "CANCELLED"].includes(b.status) && b.status !== next) await setBookingStatus(bookingId, next);
+  if (rows.length === 1) await creditReferralRewardIfDue(bookingId); // this booking's first ever payment: if it used a referral code, pay out the reward now
   return { paid, next };
 }
 

@@ -19,6 +19,7 @@ const COLUMNS = [
   { table: "guides", name: "faqs", ddl: "text NOT NULL DEFAULT '[]'" }, { table: "guides", name: "related", ddl: "text NOT NULL DEFAULT ''" }, { table: "guides", name: "is_pillar", ddl: "integer NOT NULL DEFAULT 0" }, { table: "guides", name: "keywords", ddl: "text NOT NULL DEFAULT ''" },
   { table: "travelers", name: "nationality", ddl: "text" }, { table: "travelers", name: "dob", ddl: "text" }, { table: "travelers", name: "passport_number", ddl: "text" },
   { table: "travelers", name: "passport_expiry", ddl: "text" }, { table: "travelers", name: "notes", ddl: "text" },
+  { table: "coupons", name: "kind", ddl: "text NOT NULL DEFAULT 'STANDARD'" }, { table: "coupons", name: "owner_customer_id", ddl: "text" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
 export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;

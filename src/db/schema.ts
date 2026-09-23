@@ -64,6 +64,9 @@ export const coupons = sqliteTable("coupons", {
   maxUses: integer("max_uses"), usedCount: integer("used_count").notNull().default(0),
   firstBookingOnly: integer("first_booking_only", { mode: "boolean" }).notNull().default(false),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  // A referral code is a coupon a customer owns and shares. kind separates it from a normal staff-made promo code.
+  kind: text("kind").notNull().default("STANDARD"), // STANDARD | REFERRAL
+  ownerCustomerId: text("owner_customer_id").references(() => customers.id),
 });
 
 export const customers = sqliteTable("customers", {
@@ -236,6 +239,22 @@ export const analyticsEvents = sqliteTable("analytics_events", {
   id: id(), name: text("name").notNull(), sessionId: text("session_id"), path: text("path"),
   tourSlug: text("tour_slug"), props: text("props"), createdAt: createdAt(),
 }, (t) => [index("analytics_name_idx").on(t.name, t.createdAt)]);
+
+// The reward ledger for the referral program: one row per credit (a friend's successful first booking) or manual adjustment.
+export const customerRewards = sqliteTable("customer_rewards", {
+  id: id(), customerId: text("customer_id").notNull().references(() => customers.id),
+  amount: real("amount").notNull(), // positive = credit to the customer's balance
+  bookingId: text("booking_id").references(() => bookings.id), // the referred booking that earned this, if any
+  note: text("note").notNull().default(""), createdAt: createdAt(),
+}, (t) => [index("customer_rewards_customer_idx").on(t.customerId)]);
+
+// One row per completed trip: tracks the post-trip review invite and, once they confirm, the referral code it unlocked.
+export const postTripReviews = sqliteTable("post_trip_reviews", {
+  id: id(), bookingId: text("booking_id").notNull().unique().references(() => bookings.id), customerId: text("customer_id").notNull().references(() => customers.id),
+  status: text("status").notNull().default("PENDING"), // PENDING | COMPLETED
+  platforms: text("platforms").notNull().default("[]"), // which review sites they said they used, e.g. ["google","tripadvisor"]
+  couponId: text("coupon_id").references(() => coupons.id), completedAt: integer("completed_at", { mode: "timestamp" }), createdAt: createdAt(),
+});
 
 export const auditLogs = sqliteTable("audit_logs", {
   id: id(), userId: text("user_id").references(() => users.id), action: text("action").notNull(),

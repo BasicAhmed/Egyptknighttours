@@ -32,11 +32,11 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
+  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects", "referral"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["wording", "Invoice wording"], ["system", "System status"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["referral", "Referrals & reviews"], ["wording", "Invoice wording"], ["system", "System status"]];
   const redirectRows = tab === "redirects" ? await db.select().from(s.redirects).orderBy(desc(s.redirects.createdAt)).limit(500) : [];
   const testPath = tab === "redirects" ? String((sp as Record<string, string | undefined>).t ?? "").trim() : "";
   const testResult = testPath ? await resolveLegacy(testPath) : null;
@@ -58,6 +58,18 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       {tab === "guides" && <GuidesAdmin guides={guidesList} />}
       {tab === "redirects" && <RedirectsAdmin rows={redirectRows} testPath={testPath} testResult={testResult} />}
       {tab !== "payment" && tab !== "reviews" && tab !== "guides" && tab !== "redirects" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+        {tab === "referral" && <>
+          <p className="text-sm text-ink/65 sm:col-span-2">A completed trip invites the customer to review it, then unlocks a code they can share. Set the numbers below to match your business.</p>
+          <label className="block"><span className="label">Program is</span><select name="referral.enabled" defaultValue={g["referral.enabled"]} className="input"><option value="true">On</option><option value="false">Off</option></select></label>
+          <F name="company.googleReviewUrl" label="Google review link" v={g["company.googleReviewUrl"]} ph="https://g.page/r/..." />
+          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">What the friend gets</h2>
+          <label className="block"><span className="label">Discount type</span><select name="referral.friendDiscountType" defaultValue={g["referral.friendDiscountType"]} className="input"><option value="PERCENT">Percent off</option><option value="FIXED">Fixed amount off</option></select></label>
+          <F name="referral.friendDiscountValue" label="Discount value" type="number" v={g["referral.friendDiscountValue"]} />
+          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">What the referrer earns</h2>
+          <label className="block"><span className="label">Reward type</span><select name="referral.rewardType" defaultValue={g["referral.rewardType"]} className="input"><option value="PERCENT">Percent of the friend's booking</option><option value="FIXED">Fixed amount</option></select></label>
+          <F name="referral.rewardValue" label="Reward value" type="number" v={g["referral.rewardValue"]} />
+          <p className="text-xs text-ink/65 sm:col-span-2">Paid the moment the friend's booking receives its first payment. Reviews on Tripadvisor and Facebook use the links already set in the Website tab.</p>
+</>}
         {tab === "company" && <>
           <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />

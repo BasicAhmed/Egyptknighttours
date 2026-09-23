@@ -24,6 +24,12 @@ export function verifyDoc(id: string, token?: string | null) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// A private link for a customer's post-trip review page. A different namespace from the tracker link, so sharing one never unlocks the other.
+export const signReview = (id: string) => createHmac("sha256", secret()).update("review:" + id).digest("base64url").slice(0, 22);
+export function verifyReview(id: string, token?: string | null) {
+  if (!token) return false; const a = Buffer.from(signReview(id)), b = Buffer.from(token); return a.length === b.length && timingSafeEqual(a, b);
+}
+
 // A private link for the tour guide of one booking. It only opens that booking's guide sheet.
 export const signGuide = (id: string) => createHmac("sha256", secret()).update("guide:" + id).digest("base64url").slice(0, 22);
 export function verifyGuide(id: string, token?: string | null) {

@@ -7,7 +7,10 @@ import { cachedQuery, invalidate } from "./cache";
 
 export const DEFAULTS: Record<string, string> = {
   "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.phone": "+2 01001339220", "company.whatsapp": "+20 112 834 8803",
-  "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "",
+  "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "", "company.googleReviewUrl": "",
+  // Post-trip review & referral program. Every percentage and amount here is what admins actually configure.
+  "referral.enabled": "true", "referral.friendDiscountType": "PERCENT", "referral.friendDiscountValue": "10",
+  "referral.rewardType": "PERCENT", "referral.rewardValue": "10",
   "privacy.passportRetentionDays": "0",
   "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "https://www.tripadvisor.com/Attraction_Review-g294204-d15602266-Reviews-Egypt_knight_tours-Aswan_Aswan_Governorate_Nile_River_Valley.html",
   "site.instagram": "https://www.instagram.com/egyptknighttours/", "site.facebook": "https://www.facebook.com/p/Egypt-luxury-private-tours-100064124794425/", "site.tiktok": "", "site.youtube": "",

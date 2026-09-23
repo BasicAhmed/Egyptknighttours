@@ -104,10 +104,25 @@ CREATE TABLE `coupons` (
 	`max_uses` integer,
 	`used_count` integer DEFAULT 0 NOT NULL,
 	`first_booking_only` integer DEFAULT false NOT NULL,
-	`active` integer DEFAULT true NOT NULL
+	`active` integer DEFAULT true NOT NULL,
+	`kind` text DEFAULT 'STANDARD' NOT NULL,
+	`owner_customer_id` text,
+	FOREIGN KEY (`owner_customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `coupons_code_unique` ON `coupons` (`code`);--> statement-breakpoint
+CREATE TABLE `customer_rewards` (
+	`id` text PRIMARY KEY NOT NULL,
+	`customer_id` text NOT NULL,
+	`amount` real NOT NULL,
+	`booking_id` text,
+	`note` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE INDEX `customer_rewards_customer_idx` ON `customer_rewards` (`customer_id`);--> statement-breakpoint
 CREATE TABLE `customers` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
@@ -310,6 +325,21 @@ CREATE TABLE `payments` (
 );
 --> statement-breakpoint
 CREATE INDEX `payments_booking_idx` ON `payments` (`booking_id`);--> statement-breakpoint
+CREATE TABLE `post_trip_reviews` (
+	`id` text PRIMARY KEY NOT NULL,
+	`booking_id` text NOT NULL,
+	`customer_id` text NOT NULL,
+	`status` text DEFAULT 'PENDING' NOT NULL,
+	`platforms` text DEFAULT '[]' NOT NULL,
+	`coupon_id` text,
+	`completed_at` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`coupon_id`) REFERENCES `coupons`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `post_trip_reviews_booking_id_unique` ON `post_trip_reviews` (`booking_id`);--> statement-breakpoint
 CREATE TABLE `rate_limits` (
 	`key` text PRIMARY KEY NOT NULL,
 	`count` integer DEFAULT 0 NOT NULL,

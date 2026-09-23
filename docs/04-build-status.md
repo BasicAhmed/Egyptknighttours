@@ -37,6 +37,13 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Post-trip reviews and a referral program
+Marking a booking Completed automatically emails the customer a private link to a review page. They pick where they left a review (Google, Tripadvisor, Facebook, Instagram — only the ones you have a link for in Settings), confirm, and get a personal discount code to share, with a one-tap WhatsApp share and copy button.
+
+That code is a normal coupon under the hood, so it works everywhere coupon codes already do. When a friend books with it and their payment comes in, the original customer is automatically credited a reward — safe against being paid twice on the same booking. Both the friend's discount and the reward are percentages or fixed amounts, set in Settings > Referrals & reviews, along with the program's on/off switch and the Google review link.
+
+Admin > Referrals (Super Admin/Manager only) shows reviews completed vs waiting, codes generated, bookings and revenue per code, discounts given, rewards paid out, and returning referrers.
+
 ## Prices are per person, and the itinerary editor is now tabs, not one long scroll
 Cost and margin (tours, itineraries) are always per person. When an itinerary is linked to an order, the price per person is multiplied automatically by that order's travelers (adults + children, infants free) to get the total — add or remove a traveler on the order and the price follows, nothing to recalculate by hand. The itinerary PDF's price line states both, e.g. "$90 per person — $360 total for 4 travelers".
 
