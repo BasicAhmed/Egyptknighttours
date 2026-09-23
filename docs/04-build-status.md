@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Order window: the top button row, organized
+Was seven same-weight buttons wrapping across up to four rows before you even reached the tabs. Now three clear tiers: WhatsApp, Call and Email stay full-sized (the actions used most); Customer view and the two copy-link buttons are smaller and lighter, since they're reference actions, not the main task; and once a trip is Completed, Copy review link and Send review link sit together in a small labelled green "Review" group, set apart since it's a distinct step. Confirmed the review group is correctly absent on every order that isn't Completed yet, and every button still works exactly as before.
+
 ## Full admin QA sweep
 A systematic pass over every admin page, every settings tab, and every tab inside the order window and itinerary editor: 0 accessibility violations, 0 broken pages, 0 mobile layout overflow. Found and fixed two genuine bugs along the way — the Reviews settings field and every "one per line" wording field (payment terms, documents list) had no real label, just text sitting next to the box. Also added a Referral program check to System status, the one recently-added feature it hadn't caught up to yet.
 

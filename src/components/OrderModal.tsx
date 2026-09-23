@@ -51,12 +51,21 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
       {err && !o && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">Couldn't load this order. Close and try again.</p>}
       {!o && !err && <div className="animate-pulse space-y-3" aria-label="Loading"><div className="h-20 rounded-2xl bg-ink/5" /><div className="h-32 rounded-2xl bg-ink/5" /><div className="h-24 rounded-2xl bg-ink/5" /></div>}
       {o && <div className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {phone && <a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${first}, it's Egypt Knight about your booking ${o.ref}.`)}>WhatsApp {first}</a>}
-          {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
-          <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
-          <a className="btn btn-outline !min-h-[44px]" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
-          <CopyButton text={o.ref} label="Copy booking ID" /><CopyButton text={o.trackUrl} label="Copy customer link" />{o.reviewUrl && <><CopyButton text={o.reviewUrl} label="Copy review link" /><a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with ${o.companyName}! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a></>}
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap gap-2">
+            {phone && <a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${first}, it's Egypt Knight about your booking ${o.ref}.`)}>WhatsApp {first}</a>}
+            {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
+            <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <a className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
+            <CopyButton text={o.ref} label="Copy booking ID" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
+            <CopyButton text={o.trackUrl} label="Copy customer link" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
+          </div>
+          {o.reviewUrl && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#E9F6EE] p-2">
+            <span className="px-1 text-[11px] font-extrabold uppercase tracking-wide text-[#17663A]">Review</span>
+            <CopyButton text={o.reviewUrl} label="Copy review link" className="rounded-lg border border-[#17663A]/25 bg-white px-3 py-2 text-[13px] font-semibold text-[#17663A] hover:border-[#17663A]/50" />
+            <a className="btn btn-wa !min-h-[40px] !py-2 !text-[13px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with ${o.companyName}! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a></div>}
         </div>
 
         <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
