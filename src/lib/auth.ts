@@ -32,6 +32,7 @@ export const PERMS: Record<string, string[]> = {
   itineraries: ["SUPER_ADMIN", "MANAGER", "SALES", "CONTENT_EDITOR"],
   finance: ["SUPER_ADMIN", "MANAGER"], // cost prices, profit margins and the monthly profit report are owner/manager only
   referrals: ["SUPER_ADMIN", "MANAGER"], // discount codes, rewards paid out and the referral dashboard are owner/manager only
+  staff: ["SUPER_ADMIN"], // creating accounts and setting roles is owner-only
 };
 export async function requireStaff(resource?: string): Promise<Session> {
   const s = await getSession();

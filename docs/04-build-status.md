@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Staff accounts (owner-only)
+Admin > Staff lets an owner (Super Admin) create, edit and remove staff logins, with a role for each (Owner, Manager, Sales, Content editor, Tour operator) - this was previously only possible by setting the single ADMIN_EMAIL/ADMIN_PASSWORD environment variable. Two accounts can share the same password; each is still a separate login with its own email and role. Guards in place: you can't remove or demote your own account, and the last remaining owner account can't be demoted or removed either, so the team can never lock themselves out.
+
 ## Live site check, after the domain went live
 Tested the real production site at egyptknight.com: homepage, tours list, a tour page with real photo and pricing, a destination page, FAQ, privacy policy and contact all load correctly, www redirects to the apex in one hop, and private pages (/track, /admin/login) are correctly kept out of automated/search access by robots.txt.
 
