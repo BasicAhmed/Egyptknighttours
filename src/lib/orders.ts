@@ -6,7 +6,7 @@ import { parseJson } from "./format";
 import { linkOrigin } from "./origin";
 import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
-import { signGuide } from "./booking-token";
+import { signGuide, signReview } from "./booking-token";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
@@ -24,7 +24,7 @@ export type Order = {
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
   documents: OrderDoc[]; itineraries: { id: string; name: string; status: string }[];
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
-  trackUrl: string; guideUrl: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
+  trackUrl: string; guideUrl: string; reviewUrl: string | null; travelers: Traveler[]; guides: Guide[]; ops: Ops;
 };
 
 // One query for the whole list. Payment and document counts are computed inside it, so the page needs a single round trip.
@@ -95,6 +95,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
     defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${origin}/track/${b.ref}`, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
+    reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),
     ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "" },

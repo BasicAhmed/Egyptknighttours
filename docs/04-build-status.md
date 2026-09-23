@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Sending the review link without email set up
+Once a trip is marked Completed, its order window shows "Copy review link" and "Send review link" (opens WhatsApp with the message and link ready) — so the review page can be tested, or genuinely used, before email is connected. The invite email still sends automatically once RESEND_API_KEY and EMAIL_FROM are set; these buttons work either way, as a manual alternative or backup.
+
 ## Post-trip reviews and a referral program
 Marking a booking Completed automatically emails the customer a private link to a review page. They pick where they left a review (Google, Tripadvisor, Facebook, Instagram — only the ones you have a link for in Settings), confirm, and get a personal discount code to share, with a one-tap WhatsApp share and copy button.
 
