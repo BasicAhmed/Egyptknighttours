@@ -6,7 +6,7 @@ export type ReferralOverview = {
   reviewsCompleted: number; reviewsPending: number; codesGenerated: number;
   referredBookings: number; discountsGiven: number; rewardsPaid: number; returningReferrers: number;
   reviews: { ref: string; customer: string; tour: string; status: string; platforms: string[]; code: string | null; completedAt: string | null }[];
-  codes: { code: string; owner: string; uses: number; revenue: number; rewardsPaid: number; active: boolean }[];
+  codes: { id: string; code: string; owner: string; uses: number; revenue: number; rewardsPaid: number; active: boolean }[];
 };
 
 export async function referralOverview(): Promise<ReferralOverview> {
@@ -20,7 +20,7 @@ export async function referralOverview(): Promise<ReferralOverview> {
   const codes = await Promise.all(codeRows.map(async (row) => {
     const used = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.couponId, row.coupon.id));
     const revenue = r2(used.reduce((a, b) => a + b.total, 0));
-    return { code: row.coupon.code, owner: row.owner, uses: used.length, revenue, rewardsPaid: 0, active: row.coupon.active };
+    return { id: row.coupon.id, code: row.coupon.code, owner: row.owner, uses: used.length, revenue, rewardsPaid: 0, active: row.coupon.active };
   }));
 
   // Rewards paid per code: sum customer_rewards by the code owner (every reward row for that customer that references a booking is from this loop's referral activity).

@@ -13,10 +13,12 @@ export const daysUntil = (iso: string) => Math.round((new Date(iso + "T00:00:00"
 export const waUrl = (phone: string, text: string) => `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
 
 export type Focus = "invoice" | "payment" | "itinerary";
-export type Next = { label: string; focus: Focus } | null;
+export type Next = { label: string; focus: Focus; href?: string } | null;
 // The single most useful thing to do next for an order, so staff never have to think about the process.
-export function nextStep(r: Pick<OrderRow, "status" | "invoices" | "itineraries" | "itinerarySent">): Next {
+export function nextStep(r: Pick<OrderRow, "status" | "invoices" | "itineraries" | "itinerarySent" | "total" | "id">): Next {
   const st = stageOf(r.status);
+  // No price yet: the next real step is to build the itinerary that sets it, not to create a $0 invoice.
+  if (st === "NEW" && r.total === 0 && r.itineraries === 0) return { label: "Price it", focus: "invoice", href: `/admin/itineraries/new?bookingId=${r.id}` };
   if (st === "NEW" || st === "QUOTE") return { label: r.invoices ? "Send invoice" : "Create invoice", focus: "invoice" };
   if (st === "AWAITING" || st === "PARTIAL") return { label: "Record payment", focus: "payment" };
   if (st === "PAID") return r.itineraries === 0 ? { label: "Create itinerary", focus: "itinerary" } : r.itinerarySent === 0 ? { label: "Send itinerary", focus: "itinerary" } : null;

@@ -167,3 +167,11 @@ export async function publishItineraryAsTour(id: string, fd: FormData) {
   await audit(u.uid, existing ? "UPDATE" : "CREATE", "tour_from_itinerary", tourId!); revalidatePath("/tours"); revalidatePath("/"); invalidate("tours");
   return go(back, existing ? `Tour updated from this itinerary (${p.data.status === "PUBLISHED" ? "live on the website" : "saved as draft"}).` : p.data.status === "PUBLISHED" ? "Tour created and live on the website." : "Tour created as a draft. Publish it when you're ready.");
 }
+
+// ---------- Referral codes ----------
+export async function toggleReferralCode(id: string, active: boolean) {
+  const u = await requireStaff("referrals");
+  await db.update(s.coupons).set({ active }).where(and(eq(s.coupons.id, id), eq(s.coupons.kind, "REFERRAL")));
+  await audit(u.uid, active ? "ACTIVATE" : "DEACTIVATE", "referral_code", id); revalidatePath("/admin/referrals");
+  return go("/admin/referrals", active ? "Code re-activated" : "Code deactivated");
+}

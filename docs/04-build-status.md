@@ -37,6 +37,14 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Whole-system audit
+A systematic pass over the whole platform for inconsistencies, not just the newest feature:
+- **Fixed:** an unpriced order (before an itinerary sets its price) showed "$0 of $0" on the Orders list, which read as broken. It now shows "Not priced yet" with a **Price it** button that goes straight to the itinerary picker with that order pre-selected — instead of the old "Create invoice" button, which made no sense for a $0 order.
+- **Fixed:** Settings had two tabs that could be confused — "Reviews" (Tripadvisor testimonials on the homepage) and "Referrals & reviews" (the post-trip program). The second is renamed "Referral program".
+- **Added:** referral codes can now be deactivated (and reactivated) from Admin > Referrals — closing the gap where an abused code had no way to be turned off. A deactivated code is rejected at checkout immediately.
+- **Verified, no bug found:** a referral code cannot be used by its own owner (it only works for a customer with no prior bookings, and the owner always has one — their own completed trip); cancelling doesn't retroactively touch money already paid or credited; discounted totals flow correctly into both the Finance and Referrals reports; custom "+ New order" bookings display their own custom title correctly everywhere in the reporting, not the generic placeholder tour name.
+- **Known, accepted limitation:** an order can have more than one itinerary linked to it (this predates the pricing work); if two are both priced, whichever is saved last sets the order's total. In practice staff work from one itinerary per order, but this is worth knowing.
+
 ## Referral message fixes
 The "Share on WhatsApp" message on the unlocked-code panel was missing everything after the discount line — no brand name, no link. It now always names Egypt Knight Tours and links to the tours page, e.g. "I just had an amazing trip with Egypt Knight Tours! Use my referral code AMIRA2D2F for 10% off their first booking. Browse their tours and book yours: https://egyptknight.com/tours". Also fixed: the button was pre-addressed to the business's own WhatsApp number instead of letting the customer pick who to send it to; a fixed-amount discount or reward showed no currency symbol ("20 off" instead of "$20 off"); the earned-reward amount was calculated but never actually shown to the customer. The word "code" on the customer-facing page now reads "referral code" throughout. The staff "Send review link" WhatsApp message now also names the business instead of saying "us".
 

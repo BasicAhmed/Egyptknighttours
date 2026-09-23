@@ -1,14 +1,17 @@
 import { requireStaff } from "@/lib/auth";
 import { referralOverview } from "@/lib/referral-report";
+import { toggleReferralCode } from "../doc-actions";
+import Notice from "@/components/Notice";
 export const dynamic = "force-dynamic";
 
-export default async function ReferralsPage() {
-  await requireStaff("referrals");
+export default async function ReferralsPage({ searchParams }: { searchParams: Promise<{ n?: string; e?: string }> }) {
+  await requireStaff("referrals"); const sp = await searchParams;
   const r = await referralOverview();
   return (
     <div>
       <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Referrals & reviews</h1>
       <p className="text-sm text-ink/65">Who reviewed their trip, the codes it unlocked, and what the program has earned and paid out.</p>
+      <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="card p-4"><p className="label">Reviews completed</p><p className="mt-1 text-lg font-bold">{r.reviewsCompleted}</p></div>
@@ -24,12 +27,14 @@ export default async function ReferralsPage() {
       <div className="mt-2 card overflow-x-auto p-0" tabIndex={0} role="region" aria-label="Codes table">
         <table className="w-full min-w-[520px] text-sm">
           <thead><tr className="border-b border-ink/10 text-left text-xs font-bold uppercase tracking-wide text-ink/65">
-            <th className="px-4 py-3">Code</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3 text-right">Bookings</th><th className="px-4 py-3 text-right">Revenue</th><th className="px-4 py-3 text-right">Rewards paid</th>
+            <th className="px-4 py-3">Code</th><th className="px-4 py-3">Owner</th><th className="px-4 py-3 text-right">Bookings</th><th className="px-4 py-3 text-right">Revenue</th><th className="px-4 py-3 text-right">Rewards paid</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"><span className="sr-only">Actions</span></th>
           </tr></thead>
           <tbody>{r.codes.map((c) => (
             <tr key={c.code} className="border-b border-ink/5 last:border-0">
               <td className="px-4 py-3 font-mono font-semibold">{c.code}</td><td className="px-4 py-3">{c.owner}</td>
               <td className="px-4 py-3 text-right">{c.uses}</td><td className="px-4 py-3 text-right">${c.revenue}</td><td className="px-4 py-3 text-right">${c.rewardsPaid}</td>
+              <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${c.active ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/60"}`}>{c.active ? "Active" : "Deactivated"}</span></td>
+              <td className="px-4 py-3"><form action={toggleReferralCode.bind(null, c.id, !c.active)}><button className="text-sm font-semibold underline">{c.active ? "Deactivate" : "Reactivate"}</button></form></td>
             </tr>
           ))}</tbody>
         </table>

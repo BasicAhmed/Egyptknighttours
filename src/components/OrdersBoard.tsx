@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import OrderModal, { prefetchOrder } from "./OrderModal";
 import Modal from "./Modal";
@@ -63,11 +64,13 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
                 className="grid cursor-pointer gap-x-4 gap-y-2 rounded-2xl border border-ink/10 bg-white p-4 transition hover:border-ink/40 hover:shadow-sm md:grid-cols-[1.1fr_1.4fr_1fr_auto] md:items-center">
                 <div className="min-w-0"><button type="button" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: null }); }} aria-label={`Open order ${r.ref} for ${r.name}`} className="block max-w-full truncate text-left font-display text-[17px] font-extrabold hover:underline">{r.name}</button><p className="truncate text-sm text-ink/65">{r.ref} · {ago(r.createdAt)}{r.country ? ` · ${r.country}` : ""}</p></div>
                 <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{r.title}</p><p className="text-sm text-ink/65">{shortDate(r.travelDate)}{d >= 0 && d <= 14 ? <b className={d <= 3 ? "text-red-700" : "text-[#8A4B0A]"}> · {d === 0 ? "today" : `in ${d}d`}</b> : ""} · {r.pax} traveler{r.pax > 1 ? "s" : ""}{r.hotel ? ` · ${r.hotel}` : ""}</p></div>
-                <div><p className="text-sm"><b>{money(r.paid, r.currency)}</b> <span className="text-ink/65">of {money(r.total, r.currency)}</span></p><div className="mt-1 h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500" style={{ width: `${pct}%` }} /></div>
+                <div>{r.total > 0 ? <><p className="text-sm"><b>{money(r.paid, r.currency)}</b> <span className="text-ink/65">of {money(r.total, r.currency)}</span></p><div className="mt-1 h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500" style={{ width: `${pct}%` }} /></div></> : <p className="text-sm font-semibold text-[#8A4B0A]">Not priced yet</p>}
                   <p className="mt-1 text-xs text-ink/65">{r.invoices ? `Invoice ${r.invoiceSent ? "sent" : "made"}` : "No invoice"}{r.itineraries ? ` · Itinerary ${r.itinerarySent ? "sent" : "made"}` : ""}</p>
                   {["AWAITING", "PARTIAL", "PAID"].includes(st) && <p className="mt-0.5 text-xs font-semibold"><span className={r.guideName ? "text-ink/65" : "text-[#8A4B0A]"}>{r.guideName ? `Guide: ${r.guideName}` : "No guide yet"}</span><span className={r.passports >= r.pax ? "text-[#17663A]" : "text-[#8A4B0A]"}> · Passports {r.passports}/{r.pax}</span></p>}</div>
                 <div className="flex flex-wrap items-center gap-2 md:justify-end"><span className={`rounded-full px-3 py-1 text-xs font-bold ${PILL[st]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
-                  {next && <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3.5 !text-[13px]" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: next.focus }); }}>{next.label}</button>}</div>
+                  {next && (next.href
+                    ? <Link href={next.href} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="btn btn-dark !min-h-[38px] !py-1.5 !px-3.5 !text-[13px]">{next.label}</Link>
+                    : <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3.5 !text-[13px]" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: next.focus }); }}>{next.label}</button>)}</div>
               </div>
             </li>);
         })}
