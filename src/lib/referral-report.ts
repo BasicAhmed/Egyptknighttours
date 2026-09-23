@@ -10,7 +10,7 @@ export type ReferralOverview = {
 };
 
 export async function referralOverview(): Promise<ReferralOverview> {
-  const reviewRows = await db.select({ rp: s.postTripReviews, ref: s.bookings.ref, tour: s.tours.title, titleOverride: s.bookings.titleOverride, customer: s.customers.name, code: s.coupons.code })
+  const reviewRows = await db.select({ rp: s.postTripReviews, ref: s.bookings.ref, tour: s.tours.title, titleOverride: s.bookings.titleOverride, guestName: s.bookings.guestName, customer: s.customers.name, code: s.coupons.code })
     .from(s.postTripReviews).innerJoin(s.bookings, eq(s.postTripReviews.bookingId, s.bookings.id)).innerJoin(s.customers, eq(s.postTripReviews.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id))
     .leftJoin(s.coupons, eq(s.postTripReviews.couponId, s.coupons.id))
     .orderBy(desc(s.postTripReviews.createdAt)).limit(200);
@@ -45,7 +45,7 @@ export async function referralOverview(): Promise<ReferralOverview> {
     reviewsCompleted: reviewRows.filter((r) => r.rp.status === "COMPLETED").length,
     reviewsPending: reviewRows.filter((r) => r.rp.status === "PENDING").length,
     codesGenerated: codeRows.length, referredBookings, discountsGiven: r2(discountSum), rewardsPaid, returningReferrers,
-    reviews: reviewRows.map((r) => ({ ref: r.ref, customer: r.customer, tour: r.titleOverride || r.tour, status: r.rp.status, platforms: JSON.parse(r.rp.platforms || "[]"), code: r.code, completedAt: r.rp.completedAt ? r.rp.completedAt.toISOString().slice(0, 10) : null })),
+    reviews: reviewRows.map((r) => ({ ref: r.ref, customer: r.guestName || r.customer, tour: r.titleOverride || r.tour, status: r.rp.status, platforms: JSON.parse(r.rp.platforms || "[]"), code: r.code, completedAt: r.rp.completedAt ? r.rp.completedAt.toISOString().slice(0, 10) : null })),
     codes: codes.map((c) => ({ ...c })),
   };
 }

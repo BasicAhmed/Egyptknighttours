@@ -29,7 +29,7 @@ export async function setBookingStatus(bookingId: string, status: string) {
         const g = await getSettings(); const origin = await linkOrigin();
         const url = `${origin}/review/${row.b.ref}?t=${signReview(row.b.ref)}`;
         const em = brandedEmail({
-          greeting: `Hi ${row.c.name.split(" ")[0]}, welcome home!`,
+          greeting: `Hi ${(row.b.guestName || row.c.name).split(" ")[0]}, welcome home!`,
           lines: [`We hope you had an unforgettable trip with ${companyFrom(g).name}. It would mean a lot if you shared a quick review of your experience.`, "As a thank-you, sharing your review unlocks a personal discount code you can give to friends and family — and you earn a reward every time someone books with it."],
           buttonLabel: "Share your experience", buttonUrl: url, footer: `${companyFrom(g).name}. Thank you for traveling with us.`, builder: BUILDER_NAME,
         });
@@ -85,8 +85,8 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
   if (!doc) return { ok: false as const, message: "Document not found" };
   let to = toOverride ?? "", name = "there";
   if (doc.bookingId) {
-    const [c] = await db.select({ c: s.customers }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, doc.bookingId));
-    if (c) { to ||= c.c.email; name = c.c.name.split(" ")[0]; }
+    const [c] = await db.select({ c: s.customers, b: s.bookings }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, doc.bookingId));
+    if (c) { to ||= c.c.email; name = (c.b.guestName || c.c.name).split(" ")[0]; }
   }
   if (!to) return { ok: false as const, message: "No customer email on this booking. Enter one first." };
   const g = await getSettings(); const company = g["company.name"]; const builder = BUILDER_NAME;

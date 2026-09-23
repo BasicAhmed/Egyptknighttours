@@ -79,6 +79,10 @@ export const bookings = sqliteTable("bookings", {
   status: text("status").notNull().default("PENDING"), // PENDING CONFIRMED DEPOSIT_PAID PAID CANCELLED COMPLETED
   tourId: text("tour_id").notNull().references(() => tours.id),
   customerId: text("customer_id").notNull().references(() => customers.id),
+  // The name given for this specific booking. Two bookings can share the same email but be for different people (or the same
+  // person spelled differently) — this is what every order, invoice, email and document for THIS booking shows; the shared
+  // customer record is only used to link repeat bookings together, and never overwritten.
+  guestName: text("guest_name"),
   travelDate: text("travel_date").notNull(), // YYYY-MM-DD
   adults: integer("adults").notNull(), children: integer("children").notNull().default(0), infants: integer("infants").notNull().default(0),
   isPrivate: integer("is_private", { mode: "boolean" }).notNull().default(false),

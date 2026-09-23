@@ -37,6 +37,12 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: booking with the same email but a different name
+A real bug, not just confusing behavior: booking again with an email already on file silently renamed the shared customer record, so every past order, invoice, email, itinerary and the guide sheet for that email then showed the newest name — even on trips booked long before. Two people can genuinely share a household email; one person can also spell their name differently between bookings. Fixed by giving every booking its own name, set once at booking time and never changed by a later one. The shared customer record (used to link repeat bookings and referral rewards) keeps its original name and is no longer touched by a booking's name at all. Verified end to end: booked twice on the same email with two different names, and confirmed the Orders list, each order's own window, and the actual invoice PDF each showed the right name for that specific booking.
+
+## Multiple staff alert emails
+New booking and new inquiry alerts can now go to more than one inbox. Settings > Company info has a new "Staff alert emails" field — comma-separated, optional, falls back to the single Email field if left blank. The customer-facing address (mailto links, invoices, legal pages) is untouched; this only affects who gets notified internally.
+
 ## Staff accounts (owner-only)
 Admin > Staff lets an owner (Super Admin) create, edit and remove staff logins, with a role for each (Owner, Manager, Sales, Content editor, Tour operator) - this was previously only possible by setting the single ADMIN_EMAIL/ADMIN_PASSWORD environment variable. Two accounts can share the same password; each is still a separate login with its own email and role. Guards in place: you can't remove or demote your own account, and the last remaining owner account can't be demoted or removed either, so the team can never lock themselves out.
 

@@ -71,7 +71,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <p className="text-xs text-ink/65 sm:col-span-2">Paid the moment the friend's booking receives its first payment. Reviews on Tripadvisor and Facebook use the links already set in the Website tab.</p>
 </>}
         {tab === "company" && <>
-          <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} />
+          <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} /><div className="sm:col-span-2"><F name="company.notifyEmails" label="Staff alert emails (comma separated, optional)" v={g["company.notifyEmails"]} ph="info@egyptknight.com, name@gmail.com" /><p className="mt-1 text-xs text-ink/65">New booking and new inquiry alerts go here. Leave blank to just use the Email above.</p></div>
           <F name="company.whatsapp" label="WhatsApp number" v={g["company.whatsapp"]} /><F name="company.phone" label="Phone" v={g["company.phone"]} />
           <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
           <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>

@@ -52,7 +52,7 @@ export async function buildInvoiceData(bookingId: string, opts: InvoiceOptions =
   const list = (k: string) => g[k].split("\n").map((x) => x.trim()).filter(Boolean);
   return {
     number: `INV-${b.ref}-${version}`, issuedAt: today, currency, ref: b.ref,
-    customer: { name: c.name, email: c.email, phone: c.whatsapp || c.phone || "", country: c.country || "" },
+    customer: { name: b.guestName || c.name, email: c.email, phone: c.whatsapp || c.phone || "", country: c.country || "" },
     trip: { title: b.titleOverride || tour.title, destination: dest.name, date: b.travelDate, travelers, style: b.isPrivate ? "Private" : "Shared", pickup: [b.hotel, b.pickupLocation].filter(Boolean).join(" · "), includes: parseJson<string[]>(tour.included, []) },
     lines: [{ label: `${b.titleOverride || tour.title} (${travelers})`, amount: tourAmount }, ...addonLines], subtotal: r2(b.subtotal), discount: r2(b.discount), extras,
     total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: linkMethod?.paymentUrl ?? "", trackUrl: `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`,

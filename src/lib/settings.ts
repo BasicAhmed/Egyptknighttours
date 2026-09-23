@@ -6,7 +6,7 @@ import { BUILDER_NAME } from "./builder";
 import { cachedQuery, invalidate } from "./cache";
 
 export const DEFAULTS: Record<string, string> = {
-  "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.phone": "+2 01001339220", "company.whatsapp": "+20 112 834 8803",
+  "company.name": "Egypt Knight Tours", "company.email": "info@egyptknight.com", "company.notifyEmails": "", "company.phone": "+2 01001339220", "company.whatsapp": "+20 112 834 8803",
   "company.address": "", "company.website": "egyptknight.com", "company.licence": "", "company.signatureName": "", "company.signatureTitle": "", "company.googleReviewUrl": "",
   // Post-trip review & referral program. Every percentage and amount here is what admins actually configure.
   "referral.enabled": "true", "referral.friendDiscountType": "PERCENT", "referral.friendDiscountValue": "10",
@@ -40,3 +40,10 @@ export async function saveSettings(values: Record<string, string>) {
   invalidate("settings");
 }
 export const companyFrom = (g: Record<string, string>): Company => ({ name: g["company.name"], email: g["company.email"], phone: g["company.phone"], phone2: "", whatsapp: g["company.whatsapp"], address: g["company.address"], website: g["company.website"], licence: g["company.licence"], signatureName: g["company.signatureName"], signatureTitle: g["company.signatureTitle"], builder: BUILDER_NAME });
+
+// Who gets "new booking" / "new inquiry" staff alerts. Defaults to the single company email; set company.notifyEmails
+// (comma-separated) in Settings to send those alerts to more than one inbox, without changing the address customers write to.
+export function staffAlertEmails(g: Record<string, string>): string[] {
+  const raw = g["company.notifyEmails"]?.trim() || g["company.email"];
+  return raw.split(",").map((e) => e.trim()).filter(Boolean);
+}

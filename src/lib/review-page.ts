@@ -40,7 +40,7 @@ export async function loadReviewPage(ref: string, token?: string | null): Promis
   }
   const money = (n: number) => `$${n % 1 ? n.toFixed(2) : n}`;
   return { state: "ok", data: {
-    ref: row.b.ref, firstName: row.c.name.split(" ")[0], tourTitle: row.b.titleOverride || row.t.title, company, links,
+    ref: row.b.ref, firstName: (row.b.guestName || row.c.name).split(" ")[0], tourTitle: row.b.titleOverride || row.t.title, company, links,
     status: rp?.status === "COMPLETED" ? "COMPLETED" : "PENDING", platforms: rp ? parsePlatforms(rp.platforms) : [],
     friendDiscount: st.friendDiscountType === "PERCENT" ? `${st.friendDiscountValue}% off their first booking` : `${money(st.friendDiscountValue)} off their first booking`,
     code, rewardSummary, balance, referralCount,

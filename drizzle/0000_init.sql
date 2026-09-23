@@ -48,6 +48,7 @@ CREATE TABLE `bookings` (
 	`status` text DEFAULT 'PENDING' NOT NULL,
 	`tour_id` text NOT NULL,
 	`customer_id` text NOT NULL,
+	`guest_name` text,
 	`travel_date` text NOT NULL,
 	`adults` integer NOT NULL,
 	`children` integer DEFAULT 0 NOT NULL,

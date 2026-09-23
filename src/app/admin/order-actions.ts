@@ -108,7 +108,7 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: d.name, whatsapp: d.whatsapp, phone: d.whatsapp, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
     // No price yet: subtotal, total, deposit and cost all start at 0. The next step is an itinerary, where the cost and profit margin set them for real.
-    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: 0, discount: 0, total: 0, costTotal: null, deposit: 0, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
+    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, guestName: d.name, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: 0, discount: 0, total: 0, costTotal: null, deposit: 0, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
     await tx.insert(s.travelers).values([{ bookingId: b.id, fullName: d.name, type: "ADULT", nationality: d.nationality || null }]);
     await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
     return b.id;

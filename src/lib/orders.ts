@@ -39,7 +39,7 @@ export async function listOrders(limit = 300): Promise<OrderRow[]> {
     passports: sql<number>`(select count(distinct traveler_id) from traveler_files where booking_id = ${s.bookings.id} and kind = 'PASSPORT')`,
     guide: sql<string>`coalesce((select name from tour_guides where id = ${s.bookings.guideId}), '')`,
   }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(limit);
-  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.c.name, email: r.c.email, whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
+  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.b.guestName || r.c.name, email: r.c.email, whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
 }
 
 const EVENT_TEXT = (type: string, note: string | null) => {
@@ -88,7 +88,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const depDays = Number(g["invoice.depositDeadlineDays"]) || 3;
   return {
     id: b.id, ref: b.ref, status: b.status, title: b.titleOverride || tour.title, tourId: tour.id, tourTitle: tour.title, destination: dest.name,
-    customer: { name: c.name, email: c.email, whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
+    customer: { name: b.guestName || c.name, email: c.email, whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
     travelDate: b.travelDate, adults: b.adults, children: b.children, infants: b.infants, isPrivate: b.isPrivate, hotel: b.hotel ?? "", pickupNotes: b.pickupLocation ?? "", requests: b.specialRequests ?? "", dietary: b.dietary ?? "", accessibility: b.accessibility ?? "",
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "", costTotal: b.costTotal,
     payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),

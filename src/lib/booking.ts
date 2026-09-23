@@ -66,10 +66,12 @@ export async function createBooking(input: z.infer<typeof bookingSchema>) {
   return await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: input.name, whatsapp: input.whatsapp, phone: input.whatsapp, country: input.country ?? input.nationality, nationality: input.nationality }).returning();
-    else await tx.update(s.customers).set({ name: input.name, whatsapp: input.whatsapp, country: input.country ?? cust.country ?? input.nationality, nationality: input.nationality }).where(eq(s.customers.id, cust.id));
+    // A returning email keeps its original name on the shared customer record — this booking's own name is what everyone sees for it (below),
+    // so two bookings on the same email can belong to different people, or the same person spelled differently, without either overwriting the other.
+    else await tx.update(s.customers).set({ whatsapp: input.whatsapp, country: input.country ?? cust.country ?? input.nationality, nationality: input.nationality }).where(eq(s.customers.id, cust.id));
 
     const [b] = await tx.insert(s.bookings).values({
-      ref, tourId: tour.id, customerId: cust.id, travelDate: input.travelDate, adults: input.adults, children: input.children, infants: input.infants,
+      ref, tourId: tour.id, customerId: cust.id, guestName: input.name, travelDate: input.travelDate, adults: input.adults, children: input.children, infants: input.infants,
       isPrivate: input.isPrivate, hotel: input.hotel ?? null, pickupLocation: input.pickupLocation ?? null, specialRequests: input.specialRequests ?? null,
       dietary: input.dietary ?? null, accessibility: input.accessibility ?? null,
       addonsJson: JSON.stringify(chosen.map((a) => ({ id: a.id, name: a.name, price: a.price, unit: a.unit }))),

@@ -13,9 +13,9 @@ export async function createItineraryRecord(o: { templateId?: string; bookingId?
     if (r) {
       const n = content.days.length || 1; const total = r.b.adults + r.b.children + r.b.infants;
       const end = new Date(r.b.travelDate + "T00:00:00Z"); end.setUTCDate(end.getUTCDate() + n - 1);
-      content = { ...content, customerName: r.c.name, travelers: `${total} traveler${total > 1 ? "s" : ""}`, startDate: r.b.travelDate, endDate: end.toISOString().slice(0, 10),
+      content = { ...content, customerName: r.b.guestName || r.c.name, travelers: `${total} traveler${total > 1 ? "s" : ""}`, startDate: r.b.travelDate, endDate: end.toISOString().slice(0, 10),
         days: content.days.map((d, i) => { const dt = new Date(r.b.travelDate + "T00:00:00Z"); dt.setUTCDate(dt.getUTCDate() + i); return { ...d, date: dt.toISOString().slice(0, 10) }; }) };
-      customerLabel = `${r.c.name} — ${r.b.ref}`;
+      customerLabel = `${r.b.guestName || r.c.name} — ${r.b.ref}`;
     }
   }
   if (!name) name = customerLabel || (o.isTemplate ? "New template" : "New itinerary");
