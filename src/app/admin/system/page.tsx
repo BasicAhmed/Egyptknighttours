@@ -50,6 +50,7 @@ export default async function SystemPage() {
     { label: "Photos", st: destPhotos >= 4 ? "ok" : "warn", detail: `${destPhotos} destination photo${destPhotos === 1 ? "" : "s"} uploaded. Real photos lift trust and search rankings.` },
     { label: "Tour guides", st: guides ? "ok" : "warn", detail: `${guides} available.` },
     { label: "Map location", st: g["site.mapQuery"] && g["site.mapQuery"] !== "Aswan, Egypt" ? "ok" : "warn", detail: g["site.mapQuery"] === "Aswan, Egypt" ? "Still the placeholder. Set your exact address in Settings → Website." : g["site.mapQuery"] },
+    { label: "Referral program", st: g["referral.enabled"] === "false" ? "ok" : g["company.googleReviewUrl"] ? "ok" : "warn", detail: g["referral.enabled"] === "false" ? "Turned off in Settings → Referral program." : g["company.googleReviewUrl"] ? "On, with a Google review link set." : "On, but no Google review link set yet — add one in Settings → Referral program, or turn the program off if you're not using it." },
   ];
   const cls: Record<St, string> = { ok: "bg-[#DFF3E6] text-[#17663A]", warn: "bg-[#FFF0CF] text-[#7A4B00]", fail: "bg-[#FBDADA] text-[#8B1E1E]" }; const txt: Record<St, string> = { ok: "OK", warn: "To do", fail: "Fix now" };
   const groups: [string, Check[]][] = [["Infrastructure", infra], ["Security", sec], ["Ready to launch", biz]];

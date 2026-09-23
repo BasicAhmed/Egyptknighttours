@@ -35,7 +35,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects", "referral"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
-  const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label">{label}</label><textarea name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
+  const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label" htmlFor={`t-${k}`}>{label}</label><textarea id={`t-${k}`} name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
   const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["referral", "Referral program"], ["wording", "Invoice wording"], ["system", "System status"]];
   const redirectRows = tab === "redirects" ? await db.select().from(s.redirects).orderBy(desc(s.redirects.createdAt)).limit(500) : [];
   const testPath = tab === "redirects" ? String((sp as Record<string, string | undefined>).t ?? "").trim() : "";
@@ -105,7 +105,7 @@ function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelec
     <form action={saveTestimonial.bind(null, r?.id ?? null)} className="grid gap-3 sm:grid-cols-2">
       <F name="name" label="Reviewer name (as shown, e.g. Anna M.)" v={r?.name} /><F name="country" label="Country" v={r?.country} />
       <F name="title" label="Review title" v={r?.title} /><F name="reviewDate" label="Date (e.g. March 2026)" v={r?.reviewDate} />
-      <div className="sm:col-span-2"><label className="label">Review text (exactly as written)</label><textarea name="body" rows={4} defaultValue={r?.body} className="input" required /></div>
+      <div className="sm:col-span-2"><label className="label" htmlFor="rv-body">Review text (exactly as written)</label><textarea id="rv-body" name="body" rows={4} defaultValue={r?.body} className="input" required /></div>
       <F name="source" label="Source" v={r?.source ?? "Tripadvisor"} /><F name="url" label="Link to the review (optional, https://…)" v={r?.url} />
       <input type="hidden" name="rating" value={r?.rating ?? 5} /><F name="sortOrder" label="Order (0 = first)" type="number" v={r?.sortOrder ?? 0} />
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={r?.active ?? true} className="h-5 w-5 accent-black" />Show on homepage</label>

@@ -37,6 +37,11 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Full admin QA sweep
+A systematic pass over every admin page, every settings tab, and every tab inside the order window and itinerary editor: 0 accessibility violations, 0 broken pages, 0 mobile layout overflow. Found and fixed two genuine bugs along the way — the Reviews settings field and every "one per line" wording field (payment terms, documents list) had no real label, just text sitting next to the box. Also added a Referral program check to System status, the one recently-added feature it hadn't caught up to yet.
+
+Re-ran the full critical path with everything recently built layered together — new order, price it via an itinerary, pay it, mark it Completed, generate the review link, submit the review, get a referral code — end to end with no regressions and the correct guest name at every step.
+
 ## Fixed: booking with the same email but a different name
 A real bug, not just confusing behavior: booking again with an email already on file silently renamed the shared customer record, so every past order, invoice, email, itinerary and the guide sheet for that email then showed the newest name — even on trips booked long before. Two people can genuinely share a household email; one person can also spell their name differently between bookings. Fixed by giving every booking its own name, set once at booking time and never changed by a later one. The shared customer record (used to link repeat bookings and referral rewards) keeps its original name and is no longer touched by a booking's name at all. Verified end to end: booked twice on the same email with two different names, and confirmed the Orders list, each order's own window, and the actual invoice PDF each showed the right name for that specific booking.
 
