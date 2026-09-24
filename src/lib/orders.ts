@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { getSettings } from "./settings";
 import { signDoc } from "./booking-token";
 import { parseJson } from "./format";
@@ -24,7 +24,7 @@ export type Order = {
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
   documents: OrderDoc[]; itineraries: { id: string; name: string; status: string }[];
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
-  trackUrl: string; guideUrl: string; reviewUrl: string | null; companyName: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
+  trackUrl: string; guideUrl: string; reviewUrl: string | null; companyName: string; welcomeMessage: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
 };
 
 // One query for the whole list. Payment and document counts are computed inside it, so the page needs a single round trip.
@@ -75,6 +75,12 @@ export async function loadOrder(id: string): Promise<Order | null> {
   ]);
   const row = main[0]; if (!row) return null;
   const { b, tour, dest, c } = row;
+  // Two related tours (an upsell) and up to two destination guides, for the welcome message — same destination as
+  // this booking, excluding the booked tour itself, published only.
+  const [upsellTours, destGuides] = await Promise.all([
+    db.select({ slug: s.tours.slug, title: s.tours.title }).from(s.tours).where(and(eq(s.tours.destinationId, tour.destinationId), eq(s.tours.status, "PUBLISHED"), ne(s.tours.id, tour.id))).orderBy(desc(s.tours.updatedAt)).limit(2),
+    db.select({ slug: s.guides.slug, title: s.guides.title }).from(s.guides).where(and(eq(s.guides.destinationSlug, dest.slug), eq(s.guides.status, "PUBLISHED"))).orderBy(desc(s.guides.isPillar), desc(s.guides.updatedAt)).limit(2),
+  ]);
   const paid = Math.round(payments.filter((p) => p.status === "PAID").reduce((a, p) => a + p.amount, 0) * 100) / 100;
   const balance = Math.max(0, Math.round((b.total - paid) * 100) / 100);
   const activity: Activity[] = [
@@ -86,6 +92,15 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const dueNow = b.payMode === "FULL" || paid >= depTarget - 0.005 ? balance : Math.round((depTarget - paid) * 100) / 100;
   const day = (n: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   const depDays = Number(g["invoice.depositDeadlineDays"]) || 3;
+  // A ready-to-send WhatsApp welcome message: booking details, the tracking link, a couple of destination guides and
+  // one related tour as a soft upsell, closing with the one thing ops actually needs — the guest's arrival details.
+  const guestName = b.guestName || c.name; const firstName = guestName.split(" ")[0];
+  const signatureName = g["company.signatureName"] || "the Egypt Knight Tours team";
+  const trackUrl = `${origin}/track/${b.ref}`;
+  const people = [b.adults && `${b.adults} adult${b.adults > 1 ? "s" : ""}`, b.children && `${b.children} child${b.children > 1 ? "ren" : ""}`, b.infants && `${b.infants} infant${b.infants > 1 ? "s" : ""}`].filter(Boolean).join(", ");
+  const guidesBlock = destGuides.length ? `\n\nA couple of reads that might help before you arrive:\n${destGuides.map((x) => `• ${x.title}: ${origin}/egypt-travel-guide/${x.slug}`).join("\n")}` : "";
+  const upsellBlock = upsellTours.length ? `\n\nWhile you're with us, you might also enjoy:\n${upsellTours.map((x) => `• ${x.title}: ${origin}/tours/${x.slug}`).join("\n")}` : "";
+  const welcomeMessage = `Hello ${firstName}! I'm ${signatureName} from ${g["company.name"] || "Egypt Knight Tours"} 🌞\n\nHere's your booking:\nLead Traveler: ${guestName}\n${people}\n${b.ref}\n${b.titleOverride || tour.title}\n\nYou can track your booking, and find your itinerary and documents, any time here:\n${trackUrl}\n\nI'll be following up on your booking throughout your trip with us, and I'm here for you anytime ✨🙏🏻${guidesBlock}${upsellBlock}\n\nKindly send me the details of your arrival (flight time, hotel) and let me know where we should meet you 🙌`;
   return {
     id: b.id, ref: b.ref, status: b.status, title: b.titleOverride || tour.title, tourId: tour.id, tourTitle: tour.title, destination: dest.name,
     customer: { name: b.guestName || c.name, email: c.email, whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
@@ -95,7 +110,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
     defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${origin}/track/${b.ref}`, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
-    reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us",
+    reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),
     ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "" },

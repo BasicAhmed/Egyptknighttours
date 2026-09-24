@@ -37,6 +37,16 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Welcome message action on the order window
+A new "Welcome" section on every order (next to WhatsApp/Call/Email) — Copy or send a ready-made WhatsApp welcome message, prefilled and personal:
+- Greets the lead traveler by first name, signed with your name from Settings → Company info → Signature name (e.g. "I'm Nada from Egypt Knight Tours").
+- Lists the booking: lead traveler, traveler count, booking ref, tour name.
+- A link to track the booking and find documents.
+- Up to 2 relevant travel guides for that tour's destination, and up to 2 other tours in the same destination as a soft upsell — both pulled live from real published content, not hardcoded.
+- Closes by asking for arrival details, same as the original.
+
+Tested against a real booking on a real tour (Giza Pyramids): correctly recommended the actual "Egypt Pyramids Guide" and the actual "Grand Egyptian Museum and Pyramids" tour, both live links. Tested a custom/one-off booking too, to confirm it still works when there's no exact destination match. Both the Copy and Send-via-WhatsApp buttons checked and confirmed to carry the identical message.
+
 ## Bug fix: non-USD payments were counted at face value in Finance and Reports
 A real, serious bug: a 30,000 EGP payment was being added into Finance and Reports as if it were $30,000 — no currency conversion happened anywhere. Verified the exact scenario end to end before fixing: a 30,000 EGP corporate request showed as $30,000 revenue.
 

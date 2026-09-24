@@ -57,6 +57,11 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
             {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
             <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
           </div>
+          {phone && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-gold-500/10 p-2">
+            <span className="px-1 text-[11px] font-extrabold uppercase tracking-wide text-gold-800">Welcome</span>
+            <CopyButton text={o.welcomeMessage} label="Copy welcome message" className="rounded-lg border border-gold-600/30 bg-white px-3 py-2 text-[13px] font-semibold text-gold-800 hover:border-gold-600/60" />
+            <a className="btn btn-wa !min-h-[40px] !py-2 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, o.welcomeMessage)}>Send welcome message</a>
+          </div>}
           <div className="flex flex-wrap gap-1.5">
             <a className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
             <CopyButton text={o.ref} label="Copy booking ID" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
