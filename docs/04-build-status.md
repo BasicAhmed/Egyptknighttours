@@ -37,6 +37,11 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: System status now catches a missing sender name on emails
+The cause of the "email shows as info" complaint isn't code — it's the EMAIL_FROM value in Vercel. Emails send exactly as whatever that variable is set to; set to a bare address (info@egyptknight.com) with no name attached, that's exactly what recipients see. The fix is a one-line change in Vercel: set EMAIL_FROM to `Egypt Knight Tours <info@egyptknight.com>` instead of just the bare address.
+
+Since System status previously only checked that EMAIL_FROM was non-empty, this exact misconfiguration passed as "OK" with no warning. Fixed that: it now checks EMAIL_FROM is properly formatted with a sender name, shows the fix inline (including the exact value to paste in) when it isn't, and shows the real value it will send as when it is. Verified both states directly: a bare address now correctly shows "To do" with the fix instructions, and the properly formatted version shows "OK — Sends as: Egypt Knight Tours <info@egyptknight.com>".
+
 ## Fixed: track links always said "That link isn't valid"
 Found the real cause: the tracking page requires a signed token in the link (?t=...) to open a booking directly — without one, it always shows "That link isn't valid," by design, so a stolen link alone can't be used to look up a booking. Three places were building track links without that token at all, so they were broken 100% of the time: the "Customer view" button, the "Copy customer link" button, and the welcome message's tracking link. The customer's own confirmation email was already correct and unaffected.
 

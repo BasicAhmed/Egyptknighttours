@@ -46,7 +46,10 @@ export default async function SystemPage() {
   ];
   const biz: Check[] = [
     { label: "Payment details", st: methods ? "ok" : "warn", detail: methods ? `${methods} active payment method${methods > 1 ? "s" : ""}.` : "Add bank details in Settings so invoices show how to pay." },
-    { label: "Email sending", st: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? "ok" : "warn", detail: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? "Connected." : "Not connected. Invoices and itineraries can be sent by WhatsApp; add RESEND_API_KEY and EMAIL_FROM for email." },
+    { label: "Email sending", st: !process.env.RESEND_API_KEY || !process.env.EMAIL_FROM ? "warn" : /^.+<[^<>]+@[^<>]+>$/.test(process.env.EMAIL_FROM.trim()) ? "ok" : "warn",
+      detail: !process.env.RESEND_API_KEY || !process.env.EMAIL_FROM ? "Not connected. Invoices and itineraries can be sent by WhatsApp; add RESEND_API_KEY and EMAIL_FROM for email."
+        : /^.+<[^<>]+@[^<>]+>$/.test(process.env.EMAIL_FROM.trim()) ? `Connected. Sends as: ${process.env.EMAIL_FROM}`
+        : `Connected, but EMAIL_FROM (${process.env.EMAIL_FROM}) has no sender name — recipients see the raw address instead of a company name. Set it to "Egypt Knight Tours <${process.env.EMAIL_FROM.trim()}>" in Vercel.` },
     { label: "Admin notifications", st: recentFails ? "warn" : "ok", detail: !notifs.length ? "No notifications sent yet." : recentFails ? `${recentFails} of the last ${notifs.length} failed to send — see below.` : `All ${notifs.length} of the last notifications sent successfully.` },
     { label: "Staff alert emails", st: g["company.notifyEmails"] || g["company.email"] ? "ok" : "warn", detail: g["company.notifyEmails"] ? "Set in Settings → Company info." : g["company.email"] ? `Falling back to the company email (${g["company.email"]}). Add specific addresses in Settings → Company info to alert more than one person.` : "Not set — admin emails have nowhere to go. Add one in Settings → Company info." },
     { label: "Company details", st: g["company.licence"] && g["company.address"] ? "ok" : "warn", detail: g["company.licence"] && g["company.address"] ? "Address and licence set." : "Add your licence number and address (Settings → Company info). They appear on invoices and build trust." },
