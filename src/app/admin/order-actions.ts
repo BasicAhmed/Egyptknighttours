@@ -85,6 +85,9 @@ export async function orderUpdate(id: string, input: Record<string, unknown>): P
 // No price is entered when creating an order. Every order's price comes from its itinerary's cost and profit margin, entered afterwards — so an
 // order is never accidentally priced by hand, and there is always one clear answer to "how much does this cost and how much profit is on it".
 const newSchema = z.object({
+  source: z.enum(["WHATSAPP", "EMAIL", "PHONE", "VIATOR"]),
+  // A Viator booking is already paid in full through Viator, so it's entered as a settled total up front rather than priced later via an itinerary.
+  viatorTotal: z.coerce.number().min(0).max(10_000_000).optional().nullable(),
   name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200), whatsapp: z.string().trim().min(5).max(30), country: z.string().trim().max(80).optional().default(""), nationality: z.string().trim().max(60).optional().default(""),
   tourId: z.string().min(1).max(60), customTitle: z.string().trim().max(160).optional().default(""), travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
@@ -103,12 +106,18 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
   const d = p.data; const email = d.email.toLowerCase();
   const custom = d.tourId === "custom"; if (custom && d.customTitle.length < 3) return { ok: false, message: "Enter the name of the experience" };
   const tourId = custom ? await ensureCustomTour() : d.tourId;
+  // A Viator booking already has the money in hand: it's entered as a settled total right away, marked paid, and skips the itinerary-pricing step
+  // every other manual booking goes through — there is nothing left for the customer to pay us directly.
+  const isViator = d.source === "VIATOR";
+  if (isViator && (d.viatorTotal == null || d.viatorTotal <= 0)) return { ok: false, message: "Enter the total the guest paid through Viator." };
+  const total = isViator ? d.viatorTotal! : 0;
   const ref = await newBookingRef();
   const id = await db.transaction(async (tx) => {
     let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: d.name, whatsapp: d.whatsapp, phone: d.whatsapp, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
-    // No price yet: subtotal, total, deposit and cost all start at 0. The next step is an itinerary, where the cost and profit margin set them for real.
-    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, guestName: d.name, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: 0, discount: 0, total: 0, costTotal: null, deposit: 0, payMode: "DEPOSIT", currency: d.currency, source: "manual", status: "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
+    // For every other channel: no price yet — subtotal, total, deposit and cost all start at 0, priced later via an itinerary.
+    const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, guestName: d.name, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: total, discount: 0, total, costTotal: null, deposit: total, payMode: "DEPOSIT", currency: d.currency, source: d.source, status: isViator ? "PAID" : "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
+    if (isViator) await tx.insert(s.payments).values({ bookingId: b.id, provider: "VIATOR", kind: "PAYMENT", amount: total, status: "PAID", providerRef: "Paid in full through Viator" });
     await tx.insert(s.travelers).values([{ bookingId: b.id, fullName: d.name, type: "ADULT", nationality: d.nationality || null }]);
     await tx.insert(s.bookingEvents).values({ bookingId: b.id, type: "CREATED" });
     return b.id;

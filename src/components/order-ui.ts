@@ -14,6 +14,7 @@ export const waUrl = (phone: string, text: string) => `https://wa.me/${phone.rep
 
 export type Focus = "invoice" | "payment" | "itinerary";
 export type Next = { label: string; focus: Focus; href?: string } | null;
+export const SOURCE_LABEL: Record<string, string> = { WEBSITE: "Website", WHATSAPP: "WhatsApp", EMAIL: "Email", PHONE: "Phone", VIATOR: "Viator" };
 // The single most useful thing to do next for an order, so staff never have to think about the process.
 export function nextStep(r: Pick<OrderRow, "status" | "invoices" | "itineraries" | "itinerarySent" | "total" | "id">): Next {
   const st = stageOf(r.status);
@@ -24,4 +25,4 @@ export function nextStep(r: Pick<OrderRow, "status" | "invoices" | "itineraries"
   if (st === "PAID") return r.itineraries === 0 ? { label: "Create itinerary", focus: "itinerary" } : r.itinerarySent === 0 ? { label: "Send itinerary", focus: "itinerary" } : null;
   return null;
 }
-export const rowFromOrder = (o: Order): OrderRow => ({ id: o.id, ref: o.ref, status: o.status, title: o.title, name: o.customer.name, email: o.customer.email, whatsapp: o.customer.whatsapp || o.customer.phone, country: o.customer.country, travelDate: o.travelDate, pax: o.adults + o.children + o.infants, isPrivate: o.isPrivate, total: o.total, paid: o.paid, currency: o.currency, createdAt: o.createdAt, invoices: o.documents.filter((d) => d.kind === "INVOICE").length, invoiceSent: o.documents.filter((d) => d.kind === "INVOICE" && d.sentAt).length, itineraries: o.documents.filter((d) => d.kind === "ITINERARY").length + o.itineraries.length, itinerarySent: o.documents.filter((d) => d.kind === "ITINERARY" && d.sentAt).length, hotel: o.hotel, guideName: o.guides.find((g) => g.id === o.ops.guideId)?.name ?? "", passports: o.travelers.filter((t) => t.files.some((f) => f.kind === "PASSPORT")).length });
+export const rowFromOrder = (o: Order): OrderRow => ({ id: o.id, ref: o.ref, status: o.status, title: o.title, name: o.customer.name, email: o.customer.email, whatsapp: o.customer.whatsapp || o.customer.phone, country: o.customer.country, travelDate: o.travelDate, pax: o.adults + o.children + o.infants, isPrivate: o.isPrivate, source: o.source || "WEBSITE", total: o.total, paid: o.paid, currency: o.currency, createdAt: o.createdAt, invoices: o.documents.filter((d) => d.kind === "INVOICE").length, invoiceSent: o.documents.filter((d) => d.kind === "INVOICE" && d.sentAt).length, itineraries: o.documents.filter((d) => d.kind === "ITINERARY").length + o.itineraries.length, itinerarySent: o.documents.filter((d) => d.kind === "ITINERARY" && d.sentAt).length, hotel: o.hotel, guideName: o.guides.find((g) => g.id === o.ops.guideId)?.name ?? "", passports: o.travelers.filter((t) => t.files.some((f) => f.kind === "PASSPORT")).length });

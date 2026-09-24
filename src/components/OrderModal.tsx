@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CopyButton from "./CopyButton";
 import Modal from "./Modal";
-import { STATUS_LABEL, STATUS_OPTIONS, PILL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
+import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
 import { orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
@@ -76,7 +76,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         <div className="grid gap-4 md:grid-cols-2">
           <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
-            <Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
+            <Row k="Source" v={SOURCE_LABEL[o.source] ?? o.source} /><Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
             <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />
             <Row k="Pickup" v={o.hotel || "Not given"} />{o.pickupNotes && <Row k="Pickup notes" v={o.pickupNotes} />}{o.requests && <Row k="Requests" v={<span className="whitespace-pre-line">{o.requests}</span>} />}
             {o.addons.length > 0 && <Row k="Add-ons" v={o.addons.map((a) => a.name).join(", ")} />}
@@ -92,6 +92,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         <div hidden={tab !== "ops"} onInput={() => setDirty(true)}><OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} /></div>
         {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
+          {o.source === "VIATOR" && <div className="mb-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-sm font-semibold text-[#2A5C8A]">Paid in full through Viator — no deposit to track here. Note any extra services to collect on the Notes tab instead.</div>}
           {canFinance && (o.total > 0 ? (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-ink/5 p-3 text-sm">
               {o.costTotal != null ? <>

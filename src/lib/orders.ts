@@ -8,7 +8,7 @@ import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
 import { signGuide, signReview } from "./booking-token";
 
-export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; hotel: string; guideName: string; passports: number };
+export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
 export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string };
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
@@ -39,7 +39,7 @@ export async function listOrders(limit = 300): Promise<OrderRow[]> {
     passports: sql<number>`(select count(distinct traveler_id) from traveler_files where booking_id = ${s.bookings.id} and kind = 'PASSPORT')`,
     guide: sql<string>`coalesce((select name from tour_guides where id = ${s.bookings.guideId}), '')`,
   }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(limit);
-  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.b.guestName || r.c.name, email: r.c.email, whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
+  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.b.guestName || r.c.name, email: r.c.email, whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, source: r.b.source || "WEBSITE", total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
 }
 
 const EVENT_TEXT = (type: string, note: string | null) => {

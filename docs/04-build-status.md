@@ -37,6 +37,17 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Booking sources: Website, WhatsApp, Email, Phone, Viator
+Every booking now has a real Source. Real online bookings are always tagged Website automatically. "+ New order" now asks how the booking came in (WhatsApp, Email, Phone, or Viator) — shown as a small badge on every order in the Orders list, with a filter to show just one source, and shown clearly in the order's own Trip details.
+
+Viator has its own workflow, since the guest already paid through Viator:
+- Picking Viator in New Order replaces the usual "price it later" flow with one field: the total the guest paid. That order is created already marked Paid, with a payment record noting it was settled through Viator.
+- The Payment tab shows a clear note instead of the usual deposit-tracking form: paid in full through Viator, use Notes for anything extra to collect.
+- Linking an itinerary to a Viator order no longer requires entering a cost and margin, and never overwrites its already-correct total, even if staff fill those fields in anyway.
+- A newly created Viator order (already priced) opens straight to itself instead of being sent to the "now price it" itinerary picker, which only unpriced orders (every other channel) still go to.
+
+Automatic Viator import (pulling bookings in from Viator's own systems) needs Viator Supplier/Partner API credentials, which the business has to obtain directly from Viator — that part is not yet connected.
+
 ## Modern SaaS design refresh, across the whole admin
 Redesigned at the shared design-system level, so it cascades through every page automatically rather than touching each one by hand:
 - **Cards** now have soft depth (subtle shadow instead of a flat border only), buttons have a tactile press effect and shadow, inputs have a smoother focus transition.

@@ -75,14 +75,16 @@ export async function saveItinerary(id: string, payload: string) {
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
   const priced = costPrice != null && marginPercent != null;
+  // A Viator booking already has a settled price paid through Viator — the itinerary is just the trip plan for it, never the pricing mechanism.
+  const isViatorBooking = p.data.bookingId ? !!(await db.select({ id: s.bookings.id }).from(s.bookings).where(and(eq(s.bookings.id, p.data.bookingId), eq(s.bookings.source, "VIATOR"))))[0] : false;
   // A price is required for any itinerary attached to a real order — there is no manual price line to fall back on.
-  if (p.data.bookingId && !priced) return { ok: false, message: "Enter the cost and the profit margin to price this order — there is no manual price." };
+  if (p.data.bookingId && !priced && !isViatorBooking) return { ok: false, message: "Enter the cost and the profit margin to price this order — there is no manual price." };
   const content = clean(p.data.content);
   let bookingNote = "";
   // Cost and margin are always per person. unitPrice is what one traveler pays; total is unitPrice × the travelers on the linked order.
   let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;
 
-  if (priced && p.data.bookingId) {
+  if (priced && p.data.bookingId && !isViatorBooking) {
     const [b] = await db.select({ currency: s.bookings.currency, status: s.bookings.status, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
     if (b) { currency = b.currency; bookingStatus = b.status; travelers = Math.max(1, b.adults + b.children); }
     const [row] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, p.data.bookingId), eq(s.payments.status, "PAID")));
@@ -92,7 +94,7 @@ export async function saveItinerary(id: string, payload: string) {
 
   // Repricing a cancelled or completed trip, or one that already has money paid on it, needs a clear "are you sure" — it is easy to do by
   // accident (editing an old itinerary as a starting point) and the change is otherwise silent.
-  if (priced && p.data.bookingId && !p.data.force) {
+  if (priced && p.data.bookingId && !p.data.force && !isViatorBooking) {
     const reasons: string[] = [];
     if (bookingStatus === "CANCELLED") reasons.push("this order is cancelled");
     if (bookingStatus === "COMPLETED") reasons.push("this trip is already marked completed");
@@ -104,7 +106,7 @@ export async function saveItinerary(id: string, payload: string) {
     content.priceLabel = p.data.bookingId
       ? `${money(unitPrice!, currency)} per person — ${money(total!, currency)} total for ${travelers} traveler${travelers === 1 ? "" : "s"}`
       : `${money(unitPrice!, currency)} per person`;
-    if (p.data.bookingId) {
+    if (p.data.bookingId && !isViatorBooking) {
       const [before] = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
       await db.update(s.bookings).set({ subtotal: total!, total: total!, costTotal: Math.round(costPrice! * travelers * 100) / 100 }).where(eq(s.bookings.id, p.data.bookingId));
       if (before && before.total !== total) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Price changed from ${money(before.total, currency)} to ${money(total!, currency)} via the itinerary (${money(costPrice!, currency)} per person cost, ${marginPercent}% margin, ${travelers} traveler${travelers === 1 ? "" : "s"}) by ${u.email ?? u.uid}.` });

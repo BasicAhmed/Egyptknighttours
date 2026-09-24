@@ -93,7 +93,9 @@ export const bookings = sqliteTable("bookings", {
   total: real("total").notNull(), deposit: real("deposit").notNull().default(0),
   payMode: text("pay_mode").notNull().default("DEPOSIT"), // DEPOSIT | FULL | PAY_LATER
   currency: text("currency").notNull().default("USD"),
-  couponId: text("coupon_id").references(() => coupons.id), source: text("source"),
+  couponId: text("coupon_id").references(() => coupons.id),
+  // Which channel this booking came through: WEBSITE (set automatically), or WHATSAPP | EMAIL | PHONE | VIATOR (staff picks one when creating a manual order).
+  source: text("source"),
   titleOverride: text("title_override"), // custom experiences created by staff (e.g. a specific cruise)
   preferredLanguage: text("preferred_language"), guideId: text("guide_id"), driver: text("driver"), vehicle: text("vehicle"),
   flightArrival: text("flight_arrival"), flightDeparture: text("flight_departure"), roomType: text("room_type"), pickupTime: text("pickup_time"),
