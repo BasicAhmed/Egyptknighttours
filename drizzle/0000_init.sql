@@ -122,6 +122,8 @@ CREATE TABLE `corporate_requests` (
 	`requirements` text DEFAULT '' NOT NULL,
 	`status` text DEFAULT 'NEW' NOT NULL,
 	`currency` text DEFAULT 'USD' NOT NULL,
+	`pricing_mode` text DEFAULT 'ITEMIZED' NOT NULL,
+	`service_percent` real,
 	`created_by_id` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action

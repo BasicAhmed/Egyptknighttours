@@ -6,6 +6,7 @@ export type CorporateInvoiceData = {
   bill: { name: string; contact: string; email: string; phone: string }; // the requesting company being billed
   guest: { name: string; contact: string; count: number | null }; // the end customer, if known
   serviceDate: string; location: string; notes: string; requirements: string;
+  pricingMode: string; servicePercent: number | null; subtotal: number; // ITEMIZED ignores these; PERCENTAGE shows subtotal + service% = total
   services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[];
   total: number; methods: PayMethod[];
 };

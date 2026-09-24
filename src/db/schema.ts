@@ -308,6 +308,9 @@ export const corporateRequests = sqliteTable("corporate_requests", {
   notes: text("notes").notNull().default(""), requirements: text("requirements").notNull().default(""),
   status: text("status").notNull().default("NEW"), // NEW CONFIRMED IN_PROGRESS COMPLETED CANCELLED
   currency: text("currency").notNull().default("USD"),
+  // How the selling price is worked out: ITEMIZED (each service has its own price, summed — the original model) or
+  // PERCENTAGE (each service just has a cost; one service-fee percentage is applied to the total cost to get the price).
+  pricingMode: text("pricing_mode").notNull().default("ITEMIZED"), servicePercent: real("service_percent"),
   createdById: text("created_by_id").references(() => users.id), createdAt: createdAt(),
 }, (t) => [index("corporate_requests_status_idx").on(t.status)]);
 

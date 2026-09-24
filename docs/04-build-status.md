@@ -37,6 +37,13 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Corporate requests: custom service names, two pricing models
+Two changes to how corporate request services and pricing work:
+
+**Custom services**: the service type field is now a single combobox — pick one of the usual options (Transfer, Tour guide, etc.) or just type your own directly, no need to select "Other" first. Tested with a genuinely custom name ("Camel ride at sunset") end to end.
+
+**Two pricing models, chosen per request**: alongside the original "price each service" flow, a request can now use "fixed percentage on the total" instead — enter each service's cost only, and one service-fee percentage sets the price automatically. Confirmed with real numbers: two services costing $100 and $50 (total $150), a 20% service fee, correctly worked out to $180 total and $30 profit. The invoice reflects this too: in percentage mode it lists what's included without a price per line, then shows Subtotal → Service (X%) → Total — confirmed in the actual downloaded PDF: "Subtotal $150 · Service (20%) $30 · Total $180" — with cost and profit correctly never appearing on the client-facing document either way.
+
 ## Admin notification system, properly integrated and properly logged
 Reused the existing email infrastructure rather than building a second one: every notification now flows through one function that sends the email AND logs the attempt (success or failure, with the real error message) to a new table, visible on System status under "Recent notifications." Confirmed the failure path works for real, not just in theory — with a deliberately invalid email key, a notification genuinely failed and the exact provider error ("Email provider returned 403") showed up correctly logged and visible on screen.
 

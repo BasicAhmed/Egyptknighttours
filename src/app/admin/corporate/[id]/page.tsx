@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff, PERMS } from "@/lib/auth";
-import { loadCorporateRequest, SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL } from "@/lib/corporate";
+import { loadCorporateRequest, SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL, PRICING_MODE_LABEL } from "@/lib/corporate";
 import { updateCorporateRequest, setCorporateStatus, addCorporateService, updateCorporateService, deleteCorporateService, deleteCorporateRequest, addCorporatePayment } from "../../corporate-actions";
 import { waUrl } from "@/components/order-ui";
 import Notice from "@/components/Notice";
@@ -11,6 +11,12 @@ export const dynamic = "force-dynamic";
 
 const F = ({ name, label, def, req, type = "text", cls = "" }: { name: string; label: string; def?: string | number | null; req?: boolean; type?: string; cls?: string }) => (
   <label className={`block ${cls}`}><span className="label">{label}</span><input name={name} type={type} required={req} defaultValue={def ?? ""} className="input !py-2" /></label>
+);
+// A single field that works both ways: pick one of the common service types, or just type your own — no separate "Other" step needed.
+const ServiceTypeField = ({ id, def }: { id: string; def?: string }) => (
+  <label className="block"><span className="label">Service type</span>
+    <input name="type" list="corp-service-types" defaultValue={def ?? ""} placeholder="Pick one or type your own" required className="input !py-2" />
+  </label>
 );
 const money = (n: number, c: string) => new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
 
@@ -46,7 +52,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="stat-card"><p className="stat-label">Total cost</p><p className="stat-value">{canFinance ? money(t.cost, r.currency) : "—"}</p></div>
-        <div className="stat-card"><p className="stat-label">Total price charged</p><p className="stat-value">{money(t.price, r.currency)}</p></div>
+        <div className="stat-card"><p className="stat-label">Total price charged</p><p className="stat-value">{money(t.price, r.currency)}</p>{r.pricingMode === "PERCENTAGE" && <p className="mt-0.5 text-xs text-ink/65">{money(t.cost, r.currency)} + {r.servicePercent}% service</p>}</div>
         <div className="stat-card"><p className="stat-label">Profit</p><p className={`stat-value ${canFinance ? (t.profit >= 0 ? "text-[#17663A]" : "text-red-700") : ""}`}>{canFinance ? money(t.profit, r.currency) : "—"}</p></div>
       </div>
 
@@ -80,6 +86,14 @@ export default async function CorporateDetail({ params, searchParams }: { params
           <div><label className="label" htmlFor="cr-currency">Currency</label><select id="cr-currency" name="currency" defaultValue={r.currency} className="input !py-2">{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
           <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">General request notes</label><textarea id="cr-notes" name="notes" rows={3} defaultValue={r.notes} className="input !py-2" /></div>
           <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements</label><textarea id="cr-req" name="requirements" rows={2} defaultValue={r.requirements} className="input !py-2" /></div>
+          <h3 className="mt-2 font-display text-base font-bold sm:col-span-2">Selling price</h3>
+          <fieldset className="sm:col-span-2"><legend className="label">How is the price worked out?</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 p-3"><input type="radio" name="pricingMode" value="ITEMIZED" defaultChecked={r.pricingMode !== "PERCENTAGE"} className="mt-1" /><span><span className="block font-semibold">{PRICING_MODE_LABEL.ITEMIZED}</span><span className="text-sm text-ink/65">Set a selling price per service.</span></span></label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 p-3"><input type="radio" name="pricingMode" value="PERCENTAGE" defaultChecked={r.pricingMode === "PERCENTAGE"} className="mt-1" /><span><span className="block font-semibold">{PRICING_MODE_LABEL.PERCENTAGE}</span><span className="text-sm text-ink/65">Enter each service's cost — one percentage sets the price.</span></span></label>
+            </div>
+          </fieldset>
+          <F name="servicePercent" label="Service percentage (only used if 'Fixed percentage' is chosen)" type="number" def={r.servicePercent} />
           <div className="sm:col-span-2"><button className="btn btn-dark !min-h-[44px]">Save details</button></div>
         </form>
       </details>
@@ -90,10 +104,10 @@ export default async function CorporateDetail({ params, searchParams }: { params
           <details key={sv.id} className="card p-4">
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
               <span><b className="font-display text-base font-bold">{SERVICE_TYPE_LABEL[sv.type] ?? sv.type}</b>{sv.label ? ` — ${sv.label}` : ""} <span className="text-sm text-ink/65">{sv.date ? new Date(sv.date + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "No date"}{sv.location ? ` · ${sv.location}` : ""}</span></span>
-              <span className="text-sm font-semibold">{money(sv.price, r.currency)}{canFinance && <span className="ml-2 text-ink/65">(profit {money(sv.price - sv.cost, r.currency)})</span>}</span>
+              <span className="text-sm font-semibold">{r.pricingMode === "ITEMIZED" ? money(sv.price, r.currency) : (canFinance ? `Cost ${money(sv.cost, r.currency)}` : "")}</span>
             </summary>
             <form action={updateCorporateService.bind(null, sv.id, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div><label className="label" htmlFor={`sv-type-${sv.id}`}>Service type</label><select id={`sv-type-${sv.id}`} name="type" defaultValue={sv.type} className="input !py-2">{SERVICE_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+              <ServiceTypeField id={`sv-type-${sv.id}`} def={sv.type} />
               <F name="label" label="Description" def={sv.label} cls="sm:col-span-2" />
               <F name="date" label="Date" type="date" def={sv.date} />
               <F name="time" label="Time (optional)" def={sv.time} />
@@ -102,7 +116,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
               <F name="supplier" label="Supplier" def={sv.supplier} />
               <div><label className="label" htmlFor={`sv-status-${sv.id}`}>Status</label><select id={`sv-status-${sv.id}`} name="status" defaultValue={sv.status} className="input !py-2">{SERVICE_STATUS.map((v) => <option key={v} value={v}>{SERVICE_STATUS_LABEL[v]}</option>)}</select></div>
               {canFinance && <F name="cost" label={`Supplier cost (${r.currency})`} type="number" def={sv.cost} />}
-              <F name="price" label={`Selling price (${r.currency})`} type="number" def={sv.price} req />
+              {r.pricingMode === "ITEMIZED" && <F name="price" label={`Selling price (${r.currency})`} type="number" def={sv.price} req />}
               <div className="sm:col-span-3"><label className="label" htmlFor={`sv-notes-${sv.id}`}>Notes</label><textarea id={`sv-notes-${sv.id}`} name="notes" rows={2} defaultValue={sv.notes} className="input !py-2" /></div>
               <button className="btn btn-dark !min-h-[42px] !py-2 sm:col-span-3 sm:w-fit">Save service</button>
             </form>
@@ -114,14 +128,15 @@ export default async function CorporateDetail({ params, searchParams }: { params
 
       <details className="card mt-4 p-4" open><summary className="cursor-pointer font-display text-base font-bold">+ Add a service</summary>
         <form action={addCorporateService.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div><label className="label" htmlFor="ns-type">Service type</label><select id="ns-type" name="type" defaultValue="TRANSFER" className="input !py-2">{SERVICE_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+          <ServiceTypeField id="ns-type" />
           <F name="label" label="Description" cls="sm:col-span-2" />
           <F name="date" label="Date" type="date" /><F name="time" label="Time (optional)" /><F name="location" label="Location" />
           <F name="people" label="Number of people" type="number" /><F name="supplier" label="Supplier" />
           {canFinance && <F name="cost" label={`Supplier cost (${r.currency})`} type="number" />}
-          <F name="price" label={`Selling price (${r.currency})`} type="number" req />
+          {r.pricingMode === "ITEMIZED" && <F name="price" label={`Selling price (${r.currency})`} type="number" req />}
           <div className="sm:col-span-3"><button className="btn btn-primary !min-h-[44px]">Add service</button></div>
         </form>
+        <datalist id="corp-service-types">{SERVICE_TYPES.map(([, l]) => <option key={l} value={l} />)}</datalist>
       </details>
 
       <form action={deleteCorporateRequest.bind(null, r.id)} className="mt-8"><ConfirmButton confirmText={`Delete request ${r.ref}? This removes all its services too.`} className="text-sm font-semibold text-red-700 underline">Delete this request</ConfirmButton></form>

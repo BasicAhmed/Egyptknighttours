@@ -50,23 +50,41 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
         </View>
 
         <View wrap={false} style={[s.card, { marginTop: 14, padding: 0, overflow: "hidden" }]}>
-          <View style={s.th2}>
-            <Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text><Text style={[s.th, { flex: 0.9, textAlign: "right" }]}>Price</Text>
-          </View>
-          {d.services.map((sv, i) => (
-            <View key={i} style={s.tr}>
-              <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
-              <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
-              <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
-              <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
-              <Text style={{ flex: 0.9, textAlign: "right" }}>{money(sv.price, d.currency)}</Text>
+          {d.pricingMode === "PERCENTAGE" ? <>
+            <View style={s.th2}><Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text></View>
+            {d.services.map((sv, i) => (
+              <View key={i} style={s.tr}>
+                <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
+                <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
+                <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
+                <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
+              </View>
+            ))}
+            {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
+            <View style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream, gap: 4 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ fontSize: 9.5 }}>Subtotal</Text><Text style={{ fontSize: 9.5, fontWeight: 700 }}>{money(d.subtotal, d.currency)}</Text></View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ fontSize: 9.5 }}>Service ({d.servicePercent}%)</Text><Text style={{ fontSize: 9.5, fontWeight: 700 }}>{money(d.total - d.subtotal, d.currency)}</Text></View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ fontWeight: 700, fontSize: 11 }}>Total</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text></View>
             </View>
-          ))}
-          {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
-          <View style={{ flexDirection: "row", paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream }}>
-            <Text style={{ flex: 1, fontWeight: 700, fontSize: 11 }}>Total</Text>
-            <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text>
-          </View>
+          </> : <>
+            <View style={s.th2}>
+              <Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text><Text style={[s.th, { flex: 0.9, textAlign: "right" }]}>Price</Text>
+            </View>
+            {d.services.map((sv, i) => (
+              <View key={i} style={s.tr}>
+                <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
+                <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
+                <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
+                <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
+                <Text style={{ flex: 0.9, textAlign: "right" }}>{money(sv.price, d.currency)}</Text>
+              </View>
+            ))}
+            {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
+            <View style={{ flexDirection: "row", paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream }}>
+              <Text style={{ flex: 1, fontWeight: 700, fontSize: 11 }}>Total</Text>
+              <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text>
+            </View>
+          </>}
         </View>
 
         {(d.notes || d.requirements) ? <View style={[s.row, { marginTop: 12, gap: 12 }]}>

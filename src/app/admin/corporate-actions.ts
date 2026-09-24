@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db, schema as s } from "@/db";
 import { requireStaff, PERMS } from "@/lib/auth";
-import { newCorporateRef, SERVICE_TYPES, REQUEST_STATUS, SERVICE_STATUS } from "@/lib/corporate";
+import { newCorporateRef, REQUEST_STATUS, SERVICE_STATUS, PRICING_MODES } from "@/lib/corporate";
 
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
 const go = (path: string, msg: string, err = false) => redirect(`${path}${path.includes("?") ? "&" : "?"}${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
@@ -17,7 +17,9 @@ const requestSchema = z.object({
   customerName: str(120), customerContact: str(160), customerCount: num0,
   serviceDate: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(""), location: str(200),
   notes: str(2000), requirements: str(2000), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional().default("USD"),
-});
+  pricingMode: z.enum(PRICING_MODES).optional().default("ITEMIZED"),
+  servicePercent: z.union([z.literal(""), z.coerce.number().min(0).max(500)]).optional().transform((v) => (v === "" || v == null ? null : v)),
+}).refine((d) => d.pricingMode !== "PERCENTAGE" || d.servicePercent != null, { message: "Enter the service percentage.", path: ["servicePercent"] });
 
 export async function createCorporateRequest(fd: FormData) {
   const u = await requireStaff("corporate");
@@ -57,9 +59,9 @@ export async function deleteCorporateRequest(id: string) {
 }
 
 const serviceSchema = z.object({
-  type: z.enum(SERVICE_TYPES.map((t) => t[0]) as [string, ...string[]]), label: str(160),
+  type: z.string().trim().min(1, "Enter a service type.").max(60), label: str(160),
   date: z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(""), time: str(20), location: str(200), people: num0,
-  supplier: str(160), cost: z.coerce.number().min(0).max(1_000_000), price: z.coerce.number().min(0).max(1_000_000),
+  supplier: str(160), cost: z.coerce.number().min(0).max(1_000_000), price: z.coerce.number().min(0).max(1_000_000).optional().default(0),
   status: z.enum(SERVICE_STATUS as unknown as [string, ...string[]]).optional().default("PENDING"), notes: str(1000),
 });
 

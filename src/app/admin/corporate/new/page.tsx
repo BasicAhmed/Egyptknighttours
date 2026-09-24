@@ -36,6 +36,15 @@ export default async function NewCorporateRequest({ searchParams }: { searchPara
         <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">General request notes</label><textarea id="cr-notes" name="notes" rows={3} className="input" /></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements</label><textarea id="cr-req" name="requirements" rows={2} className="input" /></div>
 
+        <h2 className="mt-2 font-display text-lg font-bold sm:col-span-2">Selling price</h2>
+        <fieldset className="sm:col-span-2"><legend className="label">How is the price worked out?</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 p-3"><input type="radio" name="pricingMode" value="ITEMIZED" defaultChecked className="mt-1" /><span><span className="block font-semibold">Price each service</span><span className="text-sm text-ink/65">Set a selling price per service — the original way.</span></span></label>
+            <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 p-3"><input type="radio" name="pricingMode" value="PERCENTAGE" className="mt-1" /><span><span className="block font-semibold">Fixed percentage on the total</span><span className="text-sm text-ink/65">Just enter each service's cost — one percentage is applied to the total to get the price.</span></span></label>
+          </div>
+        </fieldset>
+        <F name="servicePercent" label="Service percentage (only used if 'Fixed percentage' is chosen)" type="number" ph="e.g. 15" />
+
         <div className="sm:col-span-2"><button className="btn btn-primary !min-h-[48px]">Create request</button></div>
       </form>
     </div>
