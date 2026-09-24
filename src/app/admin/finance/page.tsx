@@ -34,14 +34,14 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </form>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
-        <div className="card p-5"><p className="label">Revenue collected</p><p className="mt-1 font-display text-2xl font-extrabold">{money(r.revenue)}</p></div>
-        <div className="card p-5"><p className="label">Cost</p><p className="mt-1 font-display text-2xl font-extrabold text-ink/70">{money(r.cost)}</p></div>
-        <div className="card p-5"><p className="label">Profit</p><p className={`mt-1 font-display text-2xl font-extrabold ${r.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(r.profit)}</p></div>
+        <div className="stat-card"><p className="stat-label">Revenue collected</p><p className="stat-value">{money(r.revenue)}</p></div>
+        <div className="stat-card"><p className="stat-label">Cost</p><p className="stat-value text-ink/70">{money(r.cost)}</p></div>
+        <div className="stat-card"><p className="stat-label">Profit</p><p className={`stat-value ${r.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(r.profit)}</p></div>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <div className="card p-4"><p className="label">Margin</p><p className="mt-1 text-lg font-bold">{r.margin != null ? `${r.margin.toFixed(1)}%` : "—"}</p></div>
-        <div className="card p-4"><p className="label">Payments counted</p><p className="mt-1 text-lg font-bold">{r.paymentCount}</p></div>
-        <div className="card p-4"><p className="label">Bookings involved</p><p className="mt-1 text-lg font-bold">{r.bookingCount}</p></div>
+        <div className="stat-card"><p className="stat-label">Margin</p><p className="stat-value">{r.margin != null ? `${r.margin.toFixed(1)}%` : "—"}</p></div>
+        <div className="stat-card"><p className="stat-label">Payments counted</p><p className="stat-value">{r.paymentCount}</p></div>
+        <div className="stat-card"><p className="stat-label">Bookings involved</p><p className="stat-value">{r.bookingCount}</p></div>
       </div>
 
       {r.noCostCount > 0 && <div className="mt-4 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4 text-sm">
@@ -50,17 +50,17 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
       </div>}
 
       <div className="mt-6 card overflow-x-auto p-0" tabIndex={0} role="region" aria-label="Profit by tour">
-        <table className="w-full min-w-[560px] text-sm">
-          <thead><tr className="border-b border-ink/10 text-left text-xs font-bold uppercase tracking-wide text-ink/65">
-            <th className="px-4 py-3">Tour</th><th className="px-4 py-3 text-right">Bookings</th><th className="px-4 py-3 text-right">Revenue</th>
-            <th className="px-4 py-3 text-right">Cost</th><th className="px-4 py-3 text-right">Profit</th><th className="px-4 py-3 text-right">Margin</th>
+        <table className="table-modern min-w-[560px]">
+          <thead><tr>
+            <th>Tour</th><th className="text-right">Bookings</th><th className="text-right">Revenue</th>
+            <th className="text-right">Cost</th><th className="text-right">Profit</th><th className="text-right">Margin</th>
           </tr></thead>
           <tbody>{r.byTour.map((t) => (
-            <tr key={t.tourId} className="border-b border-ink/5 last:border-0">
-              <td className="px-4 py-3 font-semibold">{t.title}</td><td className="px-4 py-3 text-right">{t.bookings}</td>
-              <td className="px-4 py-3 text-right">{money(t.revenue)}</td><td className="px-4 py-3 text-right text-ink/65">{money(t.cost)}</td>
-              <td className={`px-4 py-3 text-right font-bold ${t.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(t.profit)}</td>
-              <td className="px-4 py-3 text-right text-ink/65">{t.margin != null ? `${t.margin.toFixed(0)}%` : "—"}</td>
+            <tr key={t.tourId}>
+              <td className="font-semibold">{t.title}</td><td className="text-right">{t.bookings}</td>
+              <td className="text-right">{money(t.revenue)}</td><td className="text-right text-ink/65">{money(t.cost)}</td>
+              <td className={`text-right font-bold ${t.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(t.profit)}</td>
+              <td className="text-right text-ink/65">{t.margin != null ? `${t.margin.toFixed(0)}%` : "—"}</td>
             </tr>
           ))}</tbody>
         </table>

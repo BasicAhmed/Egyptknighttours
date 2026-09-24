@@ -3,19 +3,30 @@
 html { scroll-behavior: smooth; }
 body { background: #fff; color: #141010; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
 @layer components {
-  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-[15px] font-semibold transition min-h-[46px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink; }
-  .btn-primary { @apply bg-gold-500 text-ink hover:bg-gold-600; }
-  .btn-dark { @apply bg-ink text-white hover:bg-black; }
-  .btn-outline { @apply border border-ink/20 bg-white text-ink hover:border-ink; }
-  .btn-wa { @apply bg-[#167F3F] text-white hover:bg-[#116B34]; }
-  .card { @apply rounded-2xl border border-ink/10 bg-white; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-[15px] font-semibold transition-all duration-150 min-h-[46px] active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink; }
+  .btn-primary { @apply bg-gold-500 text-ink shadow-sm hover:bg-gold-600 hover:shadow; }
+  .btn-dark { @apply bg-ink text-white shadow-sm hover:bg-black hover:shadow; }
+  .btn-outline { @apply border border-ink/15 bg-white text-ink hover:border-ink/40 hover:bg-ink/[.02]; }
+  .btn-wa { @apply bg-[#167F3F] text-white shadow-sm hover:bg-[#116B34] hover:shadow; }
+  .card { @apply rounded-2xl border border-ink/[.08] bg-white shadow-[0_1px_2px_rgba(20,16,16,.04),0_1px_10px_rgba(20,16,16,.045)]; }
+  .card-hover { @apply transition-all duration-150 hover:-translate-y-px hover:shadow-[0_2px_4px_rgba(20,16,16,.05),0_4px_18px_rgba(20,16,16,.07)]; }
   .badge { @apply inline-flex items-center rounded-md bg-ink/[.06] px-2 py-1 text-xs font-medium text-ink/80; }
-  .input { @apply w-full rounded-xl border border-ink/20 bg-white px-3.5 py-3 text-base outline-none focus:border-ink focus:ring-2 focus:ring-gold-500/50; }
-  .label { @apply mb-1 block text-sm font-medium; }
+  .input { @apply w-full rounded-xl border border-ink/15 bg-white px-3.5 py-3 text-base outline-none transition-colors focus:border-gold-600 focus:ring-2 focus:ring-gold-500/40; }
+  .label { @apply mb-1 block text-sm font-medium text-ink/85; }
   .container-x { @apply mx-auto w-full max-w-6xl px-5 sm:px-8; }
   .h1 { @apply font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl; }
   .h2 { @apply font-display text-2xl font-bold tracking-tight sm:text-[32px] sm:leading-tight; }
   .eyebrow { @apply text-xs font-semibold uppercase tracking-[.14em] text-gold-800; }
+  /* Admin dashboard primitives — used by KPI cards and data tables across Reports, Finance, Referrals, System status. */
+  .stat-card { @apply card p-4; }
+  .stat-label { @apply text-xs font-semibold uppercase tracking-wide text-ink/65; }
+  .stat-value { @apply mt-1.5 font-display text-[26px] font-extrabold leading-none text-ink; }
+  .table-modern { @apply w-full text-sm; }
+  .table-modern thead { @apply sticky top-0 z-10 bg-sand-100/85 backdrop-blur; }
+  .table-modern th { @apply border-b border-ink/[.08] px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-ink/65; }
+  .table-modern td { @apply border-b border-ink/[.06] px-4 py-3; }
+  .table-modern tbody tr { @apply transition-colors hover:bg-ink/[.02]; }
+  .table-modern tbody tr:last-child td { @apply border-0; }
 }
 .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { scrollbar-width: none; }
 @keyframes step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

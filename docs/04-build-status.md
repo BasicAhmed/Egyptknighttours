@@ -37,6 +37,15 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Modern SaaS design refresh, across the whole admin
+Redesigned at the shared design-system level, so it cascades through every page automatically rather than touching each one by hand:
+- **Cards** now have soft depth (subtle shadow instead of a flat border only), buttons have a tactile press effect and shadow, inputs have a smoother focus transition.
+- **Sidebar navigation**: the active item is now a soft gold-tinted background with a left accent bar, instead of a solid filled pill — a calmer, more "SaaS dashboard" feel that still uses the brand's gold.
+- **New shared primitives** (`.stat-card`, `.stat-value`, `.table-modern`) for KPI numbers and data tables, applied to Finance and Referrals: bigger, bolder numbers; sticky table headers; row hover; consistent spacing — used consistently instead of each page inventing its own version.
+- Found and fixed two real bugs along the way: a `bg-cream` class used in the itinerary editor's hotel box referenced a color that was never actually defined (silently rendered no background at all) — now uses the real sand-100 tone; and two of the new stat/table styles were built with text too light to pass contrast, caught by the same accessibility scan and fixed at the shared source.
+
+Re-ran the full accessibility scan across every single admin page, every settings tab, every order-window tab, and every itinerary-editor tab, on both desktop and phone — 0 violations. No mobile overflow anywhere, all 47 automated tests still pass, and the phone-keyboard test is still 11/11.
+
 ## Order window: the top button row, organized
 Was seven same-weight buttons wrapping across up to four rows before you even reached the tabs. Now three clear tiers: WhatsApp, Call and Email stay full-sized (the actions used most); Customer view and the two copy-link buttons are smaller and lighter, since they're reference actions, not the main task; and once a trip is Completed, Copy review link and Send review link sit together in a small labelled green "Review" group, set apart since it's a distinct step. Confirmed the review group is correctly absent on every order that isn't Completed yet, and every button still works exactly as before.
 
