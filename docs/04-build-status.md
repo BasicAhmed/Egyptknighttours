@@ -37,6 +37,15 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: links could still show a .vercel.app address instead of egyptknight.com
+Found the real cause: every link the site generates (tracker links, invoices, the welcome message, guide sheets) was built to match whatever address the request came in on — deliberately, so things worked correctly during the period before egyptknight.com was live and only the Vercel address existed. That rule explicitly still trusted any *.vercel.app address, on purpose, for that transition period.
+
+Now that egyptknight.com is confirmed live, that's the wrong behavior: if the admin is ever opened through an old Vercel URL (an old bookmark, a Vercel dashboard preview link), every link generated in that session would still carry the Vercel address into a customer's email or WhatsApp message.
+
+Fixed at the source, in the one function every link in the whole site goes through: it now only ever uses egyptknight.com (or localhost, for local testing) — a Vercel address is no longer treated as trustworthy, exactly like a forged address would be. Checked the rest of the project too — the sitemap, robots.txt, and page metadata were already correctly wired to the real domain; this was the one place that wasn't.
+
+Verified for real: sent a request with a spoofed egyptknighttours-abc123.vercel.app address, both creating a booking and opening it in admin, and confirmed the generated links used the real domain, not the Vercel one, either way.
+
 ## Welcome message action on the order window
 A new "Welcome" section on every order (next to WhatsApp/Call/Email) — Copy or send a ready-made WhatsApp welcome message, prefilled and personal:
 - Greets the lead traveler by first name, signed with your name from Settings → Company info → Signature name (e.g. "I'm Nada from Egypt Knight Tours").
