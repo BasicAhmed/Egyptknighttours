@@ -348,6 +348,19 @@ CREATE TABLE `media` (
 );
 --> statement-breakpoint
 CREATE INDEX `media_created_idx` ON `media` (`created_at`);--> statement-breakpoint
+CREATE TABLE `notification_log` (
+	`id` text PRIMARY KEY NOT NULL,
+	`type` text NOT NULL,
+	`recipient` text NOT NULL,
+	`subject` text DEFAULT '' NOT NULL,
+	`booking_id` text,
+	`corporate_request_id` text,
+	`success` integer NOT NULL,
+	`error` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `notification_log_created_idx` ON `notification_log` (`created_at`);--> statement-breakpoint
 CREATE TABLE `payment_methods` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text DEFAULT 'BANK' NOT NULL,

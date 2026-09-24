@@ -327,3 +327,11 @@ export const corporatePayments = sqliteTable("corporate_payments", {
   amount: real("amount").notNull(), method: text("method").notNull().default("MANUAL"),
   status: text("status").notNull().default("PAID"), note: text("note").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("corporate_payments_request_idx").on(t.requestId)]);
+
+// Every notification email attempt — success or failure — so the team can actually verify one went out, not just hope it did.
+export const notificationLog = sqliteTable("notification_log", {
+  id: id(), type: text("type").notNull(), // NEW_BOOKING NEW_LEAD PAYMENT_COMPLETE ORDER_CANCELLED CORPORATE_PAYMENT_COMPLETE CORPORATE_CANCELLED
+  recipient: text("recipient").notNull(), subject: text("subject").notNull().default(""),
+  bookingId: text("booking_id"), corporateRequestId: text("corporate_request_id"),
+  success: integer("success", { mode: "boolean" }).notNull(), error: text("error"), createdAt: createdAt(),
+}, (t) => [index("notification_log_created_idx").on(t.createdAt)]);

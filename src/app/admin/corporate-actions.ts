@@ -42,8 +42,10 @@ export async function setCorporateStatus(id: string, fd: FormData) {
   const u = await requireStaff("corporate");
   const status = String(fd.get("status") ?? "");
   if (!(REQUEST_STATUS as readonly string[]).includes(status)) return go(`/admin/corporate/${id}`, "Not a valid status.", true);
+  const [before] = await db.select({ status: s.corporateRequests.status }).from(s.corporateRequests).where(eq(s.corporateRequests.id, id));
   await db.update(s.corporateRequests).set({ status }).where(eq(s.corporateRequests.id, id));
   await audit(u.uid, "STATUS", "corporate_request", id); revalidatePath(`/admin/corporate/${id}`);
+  if (status === "CANCELLED" && before?.status !== "CANCELLED") { const { notifyCorporateCancelled } = await import("@/lib/notifications"); await notifyCorporateCancelled(id); }
   return go(`/admin/corporate/${id}`, "Status updated");
 }
 
@@ -90,7 +92,12 @@ export async function addCorporatePayment(requestId: string, fd: FormData) {
   const u = await requireStaff("corporate");
   const p = z.object({ amount: z.coerce.number().min(0.01).max(1_000_000), method: z.string().trim().max(40).optional().default("MANUAL"), note: z.string().trim().max(300).optional().default("") }).safeParse(Object.fromEntries(fd.entries()));
   if (!p.success) return go(`/admin/corporate/${requestId}`, p.error.issues[0]?.message ?? "Enter a valid amount.", true);
+  const { loadCorporateRequest } = await import("@/lib/corporate");
+  const before = await loadCorporateRequest(requestId); const wasFullyPaid = before != null && before.balance <= 0 && before.totals.price > 0;
   await db.insert(s.corporatePayments).values({ requestId, amount: p.data.amount, method: p.data.method, status: "PAID", note: p.data.note });
   await audit(u.uid, "CREATE", "corporate_payment", requestId); revalidatePath(`/admin/corporate/${requestId}`);
+  // Only the moment it first reaches fully paid is worth an email — not every partial payment.
+  const after = await loadCorporateRequest(requestId);
+  if (after && after.balance <= 0.005 && after.totals.price > 0 && !wasFullyPaid) { const { notifyCorporatePaymentComplete } = await import("@/lib/notifications"); await notifyCorporatePaymentComplete(requestId); }
   return go(`/admin/corporate/${requestId}`, "Payment recorded");
 }

@@ -17,8 +17,11 @@ const AUTO_FROM = ["INQUIRY", "QUOTE_SENT", "PENDING", "CONFIRMED"];
 export const docUrl = (id: string, origin: string = SITE) => `${origin}/api/documents/${id}/pdf?t=${signDoc(id)}`;
 
 export async function setBookingStatus(bookingId: string, status: string) {
+  const [before] = await db.select({ status: s.bookings.status }).from(s.bookings).where(eq(s.bookings.id, bookingId));
   await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, bookingId));
   await db.insert(s.bookingEvents).values({ bookingId, type: "STATUS_" + status });
+  // Cancelling is genuinely worth a staff email — especially if money was already paid, since that's a possible refund to sort out.
+  if (status === "CANCELLED" && before?.status !== "CANCELLED") { const { notifyOrderCancelled } = await import("./notifications"); await notifyOrderCancelled(bookingId); }
   // A trip marked completed for the first time starts the post-trip review flow: an invite email, and a page waiting for them when they click it.
   if (status === "COMPLETED") {
     const [existing] = await db.select({ id: s.postTripReviews.id }).from(s.postTripReviews).where(eq(s.postTripReviews.bookingId, bookingId));
@@ -33,7 +36,8 @@ export async function setBookingStatus(bookingId: string, status: string) {
           lines: [`We hope you had an unforgettable trip with ${companyFrom(g).name}. It would mean a lot if you shared a quick review of your experience.`, "As a thank-you, sharing your review unlocks a personal discount code you can give to friends and family — and you earn a reward every time someone books with it."],
           buttonLabel: "Share your experience", buttonUrl: url, footer: `${companyFrom(g).name}. Thank you for traveling with us.`, builder: BUILDER_NAME,
         });
-        await sendEmail({ to: row.c.email, subject: "How was your trip? Share a review and unlock a reward", html: em.html, text: em.text });
+        const { notify } = await import("./notifications");
+        await notify("REVIEW_INVITE", row.c.email, "How was your trip? Share a review and unlock a reward", em.html, em.text, { bookingId: row.b.id });
       }
     }
   }
@@ -114,6 +118,7 @@ export async function markDocumentSent(docId: string, userId: string, via: strin
 export async function recordPayment(bookingId: string, userId: string, o: { amount: number; method: string; note?: string }) {
   const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, bookingId));
   if (!b) throw new Error("Booking not found");
+  const wasFullyPaid = b.status === "PAID";
   await db.update(s.payments).set({ status: "SUPERSEDED" }).where(and(eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PENDING")));
   await db.insert(s.payments).values({ bookingId, provider: o.method || "MANUAL", kind: "PAYMENT", amount: Math.round(o.amount * 100) / 100, status: "PAID", providerRef: o.note || null });
   const rows = await db.select().from(s.payments).where(and(eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PAID")));
@@ -121,6 +126,8 @@ export async function recordPayment(bookingId: string, userId: string, o: { amou
   const next = paid >= b.total - 0.005 ? "PAID" : "PARTIALLY_PAID";
   if (!["COMPLETED", "CANCELLED"].includes(b.status) && b.status !== next) await setBookingStatus(bookingId, next);
   if (rows.length === 1) await creditReferralRewardIfDue(bookingId); // this booking's first ever payment: if it used a referral code, pay out the reward now
+  // Only the moment a booking first reaches fully paid is worth an email — not every partial payment.
+  if (next === "PAID" && !wasFullyPaid) { const { notifyPaymentComplete } = await import("./notifications"); await notifyPaymentComplete(bookingId); }
   return { paid, next };
 }
 

@@ -123,6 +123,7 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
     return b.id;
   });
   await syncTravelers(id); await audit(u.uid, "CREATE", "booking", id); revalidatePath("/admin");
+  const { notifyStaffNewOrder } = await import("@/lib/notifications"); await notifyStaffNewOrder(id);
   return { ...(await done(id, `Order ${ref} created`)), id };
 }
 

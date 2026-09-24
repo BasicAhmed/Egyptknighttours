@@ -17,14 +17,18 @@ const mb = (n: number) => `${(n / 1e6).toFixed(n > 1e7 ? 0 : 1)} MB`;
 export default async function SystemPage() {
   await requireStaff("settings");
   const t0 = Date.now(); await client.execute("select 1"); const ping = Date.now() - t0;
-  const [g, orders, customers, leads, tours, demo, guides, media, files, methods, reviews, admins, demoAdmin, destPhotos, state] = await Promise.all([
+  const [g, orders, customers, leads, tours, demo, guides, media, files, methods, reviews, admins, demoAdmin, destPhotos, state, notifRows] = await Promise.all([
     getSettings(), num("select count(*) from bookings"), num("select count(*) from customers"), num("select count(*) from leads"), num("select count(*) from tours where status='PUBLISHED'"),
     num(`select count(*) from tours where status='PUBLISHED' and slug in (${DEMO_TOURS.map(() => "?").join(",")})`, DEMO_TOURS), num("select count(*) from tour_guides where active=1"),
     one("select count(*) n, coalesce(sum(size),0) b from media"), one("select count(*) n, coalesce(sum(size),0) b from traveler_files"),
     num("select count(*) from payment_methods where active=1"), num("select count(*) from testimonials where active=1"), num("select count(*) from users"),
     num("select count(*) from users where email like '%.example' or email like '%example.com'"), num("select count(*) from destinations where image_url is not null and image_url != ''"), one("select value from settings where key='boot.state'"),
+    client.execute("select type, recipient, subject, success, error, created_at from notification_log order by created_at desc limit 20"),
   ]);
   const dbUrl = process.env.DATABASE_URL ?? ""; const onVercel = !!process.env.VERCEL; const authLen = (process.env.AUTH_SECRET ?? "").length; const admPw = (process.env.ADMIN_PASSWORD ?? "").length;
+  const notifs = notifRows.rows.map((r) => ({ type: String(r.type), recipient: String(r.recipient), subject: String(r.subject ?? ""), success: !!r.success, error: r.error ? String(r.error) : null, createdAt: Number(r.created_at) }));
+  const recentFails = notifs.filter((n) => !n.success).length;
+  const NOTIF_LABEL: Record<string, string> = { NEW_BOOKING: "New booking", NEW_LEAD: "New inquiry", PAYMENT_COMPLETE: "Order fully paid", ORDER_CANCELLED: "Order cancelled", CORPORATE_PAYMENT_COMPLETE: "Corporate request fully paid", CORPORATE_CANCELLED: "Corporate request cancelled", REVIEW_INVITE: "Review invite", STAFF_NEW_ORDER: "Order created in admin" };
   const infra: Check[] = [
     { label: "Database", st: ping < 400 ? "ok" : "warn", detail: `Connected. Response time ${ping} ms.${ping >= 400 ? " Slow: check the database and server are in the same region." : ""}` },
     { label: "Database type", st: dbUrl.startsWith("file:") && onVercel ? "fail" : "ok", detail: dbUrl.startsWith("file:") ? (onVercel ? "Local file database on Vercel. Data will be lost. Use Turso (libsql://…)." : "Local file database (fine for development).") : "Turso / libSQL (persistent, backed up by the provider)." },
@@ -43,6 +47,8 @@ export default async function SystemPage() {
   const biz: Check[] = [
     { label: "Payment details", st: methods ? "ok" : "warn", detail: methods ? `${methods} active payment method${methods > 1 ? "s" : ""}.` : "Add bank details in Settings so invoices show how to pay." },
     { label: "Email sending", st: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? "ok" : "warn", detail: process.env.RESEND_API_KEY && process.env.EMAIL_FROM ? "Connected." : "Not connected. Invoices and itineraries can be sent by WhatsApp; add RESEND_API_KEY and EMAIL_FROM for email." },
+    { label: "Admin notifications", st: recentFails ? "warn" : "ok", detail: !notifs.length ? "No notifications sent yet." : recentFails ? `${recentFails} of the last ${notifs.length} failed to send — see below.` : `All ${notifs.length} of the last notifications sent successfully.` },
+    { label: "Staff alert emails", st: g["company.notifyEmails"] || g["company.email"] ? "ok" : "warn", detail: g["company.notifyEmails"] ? "Set in Settings → Company info." : g["company.email"] ? `Falling back to the company email (${g["company.email"]}). Add specific addresses in Settings → Company info to alert more than one person.` : "Not set — admin emails have nowhere to go. Add one in Settings → Company info." },
     { label: "Company details", st: g["company.licence"] && g["company.address"] ? "ok" : "warn", detail: g["company.licence"] && g["company.address"] ? "Address and licence set." : "Add your licence number and address (Settings → Company info). They appear on invoices and build trust." },
     { label: "Real tours", st: demo ? "warn" : tours ? "ok" : "warn", detail: demo ? `${demo} sample tour${demo > 1 ? "s are" : " is"} still published. Replace or edit them with your real tours and prices.` : `${tours} published.` },
     { label: "Reviews", st: reviews >= 3 ? "ok" : "warn", detail: `${reviews} shown on the homepage. Add your Tripadvisor reviews in Settings → Reviews.` },
@@ -62,6 +68,22 @@ export default async function SystemPage() {
       {groups.map(([title, list]) => (
         <section key={title} className="mt-6"><h2 className="font-display text-xl font-extrabold">{title}</h2>
           <ul className="mt-2 divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white">{list.map((c) => <li key={c.label} className="flex items-start gap-3 p-4"><span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-xs font-extrabold ${cls[c.st]}`}>{txt[c.st]}</span><div className="min-w-0"><p className="font-semibold">{c.label}</p><p className="text-sm text-ink/70">{c.detail}</p></div></li>)}</ul></section>))}
+      <section className="mt-6"><h2 className="font-display text-xl font-extrabold">Recent notifications</h2>
+        <p className="text-sm text-ink/65">The last {notifs.length} admin/customer notification email{notifs.length === 1 ? "" : "s"} — so you can check one actually went out.</p>
+        <ul className="mt-2 divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white">
+          {notifs.map((n, i) => (
+            <li key={i} className="flex items-start gap-3 p-4">
+              <span className={`mt-0.5 shrink-0 rounded-full px-2.5 py-1 text-xs font-extrabold ${n.success ? cls.ok : cls.fail}`}>{n.success ? "Sent" : "Failed"}</span>
+              <div className="min-w-0"><p className="font-semibold">{NOTIF_LABEL[n.type] ?? n.type} <span className="font-normal text-ink/65">→ {n.recipient}</span></p>
+                <p className="truncate text-sm text-ink/65">{n.subject}</p>
+                {n.error && <p className="text-sm text-red-700">{n.error}</p>}
+                <p className="text-xs text-ink/65">{new Date(n.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
+            </li>
+          ))}
+          {!notifs.length && <li className="p-4 text-sm text-ink/65">No notifications sent yet.</li>}
+        </ul>
+      </section>
       <section className="mt-6"><h2 className="font-display text-xl font-extrabold">Your data</h2>
         <div className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">{([["Orders", orders], ["Customers", customers], ["Inquiries", leads], ["Photos", `${Number(media.n)} · ${mb(Number(media.b))}`], ["Passport files", `${Number(files.n)} · ${mb(Number(files.b))}`], ["Live tours", tours]] as [string, string | number][]).map(([k, v]) => <div key={k} className="rounded-2xl border border-ink/10 bg-white p-4"><p className="text-xs font-bold uppercase tracking-wide text-ink/65">{k}</p><p className="mt-1 font-display text-xl font-extrabold">{v}</p></div>)}</div>
         <div className="mt-3 flex flex-wrap gap-2"><a className="btn btn-outline !min-h-[42px]" href="/api/admin/export/orders">Download orders (CSV)</a><a className="btn btn-outline !min-h-[42px]" href="/api/admin/export/customers">Download customers (CSV)</a><a className="btn btn-outline !min-h-[42px]" href="/api/admin/export/leads">Download inquiries (CSV)</a></div>

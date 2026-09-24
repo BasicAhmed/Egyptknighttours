@@ -37,6 +37,19 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Admin notification system, properly integrated and properly logged
+Reused the existing email infrastructure rather than building a second one: every notification now flows through one function that sends the email AND logs the attempt (success or failure, with the real error message) to a new table, visible on System status under "Recent notifications." Confirmed the failure path works for real, not just in theory — with a deliberately invalid email key, a notification genuinely failed and the exact provider error ("Email provider returned 403") showed up correctly logged and visible on screen.
+
+Four new triggers, each tested against real data:
+- **New order created directly in the admin** (not just the public website) now also alerts staff — previously silent.
+- **A booking or corporate request reaching fully paid** — confirmed a partial payment does NOT trigger it, and the payment that completes it does, exactly once.
+- **A booking or corporate request being cancelled** — the email explicitly flags it if money was already paid, since that's a possible refund to sort out. Confirmed a repeat cancel doesn't re-fire the notification.
+- The existing post-trip review invite email also now goes through the same logger, instead of being invisible if it failed.
+
+On the brief's other two asks — "refund" and "new customer registration" — neither is a real concept in this system today (there's no refund tracking, and customers aren't separate accounts), so nothing was invented for them. Cancellation-with-prior-payment is the closest honest equivalent already built.
+
+A full line-by-line audit of every feature wasn't realistic in one pass, so this focused on the one concrete, well-defined ask (notifications) plus a few high-value spot checks rather than a superficial pass over everything. One genuine check worth recording: verified empirically, not just in the schema, that deleting a corporate request correctly removes its services and payments together — no orphaned rows left behind.
+
 ## Corporate requests: payments, finance, contact actions, search
 Four additions to the Corporate Requests flow:
 - **Finance integration**: corporate revenue, cost and profit now flow into the main Finance KPIs (combined with bookings) and into their own "Corporate requests" breakdown table — on the Finance page and in the downloadable PDF report. Verified end to end: a real $150 request with $100 cost showed up correctly as $150/$100/$50 in both places.
