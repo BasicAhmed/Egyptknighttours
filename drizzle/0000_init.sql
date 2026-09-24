@@ -94,6 +94,48 @@ CREATE INDEX `bookings_tour_idx` ON `bookings` (`tour_id`);--> statement-breakpo
 CREATE INDEX `bookings_status_idx` ON `bookings` (`status`);--> statement-breakpoint
 CREATE INDEX `bookings_travel_idx` ON `bookings` (`travel_date`);--> statement-breakpoint
 CREATE INDEX `bookings_created_idx` ON `bookings` (`created_at`);--> statement-breakpoint
+CREATE TABLE `corporate_requests` (
+	`id` text PRIMARY KEY NOT NULL,
+	`ref` text NOT NULL,
+	`company_name` text NOT NULL,
+	`company_contact` text DEFAULT '' NOT NULL,
+	`company_email` text DEFAULT '' NOT NULL,
+	`company_phone` text DEFAULT '' NOT NULL,
+	`customer_name` text DEFAULT '' NOT NULL,
+	`customer_contact` text DEFAULT '' NOT NULL,
+	`customer_count` integer,
+	`service_date` text,
+	`location` text DEFAULT '' NOT NULL,
+	`notes` text DEFAULT '' NOT NULL,
+	`requirements` text DEFAULT '' NOT NULL,
+	`status` text DEFAULT 'NEW' NOT NULL,
+	`currency` text DEFAULT 'USD' NOT NULL,
+	`created_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `corporate_requests_ref_unique` ON `corporate_requests` (`ref`);--> statement-breakpoint
+CREATE INDEX `corporate_requests_status_idx` ON `corporate_requests` (`status`);--> statement-breakpoint
+CREATE TABLE `corporate_services` (
+	`id` text PRIMARY KEY NOT NULL,
+	`request_id` text NOT NULL,
+	`type` text NOT NULL,
+	`label` text DEFAULT '' NOT NULL,
+	`date` text,
+	`time` text,
+	`location` text DEFAULT '' NOT NULL,
+	`people` integer,
+	`supplier` text DEFAULT '' NOT NULL,
+	`cost` real DEFAULT 0 NOT NULL,
+	`price` real DEFAULT 0 NOT NULL,
+	`status` text DEFAULT 'PENDING' NOT NULL,
+	`notes` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`request_id`) REFERENCES `corporate_requests`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `corporate_services_request_idx` ON `corporate_services` (`request_id`);--> statement-breakpoint
 CREATE TABLE `coupons` (
 	`id` text PRIMARY KEY NOT NULL,
 	`code` text NOT NULL,

@@ -3,7 +3,8 @@ import React from "react";
 import InvoicePdf from "./InvoicePdf";
 import ItineraryPdf from "./ItineraryPdf";
 import FinanceReportPdf from "./FinanceReportPdf";
-import type { InvoiceData, ItineraryPdfData, FinanceReportData } from "./types";
+import CorporateInvoicePdf from "./CorporateInvoicePdf";
+import type { InvoiceData, ItineraryPdfData, FinanceReportData, CorporateInvoiceData } from "./types";
 
 // The embedded fonts cover Latin text. Swap arrows and strip emoji so nothing renders as a broken glyph.
 export function pdfSafe<T>(v: T): T {
@@ -22,4 +23,8 @@ export async function renderItinerary(d: ItineraryPdfData): Promise<Buffer> {
 
 export async function renderFinanceReport(d: FinanceReportData): Promise<Buffer> {
   return renderToBuffer(React.createElement(FinanceReportPdf, { d: pdfSafe(d) }) as never);
+}
+
+export async function renderCorporateInvoice(d: CorporateInvoiceData): Promise<Buffer> {
+  return renderToBuffer(React.createElement(CorporateInvoicePdf, { d: pdfSafe(d) }) as never);
 }

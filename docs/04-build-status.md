@@ -37,6 +37,15 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Corporate / other-company requests — a separate request type
+A new, entirely separate flow at Admin > Corporate, for services arranged for other companies and travel agencies rather than direct customers. Its own two database tables, never touching bookings, so the existing Order flow works exactly as it did before (verified with a real public booking end to end).
+
+Each request holds the requesting company's details, the end customer if known, and multiple services (Transfer, Entrance tickets, Permits, Felucca, Motor/boat, Tour guide, Hotel, Nile cruise, Airport services, Transportation, Other) — each with its own date, location, supplier, cost and selling price. Cost and profit are hidden from non-finance roles, the same as Tours and Orders. Totals (cost, price charged, profit) are calculated automatically across all services on the request, and a branded, professional invoice can be generated and downloaded directly from the request — itemized by service, with the total, never showing cost or profit.
+
+Two real bugs found and fixed while testing against the spec's own example data:
+- The request list showed "0 services · $0" for every request, even ones with real money on them. The cause: a correlated subquery compared each request's id against the wrong table's id column (both tables have one named "id"), so it silently matched nothing. Fixed by qualifying the table name explicitly.
+- Removing a service silently did nothing. The cause: the delete button's form was nested inside the edit form, which is invalid HTML — browsers drop the inner form, so the button was submitting the outer (edit) form instead. Fixed by moving it out as a sibling.
+
 ## Booking sources: Website, WhatsApp, Email, Phone, Viator
 Every booking now has a real Source. Real online bookings are always tagged Website automatically. "+ New order" now asks how the booking came in (WhatsApp, Email, Phone, or Viator) — shown as a small badge on every order in the Orders list, with a filter to show just one source, and shown clearly in the order's own Trip details.
 

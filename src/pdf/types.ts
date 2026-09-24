@@ -1,5 +1,14 @@
 export type Company = { name: string; email: string; phone: string; phone2: string; whatsapp: string; address: string; website: string; licence: string; signatureName: string; signatureTitle: string; builder?: string };
 export type PayMethod = { id: string; kind: string; label: string; currency: string; bankName: string; accountName: string; accountNumber: string; iban: string; swift: string; branch: string; bankAddress: string; instructions: string; paymentUrl: string };
+export type CorporateInvoiceData = {
+  ref: string; issuedAt: string; currency: string; status: string;
+  company: Company; // Egypt Knight Tours's own details, for the header/footer
+  bill: { name: string; contact: string; email: string; phone: string }; // the requesting company being billed
+  guest: { name: string; contact: string; count: number | null }; // the end customer, if known
+  serviceDate: string; location: string; notes: string; requirements: string;
+  services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[];
+  total: number; methods: PayMethod[];
+};
 export type InvoiceData = {
   number: string; issuedAt: string; currency: string; ref: string;
   customer: { name: string; email: string; phone: string; country: string };

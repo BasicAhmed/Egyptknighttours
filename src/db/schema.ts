@@ -296,3 +296,27 @@ export const redirects = sqliteTable("redirects", {
   id: id(), fromPath: text("from_path").notNull().unique(), toPath: text("to_path").notNull(), status: integer("status").notNull().default(301),
   note: text("note").notNull().default(""), createdAt: createdAt(),
 });
+
+// ---------- Corporate / other-company requests ----------
+// A separate request type, entirely apart from the direct customer Order flow: another company (a travel agency, a
+// corporate partner) asks us to arrange one or more services for their own client. Never touches the bookings table.
+export const corporateRequests = sqliteTable("corporate_requests", {
+  id: id(), ref: text("ref").notNull().unique(),
+  companyName: text("company_name").notNull(), companyContact: text("company_contact").notNull().default(""), companyEmail: text("company_email").notNull().default(""), companyPhone: text("company_phone").notNull().default(""),
+  customerName: text("customer_name").notNull().default(""), customerContact: text("customer_contact").notNull().default(""), customerCount: integer("customer_count"),
+  serviceDate: text("service_date"), location: text("location").notNull().default(""),
+  notes: text("notes").notNull().default(""), requirements: text("requirements").notNull().default(""),
+  status: text("status").notNull().default("NEW"), // NEW CONFIRMED IN_PROGRESS COMPLETED CANCELLED
+  currency: text("currency").notNull().default("USD"),
+  createdById: text("created_by_id").references(() => users.id), createdAt: createdAt(),
+}, (t) => [index("corporate_requests_status_idx").on(t.status)]);
+
+export const corporateServices = sqliteTable("corporate_services", {
+  id: id(), requestId: text("request_id").notNull().references(() => corporateRequests.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // TRANSFER ENTRANCE_TICKETS PERMITS FELUCCA MOTOR_BOAT TOUR_GUIDE HOTEL NILE_CRUISE AIRPORT_SERVICES TRANSPORTATION OTHER
+  label: text("label").notNull().default(""), // a short description, especially useful when type is OTHER
+  date: text("date"), time: text("time"), location: text("location").notNull().default(""), people: integer("people"),
+  supplier: text("supplier").notNull().default(""), cost: real("cost").notNull().default(0), price: real("price").notNull().default(0),
+  status: text("status").notNull().default("PENDING"), // PENDING CONFIRMED DONE CANCELLED
+  notes: text("notes").notNull().default(""), createdAt: createdAt(),
+}, (t) => [index("corporate_services_request_idx").on(t.requestId)]);
