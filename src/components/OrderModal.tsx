@@ -63,7 +63,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
             <a className="btn btn-wa !min-h-[40px] !py-2 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, o.welcomeMessage)}>Send welcome message</a>
           </div>}
           <div className="flex flex-wrap gap-1.5">
-            <a className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" href={`/track/${o.ref}`} target="_blank" rel="noopener noreferrer">Customer view</a>
+            <a className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" href={o.trackUrl} target="_blank" rel="noopener noreferrer">Customer view</a>
             <CopyButton text={o.ref} label="Copy booking ID" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
             <CopyButton text={o.trackUrl} label="Copy customer link" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
           </div>

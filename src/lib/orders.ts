@@ -1,7 +1,7 @@
 import { db, schema as s } from "@/db";
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { getSettings } from "./settings";
-import { signDoc } from "./booking-token";
+import { signDoc, signRef } from "./booking-token";
 import { parseJson } from "./format";
 import { linkOrigin } from "./origin";
 import { BOOKING_STATUS_LABEL } from "./validation";
@@ -96,7 +96,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
   // one related tour as a soft upsell, closing with the one thing ops actually needs — the guest's arrival details.
   const guestName = b.guestName || c.name; const firstName = guestName.split(" ")[0];
   const signatureName = g["company.signatureName"] || "the Egypt Knight Tours team";
-  const trackUrl = `${origin}/track/${b.ref}`;
+  const trackUrl = `${origin}/track/${b.ref}?t=${signRef(b.ref)}`;
   const people = [b.adults && `${b.adults} adult${b.adults > 1 ? "s" : ""}`, b.children && `${b.children} child${b.children > 1 ? "ren" : ""}`, b.infants && `${b.infants} infant${b.infants > 1 ? "s" : ""}`].filter(Boolean).join(", ");
   const guidesBlock = destGuides.length ? `\n\nA couple of reads that might help before you arrive:\n${destGuides.map((x) => `• ${x.title}: ${origin}/egypt-travel-guide/${x.slug}`).join("\n")}` : "";
   const upsellBlock = upsellTours.length ? `\n\nWhile you're with us, you might also enjoy:\n${upsellTours.map((x) => `• ${x.title}: ${origin}/tours/${x.slug}`).join("\n")}` : "";
@@ -109,7 +109,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
-    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl: `${origin}/track/${b.ref}`, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
+    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),

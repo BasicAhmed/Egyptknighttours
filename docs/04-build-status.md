@@ -37,6 +37,11 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: track links always said "That link isn't valid"
+Found the real cause: the tracking page requires a signed token in the link (?t=...) to open a booking directly — without one, it always shows "That link isn't valid," by design, so a stolen link alone can't be used to look up a booking. Three places were building track links without that token at all, so they were broken 100% of the time: the "Customer view" button, the "Copy customer link" button, and the welcome message's tracking link. The customer's own confirmation email was already correct and unaffected.
+
+Fixed all three, and made "Customer view" reuse the same already-correct signed link instead of building its own. Verified for real: created a booking, pulled the link from all three places, confirmed each one now includes the token, and actually opened one — the real booking loads correctly instead of the error page.
+
 ## Fixed: links could still show a .vercel.app address instead of egyptknight.com
 Found the real cause: every link the site generates (tracker links, invoices, the welcome message, guide sheets) was built to match whatever address the request came in on — deliberately, so things worked correctly during the period before egyptknight.com was live and only the Vercel address existed. That rule explicitly still trusted any *.vercel.app address, on purpose, for that transition period.
 
