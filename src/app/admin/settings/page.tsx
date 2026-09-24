@@ -76,6 +76,11 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <F name="company.website" label="Website" v={g["company.website"]} /><F name="company.licence" label="Licence / registration number" v={g["company.licence"]} />
           <div className="sm:col-span-2"><F name="company.address" label="Address" v={g["company.address"]} /></div>
           <F name="company.signatureName" label="Signature name (optional)" v={g["company.signatureName"]} /><F name="company.signatureTitle" label="Signature title" v={g["company.signatureTitle"]} />
+          <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Exchange rates</h2>
+          <p className="text-sm text-ink/65 sm:col-span-2">How many US dollars is one unit of each currency worth? Used to combine Finance and Reports into one figure when orders use different currencies — update these from time to time.</p>
+          <F name="fx.EUR" label="1 EUR =" type="number" v={g["fx.EUR"]} ph="1.14" /><F name="fx.GBP" label="1 GBP =" type="number" v={g["fx.GBP"]} ph="1.32" />
+          <F name="fx.EGP" label="1 EGP =" type="number" v={g["fx.EGP"]} ph="0.0194" /><F name="fx.AED" label="1 AED =" type="number" v={g["fx.AED"]} ph="0.2722" />
+          <F name="fx.SAR" label="1 SAR =" type="number" v={g["fx.SAR"]} ph="0.2667" />
           <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">Privacy</h2>
           <F name="privacy.passportRetentionDays" label="Delete passport files this many days after the trip (0 = never)" type="number" v={g["privacy.passportRetentionDays"]} />
           <p className="self-end text-sm text-ink/65">Runs nightly. Deletes uploaded passport and visa files and the stored passport number.</p>

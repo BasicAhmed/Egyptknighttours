@@ -37,6 +37,13 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Bug fix: non-USD payments were counted at face value in Finance and Reports
+A real, serious bug: a 30,000 EGP payment was being added into Finance and Reports as if it were $30,000 — no currency conversion happened anywhere. Verified the exact scenario end to end before fixing: a 30,000 EGP corporate request showed as $30,000 revenue.
+
+Fixed at the root: every dollar figure in Finance and Reports is now converted to USD, using exchange rates you can see and edit in Settings → Company info → Exchange rates (seeded with today's approximate rates for EUR, GBP, EGP, AED, SAR). Confirmed against real data: that same 30,000 EGP payment now correctly shows as $582 (30,000 × today's ~0.0194 EGP rate), a $500 USD booking stays exactly $500 as it should, and the two combine correctly to $1,082 — checked on both Finance and Reports, and on both bookings and corporate requests.
+
+One honest limitation: this uses today's rate for every past payment, not the rate on the day each one was actually received. Rates move day to day, so older converted figures will drift slightly as the rate changes — good enough for a clear overall picture, but worth knowing if you're reconciling to the cent.
+
 ## Corporate requests: custom service names, two pricing models
 Two changes to how corporate request services and pricing work:
 

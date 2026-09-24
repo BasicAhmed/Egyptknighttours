@@ -1,6 +1,7 @@
 import { db, schema as s } from "@/db";
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { r2 } from "./pricing";
+import { getSettings, usdAmount } from "./settings";
 
 export type FinanceMonth = { year: number; month: number }; // month is 1-12
 export type TourFinanceRow = { tourId: string; title: string; bookings: number; revenue: number; cost: number; profit: number; margin: number | null };
@@ -24,11 +25,16 @@ export function monthBounds({ year, month }: FinanceMonth): { from: Date; to: Da
 // Cash-basis profit: every confirmed payment received in the month counts as revenue. Each payment's share of the
 // booking's cost (its own snapshot, taken when the booking was made) is recognized in proportion to how much of the
 // total that payment covers, so a deposit this month and a balance next month each carry their fair share of the cost.
+// Every figure — everywhere in this function — is converted to USD the moment it's read from the database, using the
+// rates in Settings, before any adding, proportioning, or combining happens. A 30,000 EGP payment is real money, but
+// it is not 30,000 US dollars, and this file is the one place that decides how everything ultimately gets compared.
 export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
   const { from, to, label } = monthBounds(m);
-  const rows = await db.select({ amount: s.payments.amount, bookingId: s.payments.bookingId, bookingTotal: s.bookings.total, costTotal: s.bookings.costTotal, tourId: s.bookings.tourId, tourTitle: s.tours.title, titleOverride: s.bookings.titleOverride })
+  const g = await getSettings();
+  const rows0 = await db.select({ amount: s.payments.amount, currency: s.bookings.currency, bookingId: s.payments.bookingId, bookingTotal: s.bookings.total, costTotal: s.bookings.costTotal, tourId: s.bookings.tourId, tourTitle: s.tours.title, titleOverride: s.bookings.titleOverride })
     .from(s.payments).innerJoin(s.bookings, eq(s.payments.bookingId, s.bookings.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id))
     .where(and(eq(s.payments.status, "PAID"), gte(s.payments.createdAt, from), lt(s.payments.createdAt, to)));
+  const rows = rows0.map((r) => ({ ...r, amount: usdAmount(r.amount, r.currency, g), bookingTotal: usdAmount(r.bookingTotal, r.currency, g), costTotal: r.costTotal != null ? usdAmount(r.costTotal, r.currency, g) : null }));
 
   let revenue = 0, cost = 0, noCostRevenue = 0; const noCostBookings = new Set<string>(); const seenBookings = new Set<string>();
   const byTour = new Map<string, TourFinanceRow>();
@@ -43,12 +49,13 @@ export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
 
   // Corporate requests are a second revenue channel, folded into the same totals above using the same cash-basis, proportional-cost
   // logic: each payment's share of the cost is whatever fraction of the request's total price that payment covers.
-  const crows = await db.select({
-    amount: s.corporatePayments.amount, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
+  const crows0 = await db.select({
+    amount: s.corporatePayments.amount, currency: s.corporateRequests.currency, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
     totalCost: sql<number>`(select coalesce(sum(cost), 0) from corporate_services where request_id = corporate_requests.id)`,
     totalPrice: sql<number>`(select coalesce(sum(price), 0) from corporate_services where request_id = corporate_requests.id)`,
   }).from(s.corporatePayments).innerJoin(s.corporateRequests, eq(s.corporatePayments.requestId, s.corporateRequests.id))
     .where(and(eq(s.corporatePayments.status, "PAID"), gte(s.corporatePayments.createdAt, from), lt(s.corporatePayments.createdAt, to)));
+  const crows = crows0.map((r) => ({ ...r, amount: usdAmount(r.amount, r.currency, g), totalCost: usdAmount(r.totalCost, r.currency, g), totalPrice: usdAmount(r.totalPrice, r.currency, g) }));
 
   let corporateRevenue = 0, corporateCost = 0; const seenRequests = new Set<string>();
   const byCorporate = new Map<string, CorporateFinanceRow>();

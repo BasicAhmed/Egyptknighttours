@@ -12,6 +12,9 @@ export const DEFAULTS: Record<string, string> = {
   "referral.enabled": "true", "referral.friendDiscountType": "PERCENT", "referral.friendDiscountValue": "10",
   "referral.rewardType": "PERCENT", "referral.rewardValue": "10",
   "privacy.passportRetentionDays": "0",
+  // How many US dollars one unit of each currency is worth, used to combine everything into one figure on Finance and
+  // Reports. Approximate — update these from time to time; edit in Settings → Company info.
+  "fx.EUR": "1.14", "fx.GBP": "1.32", "fx.EGP": "0.0194", "fx.AED": "0.2722", "fx.SAR": "0.2667",
   "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "https://www.tripadvisor.com/Attraction_Review-g294204-d15602266-Reviews-Egypt_knight_tours-Aswan_Aswan_Governorate_Nile_River_Valley.html",
   "site.instagram": "https://www.instagram.com/egyptknighttours/", "site.facebook": "https://www.facebook.com/p/Egypt-luxury-private-tours-100064124794425/", "site.tiktok": "", "site.youtube": "",
   "site.heroImage": "", "site.videoUrl": "https://youtu.be/uz23AE-oemU", "site.videoStart": "14",
@@ -43,6 +46,13 @@ export const companyFrom = (g: Record<string, string>): Company => ({ name: g["c
 
 // Who gets "new booking" / "new inquiry" staff alerts. Defaults to the single company email; set company.notifyEmails
 // (comma-separated) in Settings to send those alerts to more than one inbox, without changing the address customers write to.
+// Converts any amount to US dollars using the rates in Settings, so revenue/cost/profit in different currencies can be
+// safely combined into one total instead of being added together as if they were all the same currency.
+export function usdAmount(amount: number, currency: string, g: Record<string, string>): number {
+  if (!currency || currency === "USD") return amount;
+  const rate = Number(g[`fx.${currency}`]);
+  return Number.isFinite(rate) && rate > 0 ? amount * rate : amount; // no rate on file: safest fallback is to not silently discard the money
+}
 export function staffAlertEmails(g: Record<string, string>): string[] {
   const raw = g["company.notifyEmails"]?.trim() || g["company.email"];
   return raw.split(",").map((e) => e.trim()).filter(Boolean);
