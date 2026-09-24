@@ -37,6 +37,9 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: mobile bottom nav was crushed and overlapping
+With 9 sections now (Orders through Settings), the phone bottom nav was cramming all 9 into equal-width columns, so labels like "Itineraries" and "Reports" visually overlapped. Fixed with a "More" pattern: the phone nav now shows the 4 most-used sections (Orders, Inquiries, Tours, Itineraries) plus a More button; tapping it opens a small grid with the rest (Reports, Finance, Referrals, Corporate, Staff, Settings), dismissible by tapping an item, tapping the backdrop, or navigating. More lights up gold whenever the current page is one of the items behind it. Adapts automatically to how many sections a role can actually see, so it won't need revisiting the next time a section is added.
+
 ## Corporate / other-company requests — a separate request type
 A new, entirely separate flow at Admin > Corporate, for services arranged for other companies and travel agencies rather than direct customers. Its own two database tables, never touching bookings, so the existing Order flow works exactly as it did before (verified with a real public booking end to end).
 

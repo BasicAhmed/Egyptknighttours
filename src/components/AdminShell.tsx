@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const I = (d: string) => <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={d} /></svg>;
 const ICON = {
@@ -20,6 +21,8 @@ const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inqu
 
 export default function AdminShell({ user, logout, credit, creditLight, badges = {}, children }: { user: { name: string; role: string }; logout: () => Promise<void>; credit?: React.ReactNode; creditLight?: React.ReactNode; badges?: Record<string, number>; children: React.ReactNode }) {
   const path = usePathname() ?? "";
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => setMoreOpen(false), [path]);
   const items = NAV.filter(([, , k]) => {
     if (k === "staff") return user.role === "SUPER_ADMIN";
     if (k === "corporate") return ["SUPER_ADMIN", "MANAGER", "SALES", "TOUR_OPERATOR"].includes(user.role);
@@ -41,9 +44,27 @@ export default function AdminShell({ user, logout, credit, creditLight, badges =
         <form action={logout}><button className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm font-semibold">Log out</button></form>
       </header>
       <div id="admin-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 outline-none md:px-8 md:pb-12 md:pt-8">{children}<div className="mt-12 text-center text-xs text-ink/65 md:hidden">{creditLight ?? credit}</div></div>
-      <nav aria-label="Admin (mobile)" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-ink/10 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/65"}`}><span className={`relative flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}{badge(h, "absolute -right-0.5 -top-1 min-w-[18px] rounded-full bg-ink px-1 text-center text-[10px] font-bold leading-[18px] text-white")}</span>{l}</Link>)}
-      </nav>
+      {(() => {
+        // Only as many items fit a phone row with readable labels; everything past that lives behind "More" instead of being crushed together.
+        const PRIMARY = 4;
+        const primary = items.slice(0, PRIMARY); const overflow = items.slice(PRIMARY);
+        const overflowActive = overflow.some(([, h]) => on(h));
+        const NavIcon = ([l, h, k]: (typeof items)[number]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/65"}`}><span className={`relative flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}{badge(h, "absolute -right-0.5 -top-1 min-w-[18px] rounded-full bg-ink px-1 text-center text-[10px] font-bold leading-[18px] text-white")}</span>{l}</Link>;
+        return (
+          <>
+            {moreOpen && <button aria-label="Close menu" onClick={() => setMoreOpen(false)} className="fixed inset-0 z-30 bg-ink/30 md:hidden" />}
+            {moreOpen && <nav aria-label="More sections" className="fixed inset-x-3 z-40 grid grid-cols-3 gap-1 rounded-2xl border border-ink/10 bg-white p-2 shadow-lg md:hidden" style={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}>
+              {overflow.map((it) => NavIcon(it))}
+            </nav>}
+            <nav aria-label="Admin (mobile)" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-ink/10 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${primary.length + (overflow.length ? 1 : 0)}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+              {primary.map((it) => NavIcon(it))}
+              {overflow.length > 0 && <button type="button" aria-expanded={moreOpen} aria-haspopup="menu" onClick={() => setMoreOpen((v) => !v)} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${moreOpen || overflowActive ? "text-ink" : "text-ink/65"}`}>
+                <span className={`flex h-7 w-11 items-center justify-center rounded-full ${moreOpen || overflowActive ? "bg-gold-500" : ""}`}>{I("M6 10a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z")}</span>More
+              </button>}
+            </nav>
+          </>
+        );
+      })()}
     </div>
   );
 }
