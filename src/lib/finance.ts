@@ -1,14 +1,18 @@
 import { db, schema as s } from "@/db";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { r2 } from "./pricing";
 
 export type FinanceMonth = { year: number; month: number }; // month is 1-12
 export type TourFinanceRow = { tourId: string; title: string; bookings: number; revenue: number; cost: number; profit: number; margin: number | null };
+export type CorporateFinanceRow = { requestId: string; ref: string; companyName: string; revenue: number; cost: number; profit: number; margin: number | null };
 export type FinanceReport = {
   label: string; from: string; to: string;
   revenue: number; cost: number; profit: number; margin: number | null;
   paymentCount: number; bookingCount: number; noCostCount: number; noCostRevenue: number;
   byTour: TourFinanceRow[];
+  // Corporate requests, folded into the totals above and also broken out on their own — a second, separate revenue channel.
+  corporateRevenue: number; corporateCost: number; corporateProfit: number; corporatePaymentCount: number; corporateRequestCount: number;
+  byCorporate: CorporateFinanceRow[];
 };
 
 export function monthBounds({ year, month }: FinanceMonth): { from: Date; to: Date; label: string } {
@@ -37,8 +41,31 @@ export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
   }
   for (const [id, row] of byTour) { row.profit = r2(row.revenue - row.cost); row.margin = row.revenue > 0 ? r2((row.profit / row.revenue) * 100) : null; row.bookings = new Set(rows.filter((r) => r.tourId === id).map((r) => r.bookingId)).size; byTour.set(id, row); }
 
+  // Corporate requests are a second revenue channel, folded into the same totals above using the same cash-basis, proportional-cost
+  // logic: each payment's share of the cost is whatever fraction of the request's total price that payment covers.
+  const crows = await db.select({
+    amount: s.corporatePayments.amount, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
+    totalCost: sql<number>`(select coalesce(sum(cost), 0) from corporate_services where request_id = corporate_requests.id)`,
+    totalPrice: sql<number>`(select coalesce(sum(price), 0) from corporate_services where request_id = corporate_requests.id)`,
+  }).from(s.corporatePayments).innerJoin(s.corporateRequests, eq(s.corporatePayments.requestId, s.corporateRequests.id))
+    .where(and(eq(s.corporatePayments.status, "PAID"), gte(s.corporatePayments.createdAt, from), lt(s.corporatePayments.createdAt, to)));
+
+  let corporateRevenue = 0, corporateCost = 0; const seenRequests = new Set<string>();
+  const byCorporate = new Map<string, CorporateFinanceRow>();
+  for (const p of crows) {
+    const amount = r2(p.amount); corporateRevenue += amount; seenRequests.add(p.requestId);
+    const share = p.totalPrice > 0 ? r2(p.totalCost * (amount / p.totalPrice)) : 0; corporateCost += share;
+    const row = byCorporate.get(p.requestId) ?? { requestId: p.requestId, ref: p.ref, companyName: p.companyName, revenue: 0, cost: 0, profit: 0, margin: null };
+    row.revenue = r2(row.revenue + amount); row.cost = r2(row.cost + share); byCorporate.set(p.requestId, row);
+  }
+  for (const [id, row] of byCorporate) { row.profit = r2(row.revenue - row.cost); row.margin = row.revenue > 0 ? r2((row.profit / row.revenue) * 100) : null; byCorporate.set(id, row); }
+  const corporateProfit = r2(corporateRevenue - corporateCost);
+
+  revenue += corporateRevenue; cost += corporateCost;
   const profit = r2(revenue - cost); const margin = revenue > 0 ? r2((profit / revenue) * 100) : null;
   return { label, from: from.toISOString().slice(0, 10), to: new Date(to.getTime() - 86400000).toISOString().slice(0, 10),
     revenue: r2(revenue), cost: r2(cost), profit, margin, paymentCount: rows.length, bookingCount: seenBookings.size,
-    noCostCount: noCostBookings.size, noCostRevenue: r2(noCostRevenue), byTour: [...byTour.values()].sort((a, b) => b.profit - a.profit) };
+    noCostCount: noCostBookings.size, noCostRevenue: r2(noCostRevenue), byTour: [...byTour.values()].sort((a, b) => b.profit - a.profit),
+    corporateRevenue: r2(corporateRevenue), corporateCost: r2(corporateCost), corporateProfit, corporatePaymentCount: crows.length, corporateRequestCount: seenRequests.size,
+    byCorporate: [...byCorporate.values()].sort((a, b) => b.profit - a.profit) };
 }

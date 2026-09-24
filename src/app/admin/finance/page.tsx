@@ -22,7 +22,7 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Finance</h1><p className="text-sm text-ink/65">Profit for {r.label}, based on payments recorded as paid.</p></div>
+        <div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Finance</h1><p className="text-sm text-ink/65">Profit for {r.label}, based on payments recorded as paid — bookings and corporate requests combined.</p></div>
         <a href={`/api/admin/finance/pdf?m=${monthValue(m)}`} className="btn btn-outline !min-h-[44px]">Download PDF</a>
       </div>
 
@@ -65,6 +65,25 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
           ))}</tbody>
         </table>
         {!r.byTour.length && <p className="p-6 text-center text-sm text-ink/65">No payments were recorded as paid in {r.label}.</p>}
+      </div>
+
+      <h2 className="mt-8 font-display text-xl font-extrabold">Corporate requests</h2>
+      <p className="text-sm text-ink/65">{r.corporateRequestCount} request{r.corporateRequestCount === 1 ? "" : "s"} · {r.corporatePaymentCount} payment{r.corporatePaymentCount === 1 ? "" : "s"} in {r.label} · {money(r.corporateRevenue)} revenue, {money(r.corporateProfit)} profit, already counted in the totals above.</p>
+      <div className="mt-2 card overflow-x-auto p-0" tabIndex={0} role="region" aria-label="Profit by corporate request">
+        <table className="table-modern min-w-[560px]">
+          <thead><tr>
+            <th>Request</th><th className="text-right">Revenue</th><th className="text-right">Cost</th><th className="text-right">Profit</th><th className="text-right">Margin</th>
+          </tr></thead>
+          <tbody>{r.byCorporate.map((c) => (
+            <tr key={c.requestId}>
+              <td className="font-semibold"><Link href={`/admin/corporate/${c.requestId}`} className="hover:underline">{c.companyName}</Link> <span className="font-normal text-ink/65">{c.ref}</span></td>
+              <td className="text-right">{money(c.revenue)}</td><td className="text-right text-ink/65">{money(c.cost)}</td>
+              <td className={`text-right font-bold ${c.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(c.profit)}</td>
+              <td className="text-right text-ink/65">{c.margin != null ? `${c.margin.toFixed(0)}%` : "—"}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+        {!r.byCorporate.length && <p className="p-6 text-center text-sm text-ink/65">No corporate payments were recorded as paid in {r.label}.</p>}
       </div>
       <p className="mt-4 text-xs text-ink/65">Cash basis: a payment counts in the month it was recorded as paid, not the month of the trip. Add-ons and private-tour upgrades are counted as pure profit, since only the core tour has a recorded cost.</p>
     </div>

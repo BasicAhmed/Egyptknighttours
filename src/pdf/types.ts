@@ -35,4 +35,6 @@ export type FinanceReportData = {
   revenue: number; cost: number; profit: number; margin: number | null;
   paymentCount: number; bookingCount: number; noCostCount: number; noCostRevenue: number;
   byTour: { title: string; bookings: number; revenue: number; cost: number; profit: number; margin: number | null }[];
+  corporateRevenue: number; corporateCost: number; corporateProfit: number; corporatePaymentCount: number; corporateRequestCount: number;
+  byCorporate: { ref: string; companyName: string; revenue: number; cost: number; profit: number; margin: number | null }[];
 };

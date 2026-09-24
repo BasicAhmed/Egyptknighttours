@@ -85,3 +85,12 @@ export async function deleteCorporateService(id: string, requestId: string) {
   await audit(u.uid, "DELETE", "corporate_service", id); revalidatePath(`/admin/corporate/${requestId}`);
   return go(`/admin/corporate/${requestId}`, "Service removed");
 }
+
+export async function addCorporatePayment(requestId: string, fd: FormData) {
+  const u = await requireStaff("corporate");
+  const p = z.object({ amount: z.coerce.number().min(0.01).max(1_000_000), method: z.string().trim().max(40).optional().default("MANUAL"), note: z.string().trim().max(300).optional().default("") }).safeParse(Object.fromEntries(fd.entries()));
+  if (!p.success) return go(`/admin/corporate/${requestId}`, p.error.issues[0]?.message ?? "Enter a valid amount.", true);
+  await db.insert(s.corporatePayments).values({ requestId, amount: p.data.amount, method: p.data.method, status: "PAID", note: p.data.note });
+  await audit(u.uid, "CREATE", "corporate_payment", requestId); revalidatePath(`/admin/corporate/${requestId}`);
+  return go(`/admin/corporate/${requestId}`, "Payment recorded");
+}

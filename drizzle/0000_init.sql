@@ -94,6 +94,18 @@ CREATE INDEX `bookings_tour_idx` ON `bookings` (`tour_id`);--> statement-breakpo
 CREATE INDEX `bookings_status_idx` ON `bookings` (`status`);--> statement-breakpoint
 CREATE INDEX `bookings_travel_idx` ON `bookings` (`travel_date`);--> statement-breakpoint
 CREATE INDEX `bookings_created_idx` ON `bookings` (`created_at`);--> statement-breakpoint
+CREATE TABLE `corporate_payments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`request_id` text NOT NULL,
+	`amount` real NOT NULL,
+	`method` text DEFAULT 'MANUAL' NOT NULL,
+	`status` text DEFAULT 'PAID' NOT NULL,
+	`note` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`request_id`) REFERENCES `corporate_requests`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `corporate_payments_request_idx` ON `corporate_payments` (`request_id`);--> statement-breakpoint
 CREATE TABLE `corporate_requests` (
 	`id` text PRIMARY KEY NOT NULL,
 	`ref` text NOT NULL,

@@ -320,3 +320,10 @@ export const corporateServices = sqliteTable("corporate_services", {
   status: text("status").notNull().default("PENDING"), // PENDING CONFIRMED DONE CANCELLED
   notes: text("notes").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("corporate_services_request_idx").on(t.requestId)]);
+
+// One row per payment received against a corporate request — mirrors the bookings payments table, kept separate on purpose.
+export const corporatePayments = sqliteTable("corporate_payments", {
+  id: id(), requestId: text("request_id").notNull().references(() => corporateRequests.id, { onDelete: "cascade" }),
+  amount: real("amount").notNull(), method: text("method").notNull().default("MANUAL"),
+  status: text("status").notNull().default("PAID"), note: text("note").notNull().default(""), createdAt: createdAt(),
+}, (t) => [index("corporate_payments_request_idx").on(t.requestId)]);

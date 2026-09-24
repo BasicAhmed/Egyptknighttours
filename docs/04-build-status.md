@@ -37,6 +37,15 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Corporate requests: payments, finance, contact actions, search
+Four additions to the Corporate Requests flow:
+- **Finance integration**: corporate revenue, cost and profit now flow into the main Finance KPIs (combined with bookings) and into their own "Corporate requests" breakdown table — on the Finance page and in the downloadable PDF report. Verified end to end: a real $150 request with $100 cost showed up correctly as $150/$100/$50 in both places.
+- **Payment recording**: each request now has its own Payment section - record an amount, see paid vs. balance, a running history, "Paid in full" once settled - exactly mirroring how customer orders already work. Cost stays hidden from non-finance roles; the price/paid/balance figures stay visible, since anyone handling the request needs to see them.
+- **Contact actions**: WhatsApp, Call and Email now appear on each request, targeting the requesting company's own contact details.
+- **Search and filter**: the request list is now a live-filtering view (search by company/ref/customer, filter by status) matching the Orders list.
+
+Found and fixed a real bug before any of this could even build: the new search/filter component is client-side, but it imported from the same file as the server-only database code, which would have broken the production build entirely. Fixed by splitting the plain labels (usable by both client and server code) into their own file, separate from the database functions - and confirmed with a full `npm run build`, not just the faster type-check, since that's what actually caught it.
+
 ## Fixed: mobile bottom nav was crushed and overlapping
 With 9 sections now (Orders through Settings), the phone bottom nav was cramming all 9 into equal-width columns, so labels like "Itineraries" and "Reports" visually overlapped. Fixed with a "More" pattern: the phone nav now shows the 4 most-used sections (Orders, Inquiries, Tours, Itineraries) plus a More button; tapping it opens a small grid with the rest (Reports, Finance, Referrals, Corporate, Staff, Settings), dismissible by tapping an item, tapping the backdrop, or navigating. More lights up gold whenever the current page is one of the items behind it. Adapts automatically to how many sections a role can actually see, so it won't need revisiting the next time a section is added.
 

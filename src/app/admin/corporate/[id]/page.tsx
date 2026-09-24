@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff, PERMS } from "@/lib/auth";
 import { loadCorporateRequest, SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL } from "@/lib/corporate";
-import { updateCorporateRequest, setCorporateStatus, addCorporateService, updateCorporateService, deleteCorporateService, deleteCorporateRequest } from "../../corporate-actions";
+import { updateCorporateRequest, setCorporateStatus, addCorporateService, updateCorporateService, deleteCorporateService, deleteCorporateRequest, addCorporatePayment } from "../../corporate-actions";
+import { waUrl } from "@/components/order-ui";
 import Notice from "@/components/Notice";
 import ConfirmButton from "@/components/ConfirmButton";
+import CopyButton from "@/components/CopyButton";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, def, req, type = "text", cls = "" }: { name: string; label: string; def?: string | number | null; req?: boolean; type?: string; cls?: string }) => (
@@ -16,7 +18,8 @@ export default async function CorporateDetail({ params, searchParams }: { params
   const u = await requireStaff("corporate"); const { id } = await params; const sp = await searchParams;
   const canFinance = PERMS.finance.includes(u.role);
   const data = await loadCorporateRequest(id); if (!data) notFound();
-  const { request: r, services, totals: t } = data;
+  const { request: r, services, totals: t, payments, paid, balance } = data;
+  const pct = t.price > 0 ? Math.min(100, Math.round((paid / t.price) * 100)) : 0;
 
   return (
     <div>
@@ -28,12 +31,36 @@ export default async function CorporateDetail({ params, searchParams }: { params
           <form action={setCorporateStatus.bind(null, r.id)} className="flex gap-2"><label className="sr-only" htmlFor="cr-status">Status</label><select id="cr-status" name="status" defaultValue={r.status} className="input !w-auto !py-2">{REQUEST_STATUS.map((v) => <option key={v} value={v}>{REQUEST_STATUS_LABEL[v]}</option>)}</select><button className="btn btn-dark !min-h-[44px]">Save</button></form>
         </div>
       </div>
+
+      <div className="mt-3 space-y-2.5">
+        <div className="flex flex-wrap gap-2">
+          {r.companyPhone && <a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={waUrl(r.companyPhone, `Hi${r.companyContact ? ` ${r.companyContact.split(" ")[0]}` : ""}, it's Egypt Knight about request ${r.ref}.`)}>WhatsApp{r.companyContact ? ` ${r.companyContact.split(" ")[0]}` : ""}</a>}
+          {r.companyPhone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${r.companyPhone.replace(/[^\d+]/g, "")}`}>Call</a>}
+          {r.companyEmail && <a className="btn btn-outline !min-h-[44px]" href={`mailto:${r.companyEmail}`}>Email</a>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <CopyButton text={r.ref} label="Copy request ID" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
+        </div>
+      </div>
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="stat-card"><p className="stat-label">Total cost</p><p className="stat-value">{canFinance ? money(t.cost, r.currency) : "—"}</p></div>
         <div className="stat-card"><p className="stat-label">Total price charged</p><p className="stat-value">{money(t.price, r.currency)}</p></div>
         <div className="stat-card"><p className="stat-label">Profit</p><p className={`stat-value ${canFinance ? (t.profit >= 0 ? "text-[#17663A]" : "text-red-700") : ""}`}>{canFinance ? money(t.profit, r.currency) : "—"}</p></div>
+      </div>
+
+      <div className="card mt-5 p-5">
+        <h2 className="font-display text-lg font-bold">Payment</h2>
+        <div className="mt-3 flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(paid, r.currency)}</b> of {money(t.price, r.currency)}</p><p className="font-display text-xl font-extrabold">{balance > 0 ? `${money(balance, r.currency)} left` : "Paid in full"}</p></div>
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
+        {payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><span className="font-semibold">{money(p.amount, r.currency)}</span></li>)}</ul>}
+        {balance > 0 && <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
+          <F name="amount" label={`Amount received (${r.currency})`} type="number" req />
+          <div><label className="label" htmlFor="cp-method">Method</label><select id="cp-method" name="method" defaultValue="Bank transfer" className="input !py-2"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Other</option></select></div>
+          <F name="note" label="Note (optional)" />
+          <div className="sm:col-span-3"><button className="btn btn-primary !min-h-[44px]">Record payment</button></div>
+        </form>}
       </div>
 
       <details className="card mt-5 p-5"><summary className="cursor-pointer font-display text-lg font-bold">Company, customer &amp; request details</summary>

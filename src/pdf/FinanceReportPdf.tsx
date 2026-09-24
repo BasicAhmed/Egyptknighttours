@@ -76,6 +76,24 @@ export default function FinanceReportPdf({ d }: { d: FinanceReportData }) {
           {!d.byTour.length && <Text style={{ marginTop: 10, fontSize: 9, color: C.muted }}>No payments were recorded as paid in this period.</Text>}
         </View>
 
+        <View style={{ marginTop: 16 }} break>
+          <Text style={s.h2}>Corporate requests</Text>
+          <Text style={{ marginTop: 3, fontSize: 8.5, color: C.muted }}>{d.corporateRequestCount} request{d.corporateRequestCount === 1 ? "" : "s"} · {d.corporatePaymentCount} payment{d.corporatePaymentCount === 1 ? "" : "s"} · already counted in the totals above.</Text>
+          <View style={[s.th2, { marginTop: 8 }]}>
+            <Text style={[s.th, { flex: 2.2 }]}>Request</Text><Text style={[s.th, { flex: 1, textAlign: "right" }]}>Revenue</Text>
+            <Text style={[s.th, { flex: 1, textAlign: "right" }]}>Cost</Text><Text style={[s.th, { flex: 1, textAlign: "right" }]}>Profit</Text><Text style={[s.th, { flex: 0.8, textAlign: "right" }]}>Margin</Text>
+          </View>
+          {d.byCorporate.map((c, i) => (
+            <View key={i} style={s.tr} wrap={false}>
+              <Text style={{ flex: 2.2, fontSize: 9, fontWeight: 700 }}>{c.companyName} · {c.ref}</Text>
+              <Text style={{ flex: 1, fontSize: 9, textAlign: "right" }}>{money(c.revenue, d.currency)}</Text><Text style={{ flex: 1, fontSize: 9, textAlign: "right", color: C.muted }}>{money(c.cost, d.currency)}</Text>
+              <Text style={{ flex: 1, fontSize: 9, textAlign: "right", fontWeight: 700, color: c.profit >= 0 ? C.green : "#B42318" }}>{money(c.profit, d.currency)}</Text>
+              <Text style={{ flex: 0.8, fontSize: 9, textAlign: "right", color: C.muted }}>{c.margin != null ? `${c.margin.toFixed(0)}%` : "—"}</Text>
+            </View>
+          ))}
+          {!d.byCorporate.length && <Text style={{ marginTop: 10, fontSize: 9, color: C.muted }}>No corporate payments were recorded as paid in this period.</Text>}
+        </View>
+
         <Text style={{ marginTop: 16, fontSize: 7.5, color: C.muted, lineHeight: 1.5 }}>
           Cash basis: a payment counts in the month it was recorded as paid, not the month of the trip. Each payment carries its share of that booking's cost, so a deposit this month and a balance
           next month each contribute their fair part. Cost is only the core tour cost recorded on the tour; add-ons and private-tour upgrades are counted as pure profit.

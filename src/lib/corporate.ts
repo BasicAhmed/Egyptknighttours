@@ -1,17 +1,10 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { r2 } from "./pricing";
-
-export const SERVICE_TYPES = [
-  ["TRANSFER", "Transfer"], ["ENTRANCE_TICKETS", "Entrance tickets"], ["PERMITS", "Permits"], ["FELUCCA", "Felucca"],
-  ["MOTOR_BOAT", "Motor / boat"], ["TOUR_GUIDE", "Tour guide"], ["HOTEL", "Hotel"], ["NILE_CRUISE", "Nile cruise"],
-  ["AIRPORT_SERVICES", "Airport services"], ["TRANSPORTATION", "Transportation"], ["OTHER", "Other"],
-] as const;
-export const SERVICE_TYPE_LABEL: Record<string, string> = Object.fromEntries(SERVICE_TYPES);
-export const REQUEST_STATUS = ["NEW", "CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"] as const;
-export const REQUEST_STATUS_LABEL: Record<string, string> = { NEW: "New", CONFIRMED: "Confirmed", IN_PROGRESS: "In progress", COMPLETED: "Completed", CANCELLED: "Cancelled" };
-export const SERVICE_STATUS = ["PENDING", "CONFIRMED", "DONE", "CANCELLED"] as const;
-export const SERVICE_STATUS_LABEL: Record<string, string> = { PENDING: "Pending", CONFIRMED: "Confirmed", DONE: "Done", CANCELLED: "Cancelled" };
+// Server-only data access lives in this file; the plain labels/lists live in corporate-constants.ts so a client
+// component can import just those without accidentally pulling in server-only code (db, next/headers, next/cache).
+export * from "./corporate-constants";
+import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL } from "./corporate-constants";
 
 export async function newCorporateRef() {
   let ref = ""; let n = 1000 + Math.floor(Math.random() * 9000);
@@ -31,21 +24,26 @@ export function totals(services: Pick<ServiceRow, "cost" | "price">[]) {
 }
 
 export async function listCorporateRequests(limit = 200) {
-  // The subquery's own table (corporate_services) has its own "id" column, so the outer request's id must be qualified
-  // by table name here — a bare reference resolves to the inner table's id instead and silently matches nothing.
+  // Every correlated subquery here must qualify "corporate_requests.id" by table name explicitly — both the services and
+  // payments tables have their own "id" column, and a bare reference silently resolves to the wrong one, matching nothing.
   const rows = await db.select({
     r: s.corporateRequests,
     serviceCount: sql<number>`(select count(*) from corporate_services where request_id = corporate_requests.id)`,
     price: sql<number>`(select coalesce(sum(price), 0) from corporate_services where request_id = corporate_requests.id)`,
+    paid: sql<number>`(select coalesce(sum(amount), 0) from corporate_payments where request_id = corporate_requests.id and status = 'PAID')`,
   }).from(s.corporateRequests).orderBy(desc(s.corporateRequests.createdAt)).limit(limit);
-  return rows.map((x) => ({ ...x.r, serviceCount: x.serviceCount, price: r2(x.price) }));
+  return rows.map((x) => ({ ...x.r, serviceCount: x.serviceCount, price: r2(x.price), paid: r2(x.paid), balance: r2(x.price - x.paid) }));
 }
 
 export async function loadCorporateRequest(id: string) {
   const [r] = await db.select().from(s.corporateRequests).where(eq(s.corporateRequests.id, id));
   if (!r) return null;
   const services = await db.select().from(s.corporateServices).where(eq(s.corporateServices.requestId, id)).orderBy(s.corporateServices.createdAt);
-  return { request: r, services, totals: totals(services) };
+  const payments = await db.select().from(s.corporatePayments).where(eq(s.corporatePayments.requestId, id)).orderBy(desc(s.corporatePayments.createdAt));
+  const t = totals(services);
+  const paid = r2(payments.filter((p) => p.status === "PAID").reduce((a, p) => a + p.amount, 0));
+  const balance = r2(t.price - paid);
+  return { request: r, services, payments, totals: t, paid, balance };
 }
 
 export async function buildCorporateInvoiceData(id: string) {
