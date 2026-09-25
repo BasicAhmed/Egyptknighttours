@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c54d8d74-63f9-4729-928b-e0b220f02212",
+  "id": "e3bd84a5-9b2f-4954-82f6-c8e3d9bf0283",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -2047,6 +2047,13 @@
         "margin_percent": {
           "name": "margin_percent",
           "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

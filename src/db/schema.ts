@@ -132,6 +132,9 @@ export const itineraries = sqliteTable("itineraries", {
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
   // What this specific trip costs and the profit margin on it. Every itinerary can have its own, since the same tour can cost differently for different guests.
   costPrice: real("cost_price"), marginPercent: real("margin_percent"),
+  // Only meaningful when there is no bookingId: an itinerary linked to a real order always prices in that order's own
+  // currency instead. Lets a template, quick PDF, or website-tour itinerary be priced in something other than USD.
+  currency: text("currency"),
   // What this itinerary was made for. Only a "tour" one can ever be published as a website tour — this is what makes that an explicit choice, not an accident.
   intent: text("intent").notNull().default("pdf"), // customer | tour | pdf
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

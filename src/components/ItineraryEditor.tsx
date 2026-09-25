@@ -34,11 +34,12 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [name, setName] = useState(initial.name); const [desc, setDesc] = useState(initial.description);
   const [bookingId, setBookingId] = useState(initial.bookingId ?? "");
   const [cost, setCost] = useState(initial.costPrice != null ? String(initial.costPrice) : ""); const [margin, setMargin] = useState(initial.marginPercent != null ? String(initial.marginPercent) : "");
+  const [curr, setCurr] = useState(currency); // only used while unlinked — a linked order's own currency always wins once one is chosen
   const priced = cost !== "" && margin !== "" && Number(cost) >= 0 && Number(margin) >= 0;
   const unitCalc = priced ? Math.round(Number(cost) * (1 + Number(margin) / 100) * 100) / 100 : null;
   const travelers = bookings.find((b) => b.id === bookingId)?.travelers ?? 1;
   const totalCalc = unitCalc != null ? Math.round(unitCalc * travelers * 100) / 100 : null;
-  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: bookingId ? currency : curr, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
   const [c, setC] = useState<ItineraryContent>(initial.content);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [tab, setTab] = useState<"content" | "days" | "price" | "booking">("content");
@@ -49,7 +50,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const updDay = (i: number, fn: (d: Day) => void) => upd((n) => fn(n.days[i]));
 
   async function save(force = false): Promise<boolean> {
-    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), force }));
+    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), currency: curr, force }));
     if (!r.ok && r.needsConfirm) { if (window.confirm(r.message)) return save(true); setMsg({ t: "Not saved — the order was left as it was.", err: true }); return false; }
     setMsg({ t: r.message, err: !r.ok }); return r.ok;
   }
@@ -151,8 +152,10 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
       <div hidden={tab !== "price"} className="space-y-5">
         <Panel id="price" title="Price settings" openState={open} setOpenState={setOpen}>
           <p className="text-sm text-ink/65">Cost and price are always <b>per person</b>. Adding or removing a traveler on the linked order multiplies the total automatically — nothing to recalculate by hand.</p>
+          {!bookingId && <div className="mt-3"><label className="label" htmlFor="ip-curr">Currency</label><select id="ip-curr" className="input !w-auto !py-2" value={curr} onChange={(e) => setCurr(e.target.value)}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c2) => <option key={c2}>{c2}</option>)}</select></div>}
+          {bookingId && <p className="mt-3 text-xs text-ink/65">Currency: <b>{currency}</b>, following the linked order.</p>}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div><label className="label" htmlFor="ip-cost">Cost per person ({currency}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
+            <div><label className="label" htmlFor="ip-cost">Cost per person ({bookingId ? currency : curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
             <div><label className="label" htmlFor="ip-margin">Profit margin (%)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
             <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
           </div>

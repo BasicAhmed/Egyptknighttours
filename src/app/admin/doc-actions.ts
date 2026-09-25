@@ -70,6 +70,7 @@ export async function saveItinerary(id: string, payload: string) {
   const p = z.object({
     name: z.string().trim().min(1).max(120), description: str(300), bookingId: z.string().max(60).nullable().optional(), content: contentSchema,
     costPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(), marginPercent: z.coerce.number().min(0).max(500).nullable().optional(),
+    currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     force: z.boolean().optional(),
   }).safeParse(raw);
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
@@ -82,7 +83,8 @@ export async function saveItinerary(id: string, payload: string) {
   const content = clean(p.data.content);
   let bookingNote = "";
   // Cost and margin are always per person. unitPrice is what one traveler pays; total is unitPrice × the travelers on the linked order.
-  let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;
+  // Unlinked (a template, quick PDF, or website-tour itinerary): price in whatever currency was chosen for it, USD by default.
+  let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = p.data.currency || "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;
 
   if (priced && p.data.bookingId && !isViatorBooking) {
     const [b] = await db.select({ currency: s.bookings.currency, status: s.bookings.status, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
@@ -113,7 +115,7 @@ export async function saveItinerary(id: string, payload: string) {
       bookingNote = ` The linked order's total is now ${money(total!, currency)} (${money(unitPrice!, currency)} per person × ${travelers}).`;
     }
   }
-  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, updatedAt: new Date() }).where(eq(s.itineraries.id, id));
+  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, currency: p.data.bookingId ? null : currency, updatedAt: new Date() }).where(eq(s.itineraries.id, id));
   await audit(u.uid, "UPDATE", "itinerary", id); return { ok: true, message: bookingNote ? `Saved.${bookingNote}` : "Saved" };
 }
 export async function duplicateItinerary(id: string) {

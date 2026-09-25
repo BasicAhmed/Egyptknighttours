@@ -21,7 +21,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
   };
   const [it] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!it) notFound();
   const bookings = await db.select({ id: s.bookings.id, ref: s.bookings.ref, name: s.customers.name, date: s.bookings.travelDate, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(60);
-  const linkedCurrency = it.bookingId ? (await db.select({ currency: s.bookings.currency }).from(s.bookings).where(eq(s.bookings.id, it.bookingId)))[0]?.currency ?? "USD" : "USD";
+  const linkedCurrency = it.bookingId ? (await db.select({ currency: s.bookings.currency }).from(s.bookings).where(eq(s.bookings.id, it.bookingId)))[0]?.currency ?? "USD" : it.currency ?? "USD";
   const docs = await db.select().from(s.documents).where(eq(s.documents.itineraryId, id)).orderBy(desc(s.documents.createdAt));
   const dests = await db.select({ id: s.destinations.id, name: s.destinations.name }).from(s.destinations).orderBy(s.destinations.name);
   const tour = it.tourId ? (await db.select().from(s.tours).where(eq(s.tours.id, it.tourId)))[0] : undefined;

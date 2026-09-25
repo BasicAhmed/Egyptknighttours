@@ -37,6 +37,13 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Fixed: itinerary pricing was hardcoded to USD when not linked to an order
+When an itinerary is linked to a real order (the normal "+ New order" → price it flow), it already correctly followed that order's own currency. But a "Generate a quick PDF", "For the website (a tour)", or "Create a template" itinerary — none of which are linked to an order — was silently locked to USD with no way to change it, in both the editor and the actual generated PDF.
+
+Fixed: unlinked itineraries now get a currency selector on the Price tab (same options as everywhere else — USD, EUR, GBP, EGP, AED, SAR), and it's remembered. When an itinerary is linked to an order, the selector correctly disappears in favor of a note that it's following that order's currency — the single source of truth stays with the order, so the two can never disagree.
+
+Tested for real, not just in the editor: created a quick PDF, set it to EGP with a 500 cost and 20% margin, saved it, reloaded the page fresh and confirmed EGP was still selected, then downloaded the actual generated PDF and confirmed it read "EGP 600 per person" — not USD. Separately confirmed a normal order-linked itinerary still works exactly as before, with no selector and no behavior change.
+
 ## Fixed: System status now catches a missing sender name on emails
 The cause of the "email shows as info" complaint isn't code — it's the EMAIL_FROM value in Vercel. Emails send exactly as whatever that variable is set to; set to a bare address (info@egyptknight.com) with no name attached, that's exactly what recipients see. The fix is a one-line change in Vercel: set EMAIL_FROM to `Egypt Knight Tours <info@egyptknight.com>` instead of just the bare address.
 
