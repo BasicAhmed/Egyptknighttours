@@ -37,6 +37,13 @@ Every itinerary (not just tours or custom orders) can carry its own cost and pro
 - and, when the itinerary is linked to a customer's order, updates that order's total and cost snapshot to match, so the invoice and the Finance page stay in sync.
 Leaving both fields blank keeps the old free-text price line, unchanged.
 
+## Audit finding: Finance showed $0 cost for percentage-priced corporate requests
+Started the deeper audit by testing corporate requests, dual pricing, currency conversion, payments, and notifications together instead of separately — exactly the kind of combined test the earlier audit couldn't cover in one pass. Found a real bug: a percentage-priced corporate request (cost only, price = cost + fee%) showed correctly on its own page, but on Finance it showed **$0 cost and 100% profit margin** — because Finance's cost-sharing math assumed every corporate request's total price came from summing each service's own "price" field, which is never set in percentage mode.
+
+Fixed by having Finance work out the total price the same way the request's own page already does — cost × (1 + service percent) in percentage mode. Verified with a real EGP request: cost correctly went from a wrong $0 to the right $388, and profit from a wrong $446 down to the right $58.20.
+
+Confirmed the rest of the chain is sound: payment-complete and cancellation notifications both fire correctly and exactly once for a request using percentage pricing in a foreign currency, and Finance's revenue figure was already correct throughout — only the cost side was wrong.
+
 ## Fixed: itinerary pricing was hardcoded to USD when not linked to an order
 When an itinerary is linked to a real order (the normal "+ New order" → price it flow), it already correctly followed that order's own currency. But a "Generate a quick PDF", "For the website (a tour)", or "Create a template" itinerary — none of which are linked to an order — was silently locked to USD with no way to change it, in both the editor and the actual generated PDF.
 
