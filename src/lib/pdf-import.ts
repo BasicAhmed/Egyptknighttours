@@ -84,6 +84,15 @@ export function parseItineraryText(rawText: string, filename = "Imported itinera
   c.intro = head.slice(ti).join(" ").trim();
   if (!main.length) warnings.push("Couldn't find a title, so the file name was used.");
 
+  // Pick up an explicit "8 days / 7 nights" (or "8 days, 7 nights", "8-day, 7-night") from the file name, subtitle or title, so the
+  // PDF's trip-length chip is right even when the source file's day-by-day blocks don't total the same number (a highlights-only source, a cruise leg, etc.).
+  const durText = `${base} ${c.subtitle} ${c.title}`;
+  const durMatch = durText.match(/(\d{1,2})[\s-]*days?\D{0,15}?(\d{1,2})[\s-]*nights?/i) || durText.match(/(\d{1,2})[\s-]*nights?\D{0,15}?(\d{1,2})[\s-]*days?/i);
+  if (durMatch) {
+    const [a, b] = [Number(durMatch[1]), Number(durMatch[2])];
+    if (/^\d+[\s-]*days?/i.test(durMatch[0])) { c.durationDays = a; c.durationNights = b; } else { c.durationNights = a; c.durationDays = b; }
+  }
+
   type Sec = { kind: "day" | "inc" | "exc" | "price" | "pay" | "imp"; day?: { n: number; loc: string; lines: string[] }; lines: string[] };
   const sections: Sec[] = []; let cur: Sec | null = null;
   const start = firstDay < 0 ? lines.length : firstDay;

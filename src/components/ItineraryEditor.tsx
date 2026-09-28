@@ -94,6 +94,9 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
           <div className="grid gap-3 sm:grid-cols-2">
             <In label="Trip title (cover)" value={c.title} onChange={(v) => upd((n) => { n.title = v; })} ph="Cairo & the Nile" />
             <In label="Subtitle" value={c.subtitle} onChange={(v) => upd((n) => { n.subtitle = v; })} ph="8 days, 7 nights" />
+            <In label="Days (shown on the PDF)" type="number" value={c.durationDays == null ? "" : String(c.durationDays)} onChange={(v) => upd((n) => { n.durationDays = v === "" ? null : Math.max(0, parseInt(v, 10) || 0); })} ph={`Auto — ${c.days.length} (from day blocks)`} />
+            <In label="Nights (shown on the PDF)" type="number" value={c.durationNights == null ? "" : String(c.durationNights)} onChange={(v) => upd((n) => { n.durationNights = v === "" ? null : Math.max(0, parseInt(v, 10) || 0); })} ph={`Auto — ${Math.max(0, c.days.length - 1)}`} />
+            <p className="sm:col-span-2 -mt-1 text-xs text-ink/55">Leave blank to use the number of day blocks below (days = day blocks, nights = days − 1). Set these when the trip's real length doesn't match the number of day blocks — for example a short, highlights-only itinerary for a longer trip.</p>
             <Ta cls="sm:col-span-2" label="Introduction (a short, exciting overview)" value={c.intro} onChange={(v) => upd((n) => { n.intro = v; })} rows={3} />
             <ImageField label="Cover photo" value={c.coverImageUrl} onChange={(v) => upd((n) => { n.coverImageUrl = v; })} hint="Upload a photo for the PDF cover." />
             <div><label className="label" htmlFor="ip-scene">Cover illustration (when no photo)</label><select id="ip-scene" className="input !py-2" value={c.sceneKind || "auto"} onChange={(e) => upd((n) => { n.sceneKind = e.target.value; })}>{["auto", "giza", "cairo", "luxor", "aswan", "alexandria", "hurghada"].map((k) => <option key={k}>{k}</option>)}</select></div>

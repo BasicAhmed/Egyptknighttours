@@ -73,7 +73,7 @@ function DayView({ day, n, d }: { day: Day; n: number; d: ItineraryPdfData }) {
 }
 
 export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
-  const c = d.content; const n = c.days.length; const nights = Math.max(0, n - 1);
+  const c = d.content; const n = c.durationDays ?? c.days.length; const nights = c.durationNights ?? Math.max(0, n - 1);
   const coverKind = c.sceneKind && c.sceneKind !== "auto" ? c.sceneKind : sceneKind(`${c.title} ${c.destinations.join(" ")}`);
   const wa = d.company.whatsapp ? `https://wa.me/${d.company.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi Egypt Knight, I'd like to book "${c.title}" (${d.ref}).`)}` : "";
   const cta = d.ctaUrl || wa || (d.company.email ? `mailto:${d.company.email}` : "");

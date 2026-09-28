@@ -28,6 +28,10 @@ export type ItineraryContent = {
   title: string; subtitle: string; intro: string; coverImageUrl: string; customerName: string; travelers: string; startDate: string; endDate: string;
   destinations: string[]; highlights: string[]; days: Day[]; included: string[]; excluded: string[]; important: string[];
   priceLabel: string; paymentTerms: string; ctaUrl: string; ctaLabel: string; sceneKind: string;
+  // Explicit trip length shown on the PDF ("8 days · 7 nights"). null means: derive from the number of day blocks below (days.length, nights = days - 1) —
+  // the old behavior, kept as the default so existing itineraries are unaffected. Set explicitly when the day-by-day blocks don't line up 1:1 with the
+  // actual trip length (a summary itinerary with fewer detailed blocks than calendar days, a cruise leg counted in nights only, etc.).
+  durationDays: number | null; durationNights: number | null;
 };
 export type ItineraryPdfData = { content: ItineraryContent; ref: string; company: Company; ctaUrl: string; generatedAt: string; images: Record<string, string> };
 

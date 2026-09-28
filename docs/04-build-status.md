@@ -282,3 +282,10 @@ Each one can start blank or from an existing template. After creating, the edito
 - Availability is date-only (no per-date capacity yet).
 - Rate limiting is in-memory (single instance); move to Redis for multi-instance deploys.
 - The `@` import alias needed an explicit webpack alias in `next.config.mjs` in this environment.
+
+## Itinerary builder: explicit days/nights
+The itinerary PDF's "X days · Y nights" chip used to be worked out purely from the number of day blocks in the builder (days = block count, nights = days − 1). That breaks for a real, common case: a highlights-only itinerary with fewer detailed day blocks than the trip's actual length (e.g. a summarized "8 days / 7 nights" trip written up as one overview block plus a few highlight days), or a Nile-cruise leg where the meaningful count is nights, not blocks.
+
+Added explicit "Days" and "Nights" number fields to the itinerary builder's Content tab (left blank by default, which keeps the old day-block-count behavior — no change for existing itineraries). When set, they override the auto-derived count everywhere the PDF shows it (cover chip and the "days / nights / destinations" stat tiles). Importing an itinerary from a source PDF also now picks up an explicit "8 days / 7 nights" (in any order, with dashes, commas or slashes) from the file name, subtitle or title and pre-fills these fields automatically.
+
+Verified in a real generated PDF: a 1-block "quick PDF" itinerary with Days=8/Nights=7 set produced "8 days · 7 nights" throughout the PDF; a 3-day-block itinerary left blank still correctly showed "3 days · 2 nights" (no regression); and importing a file named "Cairo + Cruise 4 nights - 8 days-7 nights.pdf" correctly picked up 8/7 (not the "4 nights" describing just the cruise leg).

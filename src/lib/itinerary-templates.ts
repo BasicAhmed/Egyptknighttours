@@ -6,6 +6,7 @@ export const day = (title: string, hook: string, location: string, blocks: Block
 export const blankItinerary = (): ItineraryContent => ({
   title: "", subtitle: "", intro: "", coverImageUrl: "", customerName: "", travelers: "", startDate: "", endDate: "", destinations: [], highlights: [], days: [day("", "", "", [])],
   included: [], excluded: [], important: [], priceLabel: "", paymentTerms: "", ctaUrl: "", ctaLabel: "Complete your booking", sceneKind: "auto",
+  durationDays: null, durationNights: null,
 });
 
 // Suggests an engaging headline + hook from a location, for the "Suggest" button in the builder.
