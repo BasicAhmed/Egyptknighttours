@@ -21,7 +21,11 @@ export async function setBookingStatus(bookingId: string, status: string) {
   await db.update(s.bookings).set({ status }).where(eq(s.bookings.id, bookingId));
   await db.insert(s.bookingEvents).values({ bookingId, type: "STATUS_" + status });
   // Cancelling is genuinely worth a staff email — especially if money was already paid, since that's a possible refund to sort out.
-  if (status === "CANCELLED" && before?.status !== "CANCELLED") { const { notifyOrderCancelled } = await import("./notifications"); await notifyOrderCancelled(bookingId); }
+  if (status === "CANCELLED" && before?.status !== "CANCELLED") {
+    const { notifyOrderCancelled } = await import("./notifications"); await notifyOrderCancelled(bookingId);
+    // If this booking was itself a referred booking that had already earned its referrer a reward, reverse that reward — a cancelled trip shouldn't leave the referrer paid out.
+    const { reverseRewardForBooking } = await import("./referrals"); await reverseRewardForBooking(bookingId);
+  }
   // A trip marked completed for the first time starts the post-trip review flow: an invite email, and a page waiting for them when they click it.
   if (status === "COMPLETED") {
     const [existing] = await db.select({ id: s.postTripReviews.id }).from(s.postTripReviews).where(eq(s.postTripReviews.bookingId, bookingId));

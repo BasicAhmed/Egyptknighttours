@@ -254,6 +254,7 @@ export const customerRewards = sqliteTable("customer_rewards", {
   id: id(), customerId: text("customer_id").notNull().references(() => customers.id),
   amount: real("amount").notNull(), // positive = credit to the customer's balance
   bookingId: text("booking_id").references(() => bookings.id), // the referred booking that earned this, if any
+  status: text("status").notNull().default("ACTIVE"), // ACTIVE | REVERSED (reversed when the referred booking is cancelled)
   note: text("note").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("customer_rewards_customer_idx").on(t.customerId)]);
 

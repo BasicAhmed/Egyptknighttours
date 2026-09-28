@@ -62,8 +62,15 @@ export async function creditReferralRewardIfDue(bookingId: string) {
 }
 
 export async function rewardBalance(customerId: string): Promise<number> {
-  const rows = await db.select({ amount: s.customerRewards.amount }).from(s.customerRewards).where(eq(s.customerRewards.customerId, customerId));
+  const rows = await db.select({ amount: s.customerRewards.amount }).from(s.customerRewards).where(and(eq(s.customerRewards.customerId, customerId), eq(s.customerRewards.status, "ACTIVE")));
   return r2(rows.reduce((a, r) => a + r.amount, 0));
+}
+
+// Reverses the reward earned by a referred booking if that booking gets cancelled — keeps the reward row (for history) but excludes it from the customer's balance and referral totals. Safe to call on any booking; it's a no-op if the booking never earned an active reward.
+export async function reverseRewardForBooking(bookingId: string) {
+  const [reward] = await db.select().from(s.customerRewards).where(and(eq(s.customerRewards.bookingId, bookingId), eq(s.customerRewards.status, "ACTIVE")));
+  if (!reward) return;
+  await db.update(s.customerRewards).set({ status: "REVERSED", note: `${reward.note} — reversed: the referred booking was cancelled` }).where(eq(s.customerRewards.id, reward.id));
 }
 
 export function parsePlatforms(v: string): string[] { return parseJson<string[]>(v, []); }

@@ -173,6 +173,7 @@ CREATE TABLE `customer_rewards` (
 	`customer_id` text NOT NULL,
 	`amount` real NOT NULL,
 	`booking_id` text,
+	`status` text DEFAULT 'ACTIVE' NOT NULL,
 	`note` text DEFAULT '' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON UPDATE no action ON DELETE no action,

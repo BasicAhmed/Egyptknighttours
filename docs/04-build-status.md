@@ -44,6 +44,11 @@ Fixed by having Finance work out the total price the same way the request's own 
 
 Confirmed the rest of the chain is sound: payment-complete and cancellation notifications both fire correctly and exactly once for a request using percentage pricing in a foreign currency, and Finance's revenue figure was already correct throughout — only the cost side was wrong.
 
+## Audit finding: a cancelled referral kept its reward paid out
+Continued the audit by testing the full referral loop combined end to end — review, referral code, a referred booking, its reward, then cancelling that referred booking. Found a policy gap: cancelling the referred booking removed nothing — the referrer kept a reward for a trip that never happened, and the Referrals dashboard kept counting the cancelled booking's revenue and discount.
+
+Fixed by reversing the reward automatically the moment a referred booking is cancelled (kept as a REVERSED row for history, not deleted, and never re-applied even if the booking is later un-cancelled), and by excluding cancelled bookings' revenue/discount and reversed rewards from the Referrals report and the customer's own reward balance. Rewards already paid out before this fix are untouched — this only changes what happens going forward. Verified with a real scenario: a fresh referred-and-paid booking earned its referrer a $9.90 reward, and cancelling it correctly zeroed that reward and dropped the booking from the code's stats, while a pre-existing older reward (from before this fix) correctly stayed at its original $9.90 and ACTIVE.
+
 ## Fixed: itinerary pricing was hardcoded to USD when not linked to an order
 When an itinerary is linked to a real order (the normal "+ New order" → price it flow), it already correctly followed that order's own currency. But a "Generate a quick PDF", "For the website (a tour)", or "Create a template" itinerary — none of which are linked to an order — was silently locked to USD with no way to change it, in both the editor and the actual generated PDF.
 

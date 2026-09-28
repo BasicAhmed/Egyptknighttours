@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { r2 } from "./pricing";
 
@@ -17,19 +17,20 @@ export async function referralOverview(): Promise<ReferralOverview> {
 
   const codeRows = await db.select({ coupon: s.coupons, owner: s.customers.name }).from(s.coupons).innerJoin(s.customers, eq(s.coupons.ownerCustomerId, s.customers.id)).where(eq(s.coupons.kind, "REFERRAL")).orderBy(desc(s.coupons.id));
 
+  // Cancelled referred bookings don't count as real referral activity — no revenue, no discount credit for the stats.
   const codes = await Promise.all(codeRows.map(async (row) => {
-    const used = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.couponId, row.coupon.id));
+    const used = await db.select({ total: s.bookings.total }).from(s.bookings).where(and(eq(s.bookings.couponId, row.coupon.id), ne(s.bookings.status, "CANCELLED")));
     const revenue = r2(used.reduce((a, b) => a + b.total, 0));
     return { id: row.coupon.id, code: row.coupon.code, owner: row.owner, uses: used.length, revenue, rewardsPaid: 0, active: row.coupon.active };
   }));
 
-  // Rewards paid per code: sum customer_rewards by the code owner (every reward row for that customer that references a booking is from this loop's referral activity).
+  // Rewards paid per code: sum ACTIVE customer_rewards by the code owner — a reward reversed after its booking was cancelled no longer counts.
   const rewardByOwner = new Map<string, number>();
-  const rewardRows = await db.select({ customerId: s.customerRewards.customerId, amount: s.customerRewards.amount }).from(s.customerRewards);
+  const rewardRows = await db.select({ customerId: s.customerRewards.customerId, amount: s.customerRewards.amount }).from(s.customerRewards).where(eq(s.customerRewards.status, "ACTIVE"));
   for (const r of rewardRows) rewardByOwner.set(r.customerId, r2((rewardByOwner.get(r.customerId) ?? 0) + r.amount));
   for (let i = 0; i < codes.length; i++) codes[i].rewardsPaid = rewardByOwner.get(codeRows[i].coupon.ownerCustomerId!) ?? 0;
 
-  const [{ discountSum }] = await db.select({ discountSum: sql<number>`coalesce(sum(${s.bookings.discount}), 0)` }).from(s.bookings).innerJoin(s.coupons, eq(s.bookings.couponId, s.coupons.id)).where(eq(s.coupons.kind, "REFERRAL"));
+  const [{ discountSum }] = await db.select({ discountSum: sql<number>`coalesce(sum(${s.bookings.discount}), 0)` }).from(s.bookings).innerJoin(s.coupons, eq(s.bookings.couponId, s.coupons.id)).where(and(eq(s.coupons.kind, "REFERRAL"), ne(s.bookings.status, "CANCELLED")));
   const rewardsPaid = r2(rewardRows.reduce((a, r) => a + r.amount, 0));
   const referredBookings = codes.reduce((a, c) => a + c.uses, 0);
 
