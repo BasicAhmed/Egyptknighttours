@@ -99,7 +99,7 @@ export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
           <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 44, lineHeight: 1.02, color: C.white, marginTop: 8, letterSpacing: -1.4 }}>{c.title}</Text>
           {c.subtitle ? <Text style={{ fontSize: 14, color: "#EFE6D3", marginTop: 10, lineHeight: 1.4 }}>{c.subtitle}</Text> : null}
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 18 }}>
-            <Chip>{`${n} days · ${nights} nights`}</Chip>
+            <Chip>{nights > 0 ? `${n} ${n === 1 ? "day" : "days"} · ${nights} ${nights === 1 ? "night" : "nights"}` : n === 1 ? "Day trip" : `${n} days`}</Chip>
             {c.startDate ? <Chip>{`${dLong(c.startDate)}${c.endDate ? " – " + dLong(c.endDate) : ""}`}</Chip> : null}
             {c.travelers ? <Chip>{c.travelers}</Chip> : null}
             {c.destinations.length ? <Chip>{c.destinations.slice(0, 4).join(" · ")}</Chip> : null}
@@ -115,7 +115,7 @@ export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
         <Text style={[s.h2, { marginTop: 4 }]}>{c.intro ? "Here's what's waiting for you." : "Your journey, day by day."}</Text>
         {c.intro ? <Text style={{ marginTop: 10, fontSize: 12, lineHeight: 1.6, color: "#3A3532" }}>{c.intro}</Text> : null}
         <View style={{ flexDirection: "row", marginTop: 20, gap: 10 }}>
-          {[[String(n), "days"], [String(nights), "nights"], [String(Math.max(1, c.destinations.length)), c.destinations.length === 1 ? "destination" : "destinations"]].map(([v, l]) => (
+          {[[String(n), n === 1 ? "day" : "days"], [String(nights), nights === 1 ? "night" : "nights"], [String(Math.max(1, c.destinations.length)), c.destinations.length === 1 ? "destination" : "destinations"]].map(([v, l]) => (
             <View key={l} style={{ flex: 1, backgroundColor: C.gold, borderRadius: 14, padding: 14 }}><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 32, letterSpacing: -1 }}>{v}</Text><Text style={{ fontSize: 9, fontWeight: 600 }}>{l}</Text></View>))}
         </View>
         {c.destinations.length > 0 && <View style={{ marginTop: 22 }}>

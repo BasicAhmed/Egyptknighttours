@@ -18,6 +18,7 @@ export default async function AdminTours() {
           <div className="min-w-0"><p className="truncate font-display text-[17px] font-extrabold">{t.title}</p><p className="text-sm text-ink/65">{money(t.discountPrice ?? t.price)} {t.pricingModel === "PER_GROUP" ? "per group" : "per person"} · {t.popularity} bookings{canFinance && t.priceMode === "MARGIN" && t.costPrice != null && <span className="ml-1 rounded-full bg-ink/10 px-2 py-0.5 text-xs font-semibold text-ink/70">cost ${t.costPrice} · {t.marginPercent}% profit</span>}</p></div>
           <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-3 py-1 text-xs font-bold ${tone(t.status)}`}>{t.status === "PUBLISHED" ? "Live" : t.status === "DRAFT" ? "Draft" : "Archived"}</span>
             {t.status === "PUBLISHED" && <a className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]" href={`/tours/${t.slug}`} target="_blank" rel="noopener noreferrer">View</a>}
+            <a className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]" href={`/api/tours/${t.slug}/pdf`}>PDF</a>
             {can && <><Link className="btn btn-dark !min-h-[38px] !py-1.5 !text-[13px]" href={`/admin/tours/${t.id}`}>Edit</Link><form action={deleteTour.bind(null, t.id)}><button className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px] text-red-700">Delete</button></form></>}</div></li>))}</ul>
     </div>
   );

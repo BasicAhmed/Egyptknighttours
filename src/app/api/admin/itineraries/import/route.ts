@@ -3,6 +3,7 @@ import { db, schema as s } from "@/db";
 import { getSession, PERMS } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { extractPdfText, parseItineraryText } from "@/lib/pdf-import";
+import { applyBooking, canLinkBooking } from "@/lib/itineraries";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -21,9 +22,14 @@ export async function POST(req: Request) {
   let text: string;
   try { text = (await extractPdfText(buf)).text; } catch (e) { console.error("PDF import read failed", e); return NextResponse.json({ ok: false, error: "Couldn't read this PDF. It may be damaged or password protected." }, { status: 422 }); }
   if (text.replace(/\s/g, "").length < 40) return NextResponse.json({ ok: false, error: "This PDF has no readable text (it looks like a scan or images). Import works with text PDFs." }, { status: 422 });
-  const asTemplate = fd?.get("asTemplate") === "1";
+  // Imported straight from an order: link it to that order and fill in the customer's name, travelers and dates, like a blank or template start would.
+  const bookingId = String(fd?.get("bookingId") ?? "") || null;
+  const asTemplate = !bookingId && fd?.get("asTemplate") === "1";
+  if (bookingId) { const check = await canLinkBooking(bookingId); if (!check.ok) return NextResponse.json({ ok: false, error: check.message }, { status: 409 }); }
   const r = parseItineraryText(text, file.name);
-  const [it] = await db.insert(s.itineraries).values({ name: r.name.slice(0, 120), description: `Imported from ${file.name}. Please review the headlines and details.`.slice(0, 300), isTemplate: asTemplate, content: JSON.stringify(r.content), createdById: u.uid }).returning();
+  let content = r.content; let name = r.name;
+  if (bookingId) { const b = await applyBooking(content, bookingId); content = b.content; if (b.label) name = `${r.name} — ${b.label}`; }
+  const [it] = await db.insert(s.itineraries).values({ name: name.slice(0, 120), description: `Imported from ${file.name}. Please review the headlines and details.`.slice(0, 300), isTemplate: asTemplate, bookingId, intent: bookingId ? "customer" : "pdf", content: JSON.stringify(content), createdById: u.uid }).returning();
   await db.insert(s.auditLogs).values({ userId: u.uid, action: "IMPORT", entity: "itinerary", entityId: it.id });
   return NextResponse.json({ ok: true, id: it.id, name: r.name, isTemplate: asTemplate, report: r.report });
 }

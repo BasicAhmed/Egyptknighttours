@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { requireStaff } from "@/lib/auth";
 import { createItinerary } from "../../doc-actions";
 import Notice from "@/components/Notice";
+import CustomerItineraryStart from "@/components/CustomerItineraryStart";
 export const dynamic = "force-dynamic";
 
 function Card({ title, blurb, children }: { title: string; blurb: string; children: React.ReactNode }) {
@@ -42,17 +43,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Card title="For a customer" blurb="Attach it to one of your orders. Their name, dates and travelers are filled in for you. This is where you set the price — enter the cost and profit margin and the order's total is set for you.">
           {bookings.length ? (
-            <form action={createItinerary} className="grid gap-3">
-              <input type="hidden" name="kind" value="customer" />
-              <div><label className="label" htmlFor="c-booking">Choose the order</label>
-                <select id="c-booking" name="bookingId" required defaultValue={sp.bookingId ?? ""} className="input">
-                  <option value="" disabled>Search by name or booking ID…</option>
-                  {bookings.map((b) => <option key={b.id} value={b.id} disabled={b.blocked}>{b.ref} · {b.name} · {b.date}{b.blocked ? " (already has an itinerary)" : ""}</option>)}
-                </select>
-              </div>
-              <TemplatePicker idAttr="c-template" />
-              <button className="btn btn-primary !min-h-[46px]">Create for this customer</button>
-            </form>
+            <CustomerItineraryStart bookings={bookings} templates={templates} defaultBookingId={sp.bookingId ?? ""} action={createItinerary} />
           ) : (
             <p className="rounded-xl bg-ink/5 p-3 text-sm text-ink/65">No orders yet. <Link href="/admin" className="font-semibold underline">Create one first</Link>, then come back here.</p>
           )}

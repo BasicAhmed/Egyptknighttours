@@ -50,6 +50,7 @@ export default async function TourPage({ params }: P) {
           <SiteImage src={t.imageUrl || dest.imageUrl} alt={`${t.title} in ${dest.name}, Egypt`} destination={dest.slug} priority sizes="(min-width: 1024px) 780px, 100vw" className="relative aspect-[16/10] rounded-2xl sm:aspect-[16/9]" />
           
           <h1 className="h1 mt-3 !text-3xl sm:!text-4xl">{t.title}</h1>
+          <a href={`/api/tours/${t.slug}/pdf`} download className="mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border border-ink/20 bg-white px-4 text-sm font-semibold hover:border-ink"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12m0 0l-5-5m5 5l5-5M5 21h14" /></svg>Download itinerary (PDF)</a>
           <p className="mt-3 text-sm font-medium text-ink/70">{[CATEGORY_LABEL[t.category], duration(t), dest.name, t.isPrivateAvailable ? "Private available" : null, rating ? `★ ${rating.avg.toFixed(1)} (${rating.count} reviews)` : "New: no reviews yet"].filter(Boolean).join("  ·  ")}</p>
           <p className="mt-4 text-lg text-ink/80">{t.shortDescription}</p>
           <h2 className="h2 mt-8">About this {dest.name} tour</h2><p className="mt-2 whitespace-pre-line text-ink/80">{t.longDescription}</p>

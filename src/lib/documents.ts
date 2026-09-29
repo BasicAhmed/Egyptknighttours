@@ -41,7 +41,8 @@ export async function setBookingStatus(bookingId: string, status: string) {
           buttonLabel: "Share your experience", buttonUrl: url, footer: `${companyFrom(g).name}. Thank you for traveling with us.`, builder: BUILDER_NAME,
         });
         const { notify } = await import("./notifications");
-        await notify("REVIEW_INVITE", row.c.email, "How was your trip? Share a review and unlock a reward", em.html, em.text, { bookingId: row.b.id });
+        // No email on file (phone-only customer): the review link is still created — staff send it by WhatsApp from the order.
+        if (row.c.email) await notify("REVIEW_INVITE", row.c.email, "How was your trip? Share a review and unlock a reward", em.html, em.text, { bookingId: row.b.id });
       }
     }
   }
@@ -94,9 +95,9 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
   let to = toOverride ?? "", name = "there";
   if (doc.bookingId) {
     const [c] = await db.select({ c: s.customers, b: s.bookings }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, doc.bookingId));
-    if (c) { to ||= c.c.email; name = (c.b.guestName || c.c.name).split(" ")[0]; }
+    if (c) { to ||= c.c.email ?? ""; name = (c.b.guestName || c.c.name).split(" ")[0]; }
   }
-  if (!to) return { ok: false as const, message: "No customer email on this booking. Enter one first." };
+  if (!to) return { ok: false as const, message: "This customer has no email on file. Add one in the order's Customer card, or send it by WhatsApp." };
   const g = await getSettings(); const company = g["company.name"]; const builder = BUILDER_NAME;
   const inv = doc.kind === "INVOICE";
   const link = docUrl(doc.id, await linkOrigin());

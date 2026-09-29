@@ -22,7 +22,8 @@ export default async function TourForm({ tour, error, canFinance = false }: { to
     {sel("category", [["DAY", "Day tour"], ["MULTI_DAY", "Multi-day"], ["NILE_CRUISE", "Nile cruise"], ["TRANSFER", "Transfer"]], tour?.category)}
     {sel("audience", [["ALL", "All"], ["FAMILY", "Family"], ["COUPLE", "Couple"], ["FRIENDS", "Friends"]], tour?.audience)}
     {sel("activityLevel", [["EASY", "Easy"], ["MODERATE", "Moderate"], ["ACTIVE", "Active"]], tour?.activityLevel)}
-    {inp("durationHours", "Duration (hours)", tour?.durationHours ?? 8, "number")}{inp("durationDays", "Duration (days)", tour?.durationDays ?? 1, "number")}
+    {inp("durationDays", "Days", tour?.durationDays ?? 1, "number")}{inp("durationNights", "Nights (blank = days − 1)", tour?.durationNights ?? null, "number")}
+    {inp("durationHours", "Hours (for day tours)", tour?.durationHours ?? 8, "number")}<p className="self-end pb-3 text-xs text-ink/60">Shown on the site and the tour PDF as “8 days / 7 nights”. A 1-day tour shows its hours instead.</p>
     {sel("pricingModel", [["PER_PERSON", "Per person"], ["PER_GROUP", "Per group"]], tour?.pricingModel)}
     {canFinance ? <TourPricingFields discountPrice={tour?.discountPrice} costPrice={tour?.costPrice} marginPercent={tour?.marginPercent} />
       : <div className="sm:col-span-2 rounded-xl bg-ink/5 p-3 text-sm text-ink/65">Price: <b className="text-ink">{tour?.price != null ? `$${tour.price}` : "not set"}</b>. Only a manager can set the cost and profit margin that decide this price.</div>}

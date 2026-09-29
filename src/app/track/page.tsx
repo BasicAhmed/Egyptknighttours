@@ -14,7 +14,7 @@ async function lookup(fd: FormData) {
   let ok = false;
   if (ref && email) {
     const [row] = await db.select({ email: s.customers.email }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.ref, ref));
-    ok = !!row && row.email.toLowerCase() === email;
+    ok = !!row && !!row.email && row.email.toLowerCase() === email;
   }
   if (!ok || !ref) redirect(`/track?e=nf&ref=${encodeURIComponent(raw.slice(0, 20))}`);
   redirect(`/track/${ref}?t=${signRef(ref)}`);

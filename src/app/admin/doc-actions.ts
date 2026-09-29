@@ -156,13 +156,13 @@ export async function publishItineraryAsTour(id: string, fd: FormData) {
   const u = await requireStaff("tours"); const back = `/admin/itineraries/${id}`;
   const p = publishSchema.safeParse(Object.fromEntries(fd.entries())); if (!p.success) return go(back, p.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "), true);
   const [it] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, id)); if (!it) return go("/admin/itineraries", "Not found", true);
-  const c = parseJson<ItineraryContent>(it.content, blankItinerary()); const n = c.days.length || 1;
+  const c = parseJson<ItineraryContent>(it.content, blankItinerary()); const n = c.durationDays || c.days.length || 1;
   const title = (c.title || it.name).slice(0, 160); if (title.length < 3) return go(back, "Give the itinerary a title first (Trip details)", true);
   const short = (c.subtitle || c.intro || title).slice(0, 300); const long = (c.intro || short).slice(0, 8000);
   const days = c.days.map((d, i) => ({ title: `Day ${i + 1}: ${d.title || d.location || "Your day"}`.slice(0, 160), text: [d.hook, ...d.blocks.filter((b) => b.title).map((b) => b.title + (b.description ? `: ${b.description}` : ""))].filter(Boolean).join(" ").slice(0, 900) }));
   const cancel = (await getSettings())["invoice.cancellation"].split("\n").map((x) => x.trim()).filter(Boolean).join(" ");
   const category = n > 1 ? (/cruise/i.test(title + " " + c.destinations.join(" ")) ? "NILE_CRUISE" : "MULTI_DAY") : "DAY";
-  const base = { title, shortDescription: short, longDescription: long, destinationId: p.data.destinationId, category, durationDays: n, durationHours: n > 1 ? 24 : 8, price: p.data.price, pricingModel: p.data.pricingModel, isPrivateAvailable: true, isGroupAvailable: p.data.pricingModel === "PER_PERSON",
+  const base = { title, shortDescription: short, longDescription: long, destinationId: p.data.destinationId, category, durationDays: n, durationNights: c.durationNights ?? null, durationHours: n > 1 ? 24 : 8, price: p.data.price, pricingModel: p.data.pricingModel, isPrivateAvailable: true, isGroupAvailable: p.data.pricingModel === "PER_PERSON",
     highlights: JSON.stringify(c.highlights), itinerary: JSON.stringify(days), included: JSON.stringify(c.included), excluded: JSON.stringify(c.excluded),
     pickupInfo: "Pickup and transfers are arranged for each day of your trip. We confirm exact times after you book.", meetingPoint: "We meet you at your hotel or airport arrival. Details are sent on WhatsApp.", whatToBring: "Comfortable shoes, sun hat, sunscreen, water bottle, and your passport for hotel and ship check-in.",
     cancellationPolicy: cancel.slice(0, 900), imageUrl: cleanImageRef(c.coverImageUrl) || null, seoTitle: `${title} | Egypt Knight Tours`.slice(0, 70), seoDescription: `${short}. Book direct with Egypt Knight Tours.`.slice(0, 168), status: p.data.status, updatedAt: new Date() };

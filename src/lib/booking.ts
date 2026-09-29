@@ -4,11 +4,12 @@ import { calculateQuote, tourBaseAmount, type Quote } from "./pricing";
 import { z } from "zod";
 import { quoteSchema, bookingSchema } from "./validation";
 import { signRef } from "./booking-token";
+import { findCustomer } from "./customers";
 
 export class BookingError extends Error {}
 type QuoteIn = z.infer<typeof quoteSchema>;
 
-export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; customerEmail?: string } = {}) {
+export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; customerEmail?: string; customerPhone?: string } = {}) {
   const [tour] = await db.select().from(s.tours).where(and(eq(s.tours.slug, input.tourSlug), eq(s.tours.status, "PUBLISHED")));
   if (!tour) throw new BookingError("Tour not found");
   const people = input.adults + input.children;
@@ -34,8 +35,10 @@ export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; cu
     else if (c.expiresAt && c.expiresAt.getTime() < Date.now()) couponMessage = "Coupon expired";
     else if (c.maxUses != null && c.usedCount >= c.maxUses) couponMessage = "Coupon fully used";
     else if (c.tourId && c.tourId !== tour.id) couponMessage = "Coupon doesn't apply to this tour";
-    else if (c.firstBookingOnly && opts.customerEmail) {
-      const prior = await db.select({ n: sql<number>`count(*)` }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.customers.email, opts.customerEmail.toLowerCase()));
+    else if (c.firstBookingOnly && (opts.customerEmail || opts.customerPhone)) {
+      // Same "same customer" rule as everywhere else: email, or the WhatsApp number when the earlier order had no email.
+      const known = await findCustomer(db, (opts.customerEmail ?? "").toLowerCase(), opts.customerPhone ?? "");
+      const prior = known ? await db.select({ n: sql<number>`count(*)` }).from(s.bookings).where(eq(s.bookings.customerId, known.id)) : [{ n: 0 }];
       if (prior[0].n > 0) couponMessage = "This coupon is for first bookings only"; else coupon = c;
     } else coupon = c;
   }
@@ -58,17 +61,17 @@ export async function newBookingRef() {
 
 export async function createBooking(input: z.infer<typeof bookingSchema>) {
   const email = input.email.toLowerCase();
-  const { tour, chosen, coupon, couponMessage, quote } = await buildQuote(input, { travelDate: input.travelDate, customerEmail: email });
+  const { tour, chosen, coupon, couponMessage, quote } = await buildQuote(input, { travelDate: input.travelDate, customerEmail: email, customerPhone: input.whatsapp });
   if (input.couponCode && !coupon) throw new BookingError(couponMessage ?? "Coupon not valid");
 
   const ref = await newBookingRef();
   const token = signRef(ref); // fail early if AUTH_SECRET is missing
   return await db.transaction(async (tx) => {
-    let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
+    let cust = await findCustomer(tx, email, input.whatsapp);
     if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: input.name, whatsapp: input.whatsapp, phone: input.whatsapp, country: input.country ?? input.nationality, nationality: input.nationality }).returning();
     // A returning email keeps its original name on the shared customer record — this booking's own name is what everyone sees for it (below),
     // so two bookings on the same email can belong to different people, or the same person spelled differently, without either overwriting the other.
-    else await tx.update(s.customers).set({ whatsapp: input.whatsapp, country: input.country ?? cust.country ?? input.nationality, nationality: input.nationality }).where(eq(s.customers.id, cust.id));
+    else await tx.update(s.customers).set({ email: cust.email || email, whatsapp: input.whatsapp, country: input.country ?? cust.country ?? input.nationality, nationality: input.nationality }).where(eq(s.customers.id, cust.id));
 
     const [b] = await tx.insert(s.bookings).values({
       ref, tourId: tour.id, customerId: cust.id, guestName: input.name, travelDate: input.travelDate, adults: input.adults, children: input.children, infants: input.infants,

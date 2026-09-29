@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7af417c4-ac9e-4612-896b-1d87b84776e9",
+  "id": "8b0fa63f-2f81-4722-ae52-1283b1b2701e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -1329,7 +1329,7 @@
           "name": "email",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "name": {
@@ -3409,6 +3409,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": 1
+        },
+        "duration_nights": {
+          "name": "duration_nights",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "activity_level": {
           "name": "activity_level",

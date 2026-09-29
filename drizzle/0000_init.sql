@@ -183,7 +183,7 @@ CREATE TABLE `customer_rewards` (
 CREATE INDEX `customer_rewards_customer_idx` ON `customer_rewards` (`customer_id`);--> statement-breakpoint
 CREATE TABLE `customers` (
 	`id` text PRIMARY KEY NOT NULL,
-	`email` text NOT NULL,
+	`email` text,
 	`name` text NOT NULL,
 	`phone` text,
 	`whatsapp` text,
@@ -485,6 +485,7 @@ CREATE TABLE `tours` (
 	`audience` text DEFAULT 'ALL' NOT NULL,
 	`duration_hours` integer DEFAULT 8 NOT NULL,
 	`duration_days` integer DEFAULT 1 NOT NULL,
+	`duration_nights` integer,
 	`activity_level` text DEFAULT 'EASY' NOT NULL,
 	`pricing_model` text DEFAULT 'PER_PERSON' NOT NULL,
 	`price` real NOT NULL,

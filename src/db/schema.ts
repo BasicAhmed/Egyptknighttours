@@ -27,6 +27,7 @@ export const tours = sqliteTable("tours", {
   category: text("category").notNull(), // DAY MULTI_DAY NILE_CRUISE TRANSFER
   audience: text("audience").notNull().default("ALL"), // ALL FAMILY COUPLE FRIENDS
   durationHours: integer("duration_hours").notNull().default(8), durationDays: integer("duration_days").notNull().default(1),
+  durationNights: integer("duration_nights"), // null = days - 1 (the usual case); set when a trip counts nights differently
   activityLevel: text("activity_level").notNull().default("EASY"),
   pricingModel: text("pricing_model").notNull().default("PER_PERSON"), // PER_PERSON | PER_GROUP
   price: real("price").notNull(), discountPrice: real("discount_price"),
@@ -70,7 +71,8 @@ export const coupons = sqliteTable("coupons", {
 });
 
 export const customers = sqliteTable("customers", {
-  id: id(), email: text("email").notNull().unique(), name: text("name").notNull(),
+  // Email or phone/WhatsApp — at least one is required, not both (staff often only have one when the order comes in). Unique when present.
+  id: id(), email: text("email").unique(), name: text("name").notNull(),
   phone: text("phone"), whatsapp: text("whatsapp"), country: text("country"), nationality: text("nationality"), createdAt: createdAt(),
 });
 

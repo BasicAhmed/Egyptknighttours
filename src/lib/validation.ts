@@ -42,6 +42,7 @@ export const tourSchema = z.object({
   destinationId: z.string().min(1), category: z.enum(["DAY","MULTI_DAY","NILE_CRUISE","TRANSFER"]),
   audience: z.enum(["ALL","FAMILY","COUPLE","FRIENDS"]),
   durationHours: z.coerce.number().int().min(1).max(500), durationDays: z.coerce.number().int().min(1).max(60),
+  durationNights: z.preprocess((v) => (v === "" || v == null ? null : v), z.coerce.number().int().min(0).max(60).nullable()),
   activityLevel: z.enum(["EASY","MODERATE","ACTIVE"]),
   pricingModel: z.enum(["PER_PERSON","PER_GROUP"]),
   price: z.coerce.number().min(0).max(100000), discountPrice: z.coerce.number().min(0).max(100000).optional().nullable(),

@@ -8,19 +8,24 @@ export async function createItineraryRecord(o: { templateId?: string; bookingId?
   let content: ItineraryContent = blankItinerary(); let name = (o.name ?? "").trim(); let sourceTemplateId: string | null = null;
   if (o.templateId) { const [t] = await db.select().from(s.itineraries).where(eq(s.itineraries.id, o.templateId)); if (t) { content = reid(parseJson<ItineraryContent>(t.content, content)); sourceTemplateId = t.id; if (!name) name = o.isTemplate ? `${t.name} (copy)` : t.name; } }
   let customerLabel = "";
-  if (o.bookingId) {
-    const [r] = await db.select({ b: s.bookings, c: s.customers }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, o.bookingId));
-    if (r) {
-      const n = content.days.length || 1; const total = r.b.adults + r.b.children + r.b.infants;
-      const end = new Date(r.b.travelDate + "T00:00:00Z"); end.setUTCDate(end.getUTCDate() + n - 1);
-      content = { ...content, customerName: r.b.guestName || r.c.name, travelers: `${total} traveler${total > 1 ? "s" : ""}`, startDate: r.b.travelDate, endDate: end.toISOString().slice(0, 10),
-        days: content.days.map((d, i) => { const dt = new Date(r.b.travelDate + "T00:00:00Z"); dt.setUTCDate(dt.getUTCDate() + i); return { ...d, date: dt.toISOString().slice(0, 10) }; }) };
-      customerLabel = `${r.b.guestName || r.c.name} — ${r.b.ref}`;
-    }
-  }
+  if (o.bookingId) { const r = await applyBooking(content, o.bookingId); content = r.content; customerLabel = r.label; }
   if (!name) name = customerLabel || (o.isTemplate ? "New template" : "New itinerary");
   const [it] = await db.insert(s.itineraries).values({ name, content: JSON.stringify(content), bookingId: o.bookingId || null, sourceTemplateId, createdById: o.userId, isTemplate: !!o.isTemplate, intent: o.intent ?? "pdf" }).returning();
   return it;
+}
+
+// Fills an itinerary's customer name, travelers, dates and per-day dates from an order. Used when an itinerary is started from an order
+// (blank, from a template or imported from a PDF) so all three routes give the same result.
+export async function applyBooking(content: ItineraryContent, bookingId: string): Promise<{ content: ItineraryContent; label: string }> {
+  const [r] = await db.select({ b: s.bookings, c: s.customers }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, bookingId));
+  if (!r) return { content, label: "" };
+  const n = content.durationDays || content.days.length || 1; const total = r.b.adults + r.b.children + r.b.infants;
+  const end = new Date(r.b.travelDate + "T00:00:00Z"); end.setUTCDate(end.getUTCDate() + n - 1);
+  return {
+    content: { ...content, customerName: r.b.guestName || r.c.name, travelers: `${total} traveler${total > 1 ? "s" : ""}`, startDate: r.b.travelDate, endDate: end.toISOString().slice(0, 10),
+      days: content.days.map((d, i) => { const dt = new Date(r.b.travelDate + "T00:00:00Z"); dt.setUTCDate(dt.getUTCDate() + i); return { ...d, date: dt.toISOString().slice(0, 10) }; }) },
+    label: `${r.b.guestName || r.c.name} — ${r.b.ref}`,
+  };
 }
 
 // A booking can have only one itinerary linked to it while the trip is still going (so staff always know which one is the real plan).

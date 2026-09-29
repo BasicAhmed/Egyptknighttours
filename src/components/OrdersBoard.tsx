@@ -94,7 +94,9 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setBusy(true); setErr("");
+    e.preventDefault(); setErr("");
+    if (!v.email.trim() && !v.whatsapp.trim()) { setErr("Enter the customer's email or WhatsApp number (at least one)."); return; }
+    setBusy(true);
     try { const r = await orderCreate(v); if (r.ok && r.order) onCreated(r.order); else setErr(r.message); } catch { setErr("Something went wrong. Please try again."); } finally { setBusy(false); }
   }
   const ctx = fieldApi(v, set, "n-", "!py-2.5");
@@ -103,8 +105,8 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
     <Modal onClose={onClose} title="New order" subtitle="For customers who booked by WhatsApp, phone or email">
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><label className="label" htmlFor="n-source">How was this booked?</label><select id="n-source" className="input !py-2.5" value={v.source} onChange={set("source")}><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">Email</option><option value="PHONE">Phone</option><option value="VIATOR">Viator</option></select></div>
-        <F k="name" label="Customer name" req /><F k="whatsapp" label="WhatsApp number (with country code)" type="tel" req ph="+351 912 345 678" />
-        <F k="email" label="Email" type="email" req /><div><label className="label" htmlFor="n-nat">Nationality</label><input id="n-nat" list="n-countries" className="input !py-2.5" value={v.nationality} onChange={set("nationality")} /><datalist id="n-countries">{COUNTRIES.map((x) => <option key={x} value={x} />)}</datalist></div><F k="country" label="Country of residence" />
+        <F k="name" label="Customer name" req cls="sm:col-span-2" /><F k="whatsapp" label="WhatsApp number (with country code)" type="tel" ph="+351 912 345 678" />
+        <F k="email" label="Email" type="email" /><p className="-mt-1 text-xs text-ink/60 sm:col-span-2">Email or WhatsApp — one is enough. You can add the other later from the order&apos;s Customer card.</p><div><label className="label" htmlFor="n-nat">Nationality</label><input id="n-nat" list="n-countries" className="input !py-2.5" value={v.nationality} onChange={set("nationality")} /><datalist id="n-countries">{COUNTRIES.map((x) => <option key={x} value={x} />)}</datalist></div><F k="country" label="Country of residence" />
         <div className="sm:col-span-2"><label className="label" htmlFor="n-tour">Experience</label><select id="n-tour" className="input !py-2.5" value={v.tourId} onChange={set("tourId")}><option value="custom">Custom experience (type the name)</option>{tours.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></div>
         {v.tourId === "custom" && <F k="customTitle" label="Experience name" req cls="sm:col-span-2" ph="Cruise 4 Days 3 Nights MS Ciela" />}
         <F k="travelDate" label="Travel date" type="date" req /><F k="hotel" label="Pickup (hotel or airport)" ph="Aswan Airport" />

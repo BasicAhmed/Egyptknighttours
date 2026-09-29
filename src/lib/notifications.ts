@@ -51,10 +51,10 @@ export async function notifyNewBooking(ref: string, token: string, origin: strin
   try {
     const [r] = await db.select({ b: s.bookings, c: s.customers, t: s.tours }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.ref, ref)); if (!r) return;
     const g = await getSettings();
-    const m = bookingEmails({ ref, name: r.b.guestName || r.c.name, email: r.c.email, whatsapp: r.c.whatsapp ?? "", tour: r.b.titleOverride || r.t.title, travelDate: r.b.travelDate, adults: r.b.adults, children: r.b.children, infants: r.b.infants, total: r.b.total, deposit: r.b.deposit, currency: r.b.currency, hotel: r.b.hotel ?? "", company: g["company.name"], trackUrl: `${origin}/track/${ref}?t=${token}`, adminUrl: `${origin}/admin?open=${r.b.id}`, builder: BUILDER_NAME });
+    const m = bookingEmails({ ref, name: r.b.guestName || r.c.name, email: r.c.email ?? "", whatsapp: r.c.whatsapp ?? "", tour: r.b.titleOverride || r.t.title, travelDate: r.b.travelDate, adults: r.b.adults, children: r.b.children, infants: r.b.infants, total: r.b.total, deposit: r.b.deposit, currency: r.b.currency, hotel: r.b.hotel ?? "", company: g["company.name"], trackUrl: `${origin}/track/${ref}?t=${token}`, adminUrl: `${origin}/admin?open=${r.b.id}`, builder: BUILDER_NAME });
     const staffTo = staffAlertEmails(g);
-    await notify("NEW_BOOKING", r.c.email, m.customer.subject, m.customer.html, m.customer.text, { replyTo: g["company.email"] || undefined, bookingId: r.b.id });
-    if (staffTo.length) await notify("NEW_BOOKING", staffTo, m.staff.subject, m.staff.html, m.staff.text, { replyTo: r.c.email, bookingId: r.b.id });
+    if (r.c.email) await notify("NEW_BOOKING", r.c.email, m.customer.subject, m.customer.html, m.customer.text, { replyTo: g["company.email"] || undefined, bookingId: r.b.id });
+    if (staffTo.length) await notify("NEW_BOOKING", staffTo, m.staff.subject, m.staff.html, m.staff.text, { replyTo: r.c.email ?? undefined, bookingId: r.b.id });
   } catch (e) { console.error("notifyNewBooking failed", e instanceof Error ? e.message : e); }
 }
 export async function notifyNewLead(leadId: string, origin: string = SITE) {
@@ -69,7 +69,7 @@ export async function notifyStaffNewOrder(bookingId: string, origin: string = SI
   try {
     const [r] = await db.select({ b: s.bookings, c: s.customers, t: s.tours }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.id, bookingId)); if (!r) return;
     const g = await getSettings(); const to = staffAlertEmails(g); if (!to.length) return;
-    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", `${r.b.guestName || r.c.name} · ${r.c.email}`], ["Experience", r.b.titleOverride || r.t.title], ["Date", dateLong(r.b.travelDate)]];
+    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", [r.b.guestName || r.c.name, r.c.email, r.c.whatsapp || r.c.phone].filter(Boolean).join(" · ")], ["Experience", r.b.titleOverride || r.t.title], ["Date", dateLong(r.b.travelDate)]];
     await notify("STAFF_NEW_ORDER", to, `New order created: ${r.b.ref} — ${r.b.guestName || r.c.name}`, staffCard(`New order ${r.b.ref}`, "Created directly in the admin.", rows, "Open the order", `${origin}/admin?open=${r.b.id}`), staffText(`New order ${r.b.ref}`, rows, "Open the order", `${origin}/admin?open=${r.b.id}`), { bookingId: r.b.id });
   } catch (e) { console.error("notifyStaffNewOrder failed", e instanceof Error ? e.message : e); }
 }
@@ -80,7 +80,7 @@ export async function notifyPaymentComplete(bookingId: string, origin: string = 
   try {
     const [r] = await db.select({ b: s.bookings, c: s.customers, t: s.tours }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.id, bookingId)); if (!r) return;
     const g = await getSettings(); const to = staffAlertEmails(g); if (!to.length) return;
-    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", `${r.b.guestName || r.c.name} · ${r.c.email}`], ["Experience", r.b.titleOverride || r.t.title], ["Total paid", money(r.b.total, r.b.currency)]];
+    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", [r.b.guestName || r.c.name, r.c.email, r.c.whatsapp || r.c.phone].filter(Boolean).join(" · ")], ["Experience", r.b.titleOverride || r.t.title], ["Total paid", money(r.b.total, r.b.currency)]];
     await notify("PAYMENT_COMPLETE", to, `Fully paid: ${r.b.ref} — ${r.b.guestName || r.c.name}`, staffCard(`${r.b.ref} is now fully paid`, "Nothing left to collect on this order.", rows, "Open the order", `${origin}/admin?open=${r.b.id}`), staffText(`${r.b.ref} is now fully paid`, rows, "Open the order", `${origin}/admin?open=${r.b.id}`), { bookingId: r.b.id });
   } catch (e) { console.error("notifyPaymentComplete failed", e instanceof Error ? e.message : e); }
 }
@@ -91,7 +91,7 @@ export async function notifyOrderCancelled(bookingId: string, origin: string = S
     const { sql } = await import("drizzle-orm");
     const [paidRow] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(eq(s.payments.bookingId, bookingId));
     const paid = paidRow?.paid ?? 0;
-    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", `${r.b.guestName || r.c.name} · ${r.c.email}`], ["Experience", r.b.titleOverride || r.t.title], ["Amount already paid", money(paid, r.b.currency)]];
+    const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", [r.b.guestName || r.c.name, r.c.email, r.c.whatsapp || r.c.phone].filter(Boolean).join(" · ")], ["Experience", r.b.titleOverride || r.t.title], ["Amount already paid", money(paid, r.b.currency)]];
     const sub = paid > 0 ? `This order was cancelled after ${money(paid, r.b.currency)} was already paid — check whether a refund is owed.` : "This order was cancelled. Nothing had been paid on it yet.";
     await notify("ORDER_CANCELLED", to, `Cancelled: ${r.b.ref} — ${r.b.guestName || r.c.name}`, staffCard(`${r.b.ref} was cancelled`, sub, rows, "Open the order", `${origin}/admin?open=${r.b.id}`), staffText(`${r.b.ref} was cancelled — ${sub}`, rows, "Open the order", `${origin}/admin?open=${r.b.id}`), { bookingId: r.b.id });
   } catch (e) { console.error("notifyOrderCancelled failed", e instanceof Error ? e.message : e); }

@@ -23,6 +23,7 @@ const COLUMNS = [
   { table: "bookings", name: "guest_name", ddl: "text" },
   { table: "corporate_requests", name: "pricing_mode", ddl: "text NOT NULL DEFAULT 'ITEMIZED'" }, { table: "corporate_requests", name: "service_percent", ddl: "real" },
   { table: "itineraries", name: "currency", ddl: "text" },
+  { table: "tours", name: "duration_nights", ddl: "integer" },
   { table: "customer_rewards", name: "status", ddl: "text NOT NULL DEFAULT 'ACTIVE'" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
@@ -50,10 +51,27 @@ async function migrate() {
     const cols = (await client.execute(`pragma table_info(${c.table})`)).rows.map((r) => String(r.name));
     if (!cols.includes(c.name)) { try { await client.execute(`ALTER TABLE ${c.table} ADD COLUMN ${c.name} ${c.ddl}`); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; } }
   }
+  await relaxCustomerEmail();
   const n = await client.execute("select count(*) as n from tours");
   if (Number(n.rows[0].n) === 0) await seedDatabase();
   await seedItineraryTemplates(); await applyContentV2(); await applyContentV3();
   await client.execute({ sql: "insert into settings(key,value) values('boot.state',?) on conflict(key) do update set value=excluded.value", args: [BOOT_STATE] });
+}
+// customers.email used to be NOT NULL. SQLite can't drop NOT NULL in place, so the table is rebuilt once (standard SQLite
+// create-copy-drop-rename, foreign keys paused), keeping every row and id so bookings, rewards and coupons stay linked.
+async function relaxCustomerEmail() {
+  const cols = (await client.execute("pragma table_info(customers)")).rows;
+  const email = cols.find((r) => String(r.name) === "email");
+  if (!email || Number(email.notnull) !== 1) return;
+  const names = cols.map((r) => `\`${String(r.name)}\``).join(", ");
+  const create = MIGRATION.find((x) => /CREATE TABLE IF NOT EXISTS `customers`/.test(x))!.replace("CREATE TABLE IF NOT EXISTS `customers`", "CREATE TABLE `customers_new`");
+  await client.migrate([
+    "DROP TABLE IF EXISTS `customers_new`", create,
+    `INSERT INTO \`customers_new\` (${names}) SELECT ${names} FROM \`customers\``,
+    "DROP TABLE `customers`", "ALTER TABLE `customers_new` RENAME TO `customers`",
+    "CREATE UNIQUE INDEX IF NOT EXISTS `customers_email_unique` ON `customers` (`email`)",
+  ]);
+  console.log("customers.email is now optional (table rebuilt, all rows kept)");
 }
 async function run() {
   const st = await readState();

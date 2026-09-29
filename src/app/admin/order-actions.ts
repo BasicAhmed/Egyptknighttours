@@ -1,12 +1,13 @@
 "use server";
 import { db, schema as s } from "@/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
+import { findCustomer } from "@/lib/customers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { loadOrder, type Order } from "@/lib/orders";
 import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus } from "@/lib/documents";
-import { createItineraryRecord } from "@/lib/itineraries";
+import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
 import { newBookingRef } from "@/lib/booking";
 import { syncTravelers } from "@/lib/travelers";
 import { encryptText } from "@/lib/crypto";
@@ -59,7 +60,8 @@ export async function orderMarkSent(id: string, docId: string, via: string): Pro
 }
 export async function orderCreateItinerary(id: string, templateId: string, name: string): Promise<R> {
   const u = await requireStaff("itineraries");
-  const it = await createItineraryRecord({ templateId, bookingId: id, name, userId: u.uid }); await audit(u.uid, "CREATE", "itinerary", it.id);
+  const check = await canLinkBooking(id); if (!check.ok) return { ok: false, message: check.message };
+  const it = await createItineraryRecord({ templateId, bookingId: id, name, userId: u.uid, intent: "customer" }); await audit(u.uid, "CREATE", "itinerary", it.id);
   return { ...(await done(id, "Itinerary created. Open it to customize.")), id: it.id };
 }
 export async function orderItineraryPdf(id: string, itineraryId: string, sendNow: boolean): Promise<R> {
@@ -84,11 +86,14 @@ export async function orderUpdate(id: string, input: Record<string, unknown>): P
 
 // No price is entered when creating an order. Every order's price comes from its itinerary's cost and profit margin, entered afterwards — so an
 // order is never accidentally priced by hand, and there is always one clear answer to "how much does this cost and how much profit is on it".
+// Staff often have only one way to reach a customer when the order comes in: email OR WhatsApp/phone is required, not both.
+const optEmail = z.string().trim().max(200).refine((v) => v === "" || z.string().email().safeParse(v).success, "Enter a valid email or leave it empty").optional().default("");
+const optPhone = z.string().trim().max(30).refine((v) => v === "" || v.replace(/\D/g, "").length >= 5, "Enter a valid number or leave it empty").optional().default("");
 const newSchema = z.object({
   source: z.enum(["WHATSAPP", "EMAIL", "PHONE", "VIATOR"]),
   // A Viator booking is already paid in full through Viator, so it's entered as a settled total up front rather than priced later via an itinerary.
   viatorTotal: z.coerce.number().min(0).max(10_000_000).optional().nullable(),
-  name: z.string().trim().min(2).max(120), email: z.string().trim().email().max(200), whatsapp: z.string().trim().min(5).max(30), country: z.string().trim().max(80).optional().default(""), nationality: z.string().trim().max(60).optional().default(""),
+  name: z.string().trim().min(2).max(120), email: optEmail, whatsapp: optPhone, country: z.string().trim().max(80).optional().default(""), nationality: z.string().trim().max(60).optional().default(""),
   tourId: z.string().min(1).max(60), customTitle: z.string().trim().max(160).optional().default(""), travelDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
   hotel: z.string().trim().max(200).optional().default(""), notes: z.string().trim().max(1000).optional().default(""),
@@ -99,11 +104,26 @@ async function ensureCustomTour() {
   const [t] = await db.insert(s.tours).values({ slug: "custom-experience", title: "Custom experience", shortDescription: "Created by staff for a specific customer.", longDescription: "Custom experience created by staff.", destinationId: d.id, category: "MULTI_DAY", price: 0, status: "ARCHIVED", isPrivateAvailable: true }).returning();
   return t.id;
 }
+// Customer card edit: fix or add the email / WhatsApp later. Still needs at least one; an email already used by another customer is refused.
+const custSchema = z.object({ email: optEmail, whatsapp: optPhone });
+export async function orderUpdateCustomer(id: string, input: Record<string, unknown>): Promise<R> {
+  const u = await requireStaff("bookings");
+  const p = custSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues[0].message };
+  const email = p.data.email.toLowerCase(), wa = p.data.whatsapp;
+  if (!email && !wa) return { ok: false, message: "Keep at least one: email or WhatsApp number." };
+  const [b] = await db.select({ customerId: s.bookings.customerId }).from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "Order not found" };
+  if (email) { const [other] = await db.select({ id: s.customers.id, name: s.customers.name }).from(s.customers).where(and(eq(s.customers.email, email), ne(s.customers.id, b.customerId))); if (other) return { ok: false, message: `That email already belongs to another customer (${other.name}).` }; }
+  await db.update(s.customers).set({ email: email || null, whatsapp: wa || null, phone: wa || null }).where(eq(s.customers.id, b.customerId));
+  await audit(u.uid, "UPDATE", "customer", b.customerId);
+  return done(id, "Customer contact saved");
+}
+
 // Orders that come in by WhatsApp or phone: staff enter them here and the rest of the flow (invoice, payment, itinerary) is identical.
 export async function orderCreate(input: Record<string, unknown>): Promise<R> {
   const u = await requireStaff("bookings");
   const p = newSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
   const d = p.data; const email = d.email.toLowerCase();
+  if (!email && !d.whatsapp) return { ok: false, message: "Enter the customer's email or WhatsApp number (at least one)." };
   const custom = d.tourId === "custom"; if (custom && d.customTitle.length < 3) return { ok: false, message: "Enter the name of the experience" };
   const tourId = custom ? await ensureCustomTour() : d.tourId;
   // A Viator booking already has the money in hand: it's entered as a settled total right away, marked paid, and skips the itinerary-pricing step
@@ -113,8 +133,10 @@ export async function orderCreate(input: Record<string, unknown>): Promise<R> {
   const total = isViator ? d.viatorTotal! : 0;
   const ref = await newBookingRef();
   const id = await db.transaction(async (tx) => {
-    let [cust] = await tx.select().from(s.customers).where(eq(s.customers.email, email));
-    if (!cust) [cust] = await tx.insert(s.customers).values({ email, name: d.name, whatsapp: d.whatsapp, phone: d.whatsapp, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
+    let cust = await findCustomer(tx, email, d.whatsapp);
+    // Fill in whichever contact detail the existing record was missing (e.g. first order had only a phone, this one also has an email).
+    if (cust && ((!cust.email && email) || (!cust.whatsapp && d.whatsapp))) [cust] = await tx.update(s.customers).set({ email: cust.email || email || null, whatsapp: cust.whatsapp || d.whatsapp || null, phone: cust.phone || d.whatsapp || null }).where(eq(s.customers.id, cust.id)).returning();
+    if (!cust) [cust] = await tx.insert(s.customers).values({ email: email || null, name: d.name, whatsapp: d.whatsapp || null, phone: d.whatsapp || null, country: d.country || d.nationality || null, nationality: d.nationality || null }).returning();
     // For every other channel: no price yet — subtotal, total, deposit and cost all start at 0, priced later via an itinerary.
     const [b] = await tx.insert(s.bookings).values({ ref, tourId, customerId: cust.id, guestName: d.name, travelDate: d.travelDate, adults: d.adults, children: d.children, infants: 0, isPrivate: true, hotel: d.hotel || null, specialRequests: d.notes || null, subtotal: total, discount: 0, total, costTotal: null, deposit: total, payMode: "DEPOSIT", currency: d.currency, source: d.source, status: isViator ? "PAID" : "PENDING", titleOverride: custom ? d.customTitle : null }).returning();
     if (isViator) await tx.insert(s.payments).values({ bookingId: b.id, provider: "VIATOR", kind: "PAYMENT", amount: total, status: "PAID", providerRef: "Paid in full through Viator" });

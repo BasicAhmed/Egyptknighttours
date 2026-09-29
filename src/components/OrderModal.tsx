@@ -6,7 +6,7 @@ import CopyButton from "./CopyButton";
 import Modal from "./Modal";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
-import { orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
+import { orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
 
 const cache = new Map<string, Order>();
@@ -23,7 +23,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
   const [o, setO] = useState<Order | null>(cache.get(row.id) ?? null);
   const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ t: string; ok: boolean; warn?: boolean } | null>(null);
-  const [invOpen, setInvOpen] = useState(focus === "invoice"); const [editOpen, setEditOpen] = useState(false);
+  const [invOpen, setInvOpen] = useState(focus === "invoice"); const [editOpen, setEditOpen] = useState(false); const [custOpen, setCustOpen] = useState(false);
   const [tab, setTab] = useState<"overview" | "travelers" | "ops" | "money" | "notes">(focus ? "money" : "overview");
   const [dirty, setDirty] = useState(false);
   const refs = { invoice: useRef<HTMLDivElement>(null), payment: useRef<HTMLDivElement>(null), itinerary: useRef<HTMLDivElement>(null) };
@@ -55,7 +55,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
           <div className="flex flex-wrap gap-2">
             {phone && <a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${first}, it's Egypt Knight about your booking ${o.ref}.`)}>WhatsApp {first}</a>}
             {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
-            <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>
+            {o.customer.email && <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>}
           </div>
           {phone && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-gold-500/10 p-2">
             <span className="px-1 text-[11px] font-extrabold uppercase tracking-wide text-gold-800">Welcome</span>
@@ -79,7 +79,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         {tab === "overview" && <div className="space-y-4">
         <Checklist o={o} go={(t) => setTab(t)} />
         <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Customer"><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
+          <Card title="Customer" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setCustOpen(!custOpen)}>{custOpen ? "Close" : "Edit"}</button>}><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email || "–"} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
             <Row k="Source" v={SOURCE_LABEL[o.source] ?? o.source} /><Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
             <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />
@@ -88,6 +88,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
           </Card>
         </div>
 
+        {custOpen && <CustomerForm o={o} busy={busy} onSave={(v) => run(() => orderUpdateCustomer(o.id, v)).then((r) => { if (r?.ok) setCustOpen(false); })} />}
         {editOpen && <EditForm o={o} busy={busy} onSave={(v) => run(() => orderUpdate(o.id, v)).then((r) => { if (r?.ok) setEditOpen(false); })} />}
 
         <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-ink/[.04] p-3"><label className="text-sm font-semibold" htmlFor="st">Change status</label>
@@ -126,7 +127,8 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
               <div className="flex flex-wrap gap-2"><Link className={Small} href={`/admin/itineraries/${it.id}`}>Edit</Link><a className={Small} target="_blank" rel="noopener noreferrer" href={`/api/admin/preview/itinerary/${it.id}`}>Preview</a>
                 <button className={Small} disabled={busy} onClick={() => run(() => orderItineraryPdf(o.id, it.id, false))}>Create PDF</button><button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderItineraryPdf(o.id, it.id, true))}>Create + email</button></div></div></div>))}
           <DocList o={o} kind="ITINERARY" run={run} busy={busy} />
-          <ItinCreate o={o} busy={busy} onCreate={(t, n) => run(() => orderCreateItinerary(o.id, t, n)).then((r) => { if (r?.ok && r.id) router.push(`/admin/itineraries/${r.id}`); })} />
+          {(o.itineraries.length === 0 || o.status === "COMPLETED") && <ItinCreate o={o} busy={busy} onImported={(id) => router.push(`/admin/itineraries/${id}`)} onCreate={(t, n) => run(() => orderCreateItinerary(o.id, t, n)).then((r) => { if (r?.ok && r.id) router.push(`/admin/itineraries/${r.id}`); })} />}
+          {o.itineraries.length > 0 && o.status !== "COMPLETED" && <p className="mt-3 text-xs text-ink/60">One itinerary per order while the trip is active. Edit the one above, or mark the trip Completed to start a new one.</p>}
         </Card></div>
 
         </div>}
@@ -187,13 +189,42 @@ function DocList({ o, kind, run, busy }: { o: Order; kind: "INVOICE" | "ITINERAR
           {!d.sentAt && <button className={Small} disabled={busy} onClick={() => run(() => orderMarkSent(o.id, d.id, "MANUAL"))}>Mark as sent</button>}</div></li>))}</ul>
   );
 }
-function ItinCreate({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate: (t: string, name: string) => void }) {
+function ItinCreate({ o, busy, onCreate, onImported }: { o: Order; busy: boolean; onCreate: (t: string, name: string) => void; onImported: (id: string) => void }) {
   const [t, setT] = useState(""); const [n, setN] = useState(`${o.title} for ${o.customer.name}`);
+  const [up, setUp] = useState<{ busy: boolean; err?: string }>({ busy: false }); const file = useRef<HTMLInputElement>(null);
+  async function importPdf(f: File | undefined) {
+    if (!f) return; setUp({ busy: true });
+    try {
+      const fd = new FormData(); fd.set("file", f); fd.set("bookingId", o.id);
+      const r = await fetch("/api/admin/itineraries/import", { method: "POST", body: fd }); const j = await r.json().catch(() => ({}));
+      if (r.ok && j.ok) { onImported(j.id); return; }
+      setUp({ busy: false, err: j.error ?? (r.status === 413 ? "File is too large (4 MB limit)." : "Import failed. Try again.") });
+    } catch { setUp({ busy: false, err: "Upload failed. Check your connection." }); }
+    if (file.current) file.current.value = "";
+  }
+  const pdf = t === "__pdf";
   return (
-    <form className="mt-3 grid gap-2 rounded-xl bg-gold-500/15 p-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(e) => { e.preventDefault(); onCreate(t, n); }}>
-      <div><label className="label" htmlFor="it">Start from</label><select id="it" className="input !py-2" value={t} onChange={(e) => setT(e.target.value)}><option value="">Blank itinerary</option>{o.templates.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
-      <div><label className="label" htmlFor="itn">Name</label><input id="itn" className="input !py-2" value={n} onChange={(e) => setN(e.target.value)} /></div>
-      <div className="flex items-end"><button disabled={busy} className="btn btn-primary !min-h-[44px] w-full">+ New itinerary</button></div>
+    <form className="mt-3 grid gap-2 rounded-xl bg-gold-500/15 p-3 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(e) => { e.preventDefault(); if (pdf) file.current?.click(); else onCreate(t, n); }}>
+      <div><label className="label" htmlFor="it">Start from</label><select id="it" className="input !py-2" value={t} onChange={(e) => { setT(e.target.value); setUp({ busy: false }); }}>
+        <option value="">Blank itinerary</option><option value="__pdf">Import from PDF</option>
+        {o.templates.length > 0 && <optgroup label="Templates">{o.templates.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</optgroup>}</select></div>
+      {pdf ? <p className="self-end pb-2 text-xs text-ink/70">Upload a text PDF (up to 4 MB). Days, included list and price are read from it; the customer's name, travelers and dates come from this order.</p>
+        : <div><label className="label" htmlFor="itn">Name</label><input id="itn" className="input !py-2" value={n} onChange={(e) => setN(e.target.value)} /></div>}
+      <div className="flex items-end"><button disabled={busy || up.busy} className="btn btn-primary !min-h-[44px] w-full">{pdf ? (up.busy ? "Importing…" : "Choose PDF") : "+ New itinerary"}</button></div>
+      <input ref={file} type="file" accept="application/pdf,.pdf" className="sr-only" aria-label="Itinerary PDF" onChange={(e) => void importPdf(e.target.files?.[0])} />
+      {up.err && <p role="alert" className="text-sm font-medium text-red-800 sm:col-span-3">{up.err}</p>}
+    </form>
+  );
+}
+function CustomerForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: { email: string; whatsapp: string }) => void }) {
+  const [v, setV] = useState({ email: o.customer.email, whatsapp: o.customer.whatsapp || o.customer.phone });
+  const none = !v.email.trim() && !v.whatsapp.trim();
+  return (
+    <form className="card grid gap-3 p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); if (!none) onSave(v); }}>
+      <div><label className="label" htmlFor="cu-email">Email</label><input id="cu-email" type="email" className="input !py-2" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></div>
+      <div><label className="label" htmlFor="cu-wa">WhatsApp number (with country code)</label><input id="cu-wa" type="tel" className="input !py-2" value={v.whatsapp} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} placeholder="+351 912 345 678" /></div>
+      <p className={`text-xs sm:col-span-2 ${none ? "font-semibold text-red-800" : "text-ink/60"}`}>{none ? "Keep at least one: email or WhatsApp." : "One is enough. This updates the customer on all their orders."}</p>
+      <div className="sm:col-span-2"><button disabled={busy || none} className="btn btn-dark !min-h-[44px]">Save contact</button></div>
     </form>
   );
 }
