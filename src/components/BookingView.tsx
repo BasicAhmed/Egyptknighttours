@@ -25,7 +25,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
   const { b, tour, dest, c } = data;
   const custom = tour.slug === "custom-experience"; // staff-entered custom orders sit on a placeholder tour: show the order's own title, no tour link or destination
   const cur = currentMilestone(b.status);
-  const first = c.name.split(" ")[0];
+  const first = (b.guestName || c.name).split(" ")[0]; // this order's own guest name, so an edit in the admin shows here at once
   const when = (types: readonly string[]) => { const e = data.events.find((x) => types.includes(x.type)); return e ? short(e.createdAt) : null; };
   const wa = waLink(`Hi Egypt Knight, my booking reference is ${b.ref}${mode === "track" ? "" : ""}. `);
   const people = `${b.adults} adult${b.adults > 1 ? "s" : ""}${b.children ? `, ${b.children} child${b.children > 1 ? "ren" : ""}` : ""}${b.infants ? `, ${b.infants} infant${b.infants > 1 ? "s" : ""}` : ""}`;

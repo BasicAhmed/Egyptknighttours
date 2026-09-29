@@ -134,6 +134,9 @@ export async function orderUpdateCustomer(id: string, input: Record<string, unkn
       // Keep the lead traveler in step when they were simply the same person under the old spelling.
       await tx.update(s.travelers).set({ fullName: d.name }).where(and(eq(s.travelers.bookingId, id), eq(s.travelers.fullName, oldName)));
       await tx.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `Customer name changed from "${oldName}" to "${d.name}"` });
+      // The order's itinerary (not yet a sent PDF) carries "Prepared for <name>": keep it in step so the next PDF says the right name.
+      const its = await tx.select({ id: s.itineraries.id, content: s.itineraries.content }).from(s.itineraries).where(eq(s.itineraries.bookingId, id));
+      for (const it of its) { try { const c = JSON.parse(it.content); if (c.customerName === oldName) await tx.update(s.itineraries).set({ content: JSON.stringify({ ...c, customerName: d.name }) }).where(eq(s.itineraries.id, it.id)); } catch { /* leave as is */ } }
     }
     // Lead traveler's nationality follows the customer's when it was just a copy of it (or empty); a nationality staff typed from a passport is left alone.
     if ((d.nationality || null) !== (cur?.nationality ?? null) && d.nationality) {
