@@ -7,6 +7,7 @@ import Notice from "@/components/Notice";
 import PdfImport from "@/components/PdfImport";
 import { parseJson } from "@/lib/format";
 import type { ItineraryContent } from "@/pdf/types";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 export default async function Itineraries({ searchParams }: { searchParams: Promise<{ tab?: string; n?: string; e?: string }> }) {
@@ -29,7 +30,7 @@ export default async function Itineraries({ searchParams }: { searchParams: Prom
               <Link href={`/admin/itineraries/${i.id}`} className="btn btn-dark !min-h-[38px] !py-1.5">Edit</Link>
               <a href={`/api/admin/preview/itinerary/${i.id}`} target="_blank" rel="noopener noreferrer" className="btn btn-outline !min-h-[38px] !py-1.5">Preview</a>
               {can && <form action={duplicateItinerary.bind(null, i.id)}><button className="btn btn-outline !min-h-[38px] !py-1.5">Duplicate</button></form>}
-              {can && i.isTemplate && <form action={createItinerary} className="flex gap-1"><input type="hidden" name="templateId" value={i.id} /><input name="name" placeholder="New itinerary name" className="input !w-44 !py-1.5 text-sm" /><button className="btn btn-primary !min-h-[38px] !py-1.5">Use</button></form>}
+              {can && i.isTemplate && <form action={createItinerary} className="flex gap-1"><FormKeeper /><input type="hidden" name="templateId" value={i.id} /><input name="name" placeholder="New itinerary name" className="input !w-44 !py-1.5 text-sm" /><button className="btn btn-primary !min-h-[38px] !py-1.5">Use</button></form>}
               {can && <form action={deleteItinerary.bind(null, i.id)}><button className="btn btn-outline !min-h-[38px] !py-1.5 text-red-700">Delete</button></form>}
             </div></div></li>); })}
         {!rows.length && <li className="text-ink/65">{tab === "templates" ? "No templates yet. Open any itinerary and choose Save as template." : "No itineraries yet."}</li>}

@@ -5,6 +5,7 @@ import { requireStaff } from "@/lib/auth";
 import { createItinerary } from "../../doc-actions";
 import Notice from "@/components/Notice";
 import CustomerItineraryStart from "@/components/CustomerItineraryStart";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 function Card({ title, blurb, children }: { title: string; blurb: string; children: React.ReactNode }) {
@@ -50,7 +51,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
         </Card>
 
         <Card title="For the website (a tour)" blurb="Build the day-by-day plan and price it, then publish it as a tour. Only an itinerary started here can ever become a website tour.">
-          <form action={createItinerary} className="grid gap-3">
+          <form action={createItinerary} className="grid gap-3"><FormKeeper />
             <input type="hidden" name="kind" value="tour" />
             <TemplatePicker idAttr="w-template" />
             <button className="btn btn-primary !min-h-[46px]">Create tour itinerary</button>
@@ -58,7 +59,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
         </Card>
 
         <Card title="Create a template" blurb="A reusable base for trips you plan often, like 'Cairo & Nile Cruise, 8 days'. Use it to start any of the other three.">
-          <form action={createItinerary} className="grid gap-3">
+          <form action={createItinerary} className="grid gap-3"><FormKeeper />
             <input type="hidden" name="kind" value="template" />
             <div><label className="label" htmlFor="t-name">Template name</label><input id="t-name" name="name" required placeholder="e.g. Cairo & Nile Cruise, 8 days" className="input" /></div>
             <TemplatePicker idAttr="t-template" emptyLabel="Blank template" />
@@ -67,7 +68,7 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
         </Card>
 
         <Card title="Generate a quick PDF" blurb="A one-off itinerary to fill in and download. Not linked to a customer or an order, and can never become a website tour.">
-          <form action={createItinerary} className="grid gap-3">
+          <form action={createItinerary} className="grid gap-3"><FormKeeper />
             <input type="hidden" name="kind" value="pdf" />
             <TemplatePicker idAttr="p-template" />
             <button className="btn btn-primary !min-h-[46px]">Create quick PDF</button>

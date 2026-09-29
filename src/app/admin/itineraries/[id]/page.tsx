@@ -9,6 +9,7 @@ import { parseJson } from "@/lib/format";
 import ItineraryEditor from "@/components/ItineraryEditor";
 import Notice from "@/components/Notice";
 import type { ItineraryContent } from "@/pdf/types";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 export default async function EditItinerary({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ n?: string; e?: string; flow?: string }> }) {
@@ -39,7 +40,7 @@ export default async function EditItinerary({ params, searchParams }: { params: 
         <section className="mt-6 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-5">
           <h2 className="font-display text-xl font-extrabold">{tour ? "Website tour" : "Add this itinerary as a tour on the website"}</h2>
           <p className="mt-1 text-sm text-ink/65">{tour ? <>This itinerary is published as <b>{tour.title}</b> ({tour.status === "PUBLISHED" ? "live" : "draft"}, {money(tour.price)}). Save your itinerary changes first, then update the tour to match.</> : "Customers will be able to book it like any other tour. The title, description, days, highlights, included and excluded lists and the cover photo come from this itinerary. Save your changes first."}</p>
-          <form action={publishItineraryAsTour.bind(null, id)} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <form action={publishItineraryAsTour.bind(null, id)} className="mt-4 grid gap-3 sm:grid-cols-2"><FormKeeper />
             <div><label className="label" htmlFor="pd">Destination</label><select id="pd" name="destinationId" defaultValue={tour?.destinationId} className="input" required>{dests.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="label" htmlFor="pp">Price (USD)</label><input id="pp" name="price" type="number" step="0.01" min="0" defaultValue={tour?.price} className="input" required /></div>
             <div><label className="label" htmlFor="pm">Price is</label><select id="pm" name="pricingModel" defaultValue={tour?.pricingModel ?? "PER_PERSON"} className="input"><option value="PER_PERSON">Per person</option><option value="PER_GROUP">Per group</option></select></div>

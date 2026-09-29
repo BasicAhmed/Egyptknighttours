@@ -2,6 +2,7 @@ import { db, schema as s } from "../db";
 import { saveTour } from "../app/admin/actions";
 import { parseJson } from "../lib/format";
 import ImageField from "./ImageField";
+import FormKeeper from "./FormKeeper";
 import TourPricingFields from "./TourPricingFields";
 
 type T = typeof s.tours.$inferSelect;
@@ -15,6 +16,7 @@ export default async function TourForm({ tour, error, canFinance = false }: { to
   const inp = (name: string, label: string, v?: string | number | null, type = "text") => <div><label className="label" htmlFor={`tf-${name}`}>{label}</label><input id={`tf-${name}`} name={name} type={type} step="any" defaultValue={v ?? ""} className="input" /></div>;
   const ta = (name: string, label: string, v: string | undefined, rows = 4, hint?: string) => <div className="sm:col-span-2"><label className="label" htmlFor={`tf-${name}`}>{label}{hint && <span className="ml-2 font-normal text-ink/65">{hint}</span>}</label><textarea id={`tf-${name}`} name={name} rows={rows} defaultValue={v} className="input" /></div>;
   return <form action={act} className="card grid gap-4 p-5 sm:grid-cols-2">
+    <FormKeeper />
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800 sm:col-span-2">{error}</p>}
     {inp("title", "Title", tour?.title)}{inp("slug", "Slug (lowercase-with-dashes)", tour?.slug)}
     {ta("shortDescription", "Short description", tour?.shortDescription, 2)}{ta("longDescription", "Long description", tour?.longDescription, 6)}

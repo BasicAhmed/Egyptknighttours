@@ -8,6 +8,7 @@ import Notice from "@/components/Notice";
 import ImageField from "@/components/ImageField";
 import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides, saveRedirect, deleteRedirect, bulkAddRedirects } from "../site-actions";
 import { resolveLegacy } from "@/lib/legacy-server";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -57,7 +58,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
       {tab === "reviews" && <ReviewsAdmin reviews={reviews} />}
       {tab === "guides" && <GuidesAdmin guides={guidesList} />}
       {tab === "redirects" && <RedirectsAdmin rows={redirectRows} testPath={testPath} testResult={testResult} />}
-      {tab !== "payment" && tab !== "reviews" && tab !== "guides" && tab !== "redirects" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><input type="hidden" name="tab" value={tab} />
+      {tab !== "payment" && tab !== "reviews" && tab !== "guides" && tab !== "redirects" && <form action={saveCompanySettings} className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-5 sm:grid-cols-2"><FormKeeper /><input type="hidden" name="tab" value={tab} />
         {tab === "referral" && <>
           <p className="text-sm text-ink/65 sm:col-span-2">A completed trip invites the customer to review it, then unlocks a code they can share. Set the numbers below to match your business.</p>
           <label className="block"><span className="label">Program is</span><select name="referral.enabled" defaultValue={g["referral.enabled"]} className="input"><option value="true">On</option><option value="false">Off</option></select></label>
@@ -107,7 +108,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
 
 function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelect)[] }) {
   const Form = ({ r }: { r?: typeof s.testimonials.$inferSelect }) => (
-    <form action={saveTestimonial.bind(null, r?.id ?? null)} className="grid gap-3 sm:grid-cols-2">
+    <form action={saveTestimonial.bind(null, r?.id ?? null)} className="grid gap-3 sm:grid-cols-2"><FormKeeper />
       <F name="name" label="Reviewer name (as shown, e.g. Anna M.)" v={r?.name} /><F name="country" label="Country" v={r?.country} />
       <F name="title" label="Review title" v={r?.title} /><F name="reviewDate" label="Date (e.g. March 2026)" v={r?.reviewDate} />
       <div className="sm:col-span-2"><label className="label" htmlFor="rv-body">Review text (exactly as written)</label><textarea id="rv-body" name="body" rows={4} defaultValue={r?.body} className="input" required /></div>
@@ -120,7 +121,7 @@ function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelec
     <section className="space-y-4">
       <p className="text-sm text-ink/65">Add real reviews (copy them from Tripadvisor exactly as written). They show on the homepage. Only add genuine five-star reviews you are entitled to display.</p>
       <details className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer font-semibold">Paste many reviews at once</summary>
-        <form action={bulkAddTestimonials} className="mt-3 grid gap-3">
+        <form action={bulkAddTestimonials} className="mt-3 grid gap-3"><FormKeeper />
           <div><label className="label">One review per line: Name | Country | Date | Title | Review text</label><textarea name="bulk" rows={6} className="input" placeholder="Anna M. | Germany | March 2026 | Unforgettable Luxor day | Our guide made the temples come alive…" /></div>
           <div className="grid gap-3 sm:grid-cols-2"><F name="source" label="Source" v="Tripadvisor" /><F name="url" label="Link (optional)" /></div><button className="btn btn-dark w-fit">Add all</button></form></details>
       {reviews.map((r) => <details key={r.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{r.name}{r.country ? `, ${r.country}` : ""} <span className="font-normal text-ink/65">· {r.title || r.body.slice(0, 40)}</span></span><span className="badge">{r.active ? "Live" : "Hidden"}</span></summary>
@@ -132,7 +133,7 @@ function ReviewsAdmin({ reviews }: { reviews: (typeof s.testimonials.$inferSelec
 
 function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] }) {
   const Form = ({ g }: { g?: typeof s.tourGuides.$inferSelect }) => (
-    <form action={saveGuide.bind(null, g?.id ?? null)} className="grid gap-3 sm:grid-cols-2">
+    <form action={saveGuide.bind(null, g?.id ?? null)} className="grid gap-3 sm:grid-cols-2"><FormKeeper />
       <F name="name" label="Guide name" v={g?.name} /><F name="phone" label="WhatsApp / phone (with country code)" v={g?.phone} />
       <F name="languages" label="Languages (comma separated)" v={g?.languages} />
       <F name="notes" label="Notes (private)" v={g?.notes} />
@@ -143,7 +144,7 @@ function GuidesAdmin({ guides }: { guides: (typeof s.tourGuides.$inferSelect)[] 
     <section className="space-y-3">
       <p className="text-sm text-ink/65">Your team of tour guides. Staff pick one for each order in the order's Operations tab. Names are only shown to staff.</p>
       <details className="rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4"><summary className="cursor-pointer font-semibold">Paste many guides at once</summary>
-        <form action={bulkAddGuides} className="mt-3 grid gap-3">
+        <form action={bulkAddGuides} className="mt-3 grid gap-3"><FormKeeper />
           <div><label className="label" htmlFor="gbulk">One guide per block: name, then language, then phone number(s). Leave a blank line between guides. Only the first phone number is saved.</label><textarea id="gbulk" name="bulk" rows={10} className="input" placeholder={"Guide Name\nEnglish\n+20 10 00000000\n\nAnother Guide\nSpanish\n010 00000001"} /></div>
           <button className="btn btn-dark w-fit">Add all guides</button></form></details>
       {guides.map((g) => <details key={g.id} className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 font-semibold"><span>{g.name} <span className="font-normal text-ink/65">· {g.languages || "no languages set"}</span></span><span className="badge">{g.active ? "Available" : "Inactive"}</span></summary>
@@ -161,9 +162,9 @@ function RedirectsAdmin({ rows, testPath, testResult }: { rows: (typeof s.redire
         <label className="block min-w-[240px] flex-1"><span className="label">Test an old address</span><input name="t" defaultValue={testPath} placeholder="/tour-destination/luxor/  or  https://old-site.com/tours/my-tour/" className="input" /></label><button className="btn btn-dark !min-h-[46px]">Test</button>
         {testPath && <p className="w-full text-sm font-semibold">{testResult ? <>→ <span className="text-[#17663A]">{testResult.to}</span> <span className="font-normal text-ink/65">({testResult.status}, {testResult.source === "manual" ? "your redirect" : "built-in rule"})</span></> : <span className="text-[#8A4B0A]">No redirect. This address would show a 404 page.</span>}</p>}</form>
       <details className="rounded-2xl border border-ink/10 bg-white p-4" open={rows.length === 0}><summary className="cursor-pointer font-semibold">Paste many redirects at once</summary>
-        <form action={bulkAddRedirects} className="mt-3 grid gap-3"><label className="block"><span className="label">One per line: old address, then new address (space, comma or tab between them). Full web addresses are fine.</span><textarea name="bulk" rows={8} className="input" placeholder={"/tours/nile-cruise-aswan-luxor-3-days-2-nights-2/  /tours/nile-cruise-3-days\nhttps://old-site.com/blog/best-time-to-visit-egypt/  /egypt-travel-guide/best-time-to-visit-egypt"} /></label><button className="btn btn-dark w-fit">Save all</button></form></details>
+        <form action={bulkAddRedirects} className="mt-3 grid gap-3"><FormKeeper /><label className="block"><span className="label">One per line: old address, then new address (space, comma or tab between them). Full web addresses are fine.</span><textarea name="bulk" rows={8} className="input" placeholder={"/tours/nile-cruise-aswan-luxor-3-days-2-nights-2/  /tours/nile-cruise-3-days\nhttps://old-site.com/blog/best-time-to-visit-egypt/  /egypt-travel-guide/best-time-to-visit-egypt"} /></label><button className="btn btn-dark w-fit">Save all</button></form></details>
       <details className="rounded-2xl border border-ink/10 bg-white p-4"><summary className="cursor-pointer font-semibold">+ Add one redirect</summary>
-        <form action={saveRedirect} className="mt-3 grid gap-3 sm:grid-cols-2"><label className="block"><span className="label">Old address</span><input name="from" className="input" placeholder="/old-page/" required /></label><label className="block"><span className="label">New page on this site</span><input name="to" className="input" placeholder="/tours/new-page" required /></label>
+        <form action={saveRedirect} className="mt-3 grid gap-3 sm:grid-cols-2"><FormKeeper /><label className="block"><span className="label">Old address</span><input name="from" className="input" placeholder="/old-page/" required /></label><label className="block"><span className="label">New page on this site</span><input name="to" className="input" placeholder="/tours/new-page" required /></label>
           <label className="block"><span className="label">Type</span><select name="status" className="input"><option value="301">Permanent (301), recommended</option><option value="302">Temporary (302)</option></select></label><label className="block"><span className="label">Note (optional)</span><input name="note" className="input" /></label><div className="sm:col-span-2"><button className="btn btn-dark">Save redirect</button></div></form></details>
       <div className="rounded-2xl border border-ink/10 bg-white"><p className="border-b border-ink/10 p-4 font-semibold">{rows.length} saved redirect{rows.length === 1 ? "" : "s"}</p>
         <ul className="divide-y divide-ink/10">{rows.map((r) => <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"><span className="min-w-0 break-all"><b>{r.fromPath}</b> <span className="text-ink/50">→</span> {r.toPath} <span className="text-ink/60">({r.status}){r.note ? ` · ${r.note}` : ""}</span></span><form action={deleteRedirect.bind(null, r.id)}><button className="text-sm font-semibold text-red-700 underline">Remove</button></form></li>)}</ul></div>

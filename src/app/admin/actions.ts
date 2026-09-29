@@ -14,6 +14,7 @@ const lines = (v: FormDataEntryValue | null) => String(v ?? "").split("\n").map(
 const pairs = (v: FormDataEntryValue | null, a: string, b: string) => lines(v).map((l) => { const [x, ...y] = l.split("|"); return { [a]: x.trim(), [b]: y.join("|").trim() }; }).filter((o) => o[a]);
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
 
+const FIELD: Record<string, string> = { title: "Title", slug: "Slug", shortDescription: "Short description", longDescription: "Long description", durationDays: "Days", durationNights: "Nights", durationHours: "Hours", childPercent: "Child price %", privateSurcharge: "Private upgrade", maxTravelers: "Max travelers", imageUrl: "Tour photo", seoTitle: "SEO title", seoDescription: "SEO description", discountPrice: "Discount price", costPrice: "Cost", marginPercent: "Profit margin" };
 function tourFromForm(fd: FormData, canFinance: boolean, existing?: { price: number; discountPrice: number | null; costPrice: number | null; marginPercent: number | null }) {
   const raw = Object.fromEntries(fd.entries());
   let price: unknown; let costPrice: number | null; let marginPercent: number | null; let discountPrice: unknown;
@@ -28,8 +29,11 @@ function tourFromForm(fd: FormData, canFinance: boolean, existing?: { price: num
     price = existing?.price ?? 0; costPrice = existing?.costPrice ?? null; marginPercent = existing?.marginPercent ?? null; discountPrice = existing?.discountPrice ?? null;
   }
   const status = !canFinance && !existing ? "DRAFT" : raw.status;
+  // Hours only matter for 1-day tours: a blank or 0 must never block saving a multi-day tour, so fall back to a sensible value.
+  const hrs = Number(raw.durationHours); const days = Number(raw.durationDays);
+  if (!(hrs >= 1)) raw.durationHours = (days > 1 ? "24" : "8") as never;
   const parsed = tourSchema.safeParse({ ...raw, price, discountPrice, priceMode: "MARGIN", costPrice, marginPercent, status });
-  if (!parsed.success) return { error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
+  if (!parsed.success) return { error: parsed.error.issues.map((i) => `${FIELD[String(i.path[0])] ?? i.path.join(".")}: ${i.message}`).join(" · ") };
   return { data: {
     ...parsed.data, discountPrice: parsed.data.discountPrice ?? null, imageUrl: parsed.data.imageUrl || null,
     priceMode: "MARGIN" as const, costPrice, marginPercent,

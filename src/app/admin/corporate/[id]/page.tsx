@@ -7,6 +7,7 @@ import { waUrl } from "@/components/order-ui";
 import Notice from "@/components/Notice";
 import ConfirmButton from "@/components/ConfirmButton";
 import CopyButton from "@/components/CopyButton";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, def, req, type = "text", cls = "" }: { name: string; label: string; def?: string | number | null; req?: boolean; type?: string; cls?: string }) => (
@@ -61,7 +62,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
         <div className="mt-3 flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(paid, r.currency)}</b> of {money(t.price, r.currency)}</p><p className="font-display text-xl font-extrabold">{balance > 0 ? `${money(balance, r.currency)} left` : t.price > 0 ? "Paid in full" : "No services priced yet"}</p></div>
         <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
         {payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><span className="font-semibold">{money(p.amount, r.currency)}</span></li>)}</ul>}
-        {balance > 0 && <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
+        {balance > 0 && <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
           <F name="amount" label={`Amount received (${r.currency})`} type="number" req />
           <div><label className="label" htmlFor="cp-method">Method</label><select id="cp-method" name="method" defaultValue="Bank transfer" className="input !py-2"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Other</option></select></div>
           <F name="note" label="Note (optional)" />
@@ -70,7 +71,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
       </div>
 
       <details className="card mt-5 p-5"><summary className="cursor-pointer font-display text-lg font-bold">Company, customer &amp; request details</summary>
-        <form action={updateCorporateRequest.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <form action={updateCorporateRequest.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-2"><FormKeeper />
           <h3 className="font-display text-base font-bold sm:col-span-2">Company</h3>
           <F name="companyName" label="Requesting company" def={r.companyName} req />
           <F name="companyContact" label="Contact person" def={r.companyContact} />
@@ -106,7 +107,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
               <span><b className="font-display text-base font-bold">{SERVICE_TYPE_LABEL[sv.type] ?? sv.type}</b>{sv.label ? ` — ${sv.label}` : ""} <span className="text-sm text-ink/65">{sv.date ? new Date(sv.date + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "No date"}{sv.location ? ` · ${sv.location}` : ""}</span></span>
               <span className="text-sm font-semibold">{r.pricingMode === "ITEMIZED" ? money(sv.price, r.currency) : (canFinance ? `Cost ${money(sv.cost, r.currency)}` : "")}</span>
             </summary>
-            <form action={updateCorporateService.bind(null, sv.id, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
+            <form action={updateCorporateService.bind(null, sv.id, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
               <ServiceTypeField id={`sv-type-${sv.id}`} def={sv.type} />
               <F name="label" label="Description" def={sv.label} cls="sm:col-span-2" />
               <F name="date" label="Date" type="date" def={sv.date} />
@@ -127,7 +128,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
       </div>
 
       <details className="card mt-4 p-4" open><summary className="cursor-pointer font-display text-base font-bold">+ Add a service</summary>
-        <form action={addCorporateService.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">
+        <form action={addCorporateService.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
           <ServiceTypeField id="ns-type" />
           <F name="label" label="Description" cls="sm:col-span-2" />
           <F name="date" label="Date" type="date" /><F name="time" label="Time (optional)" /><F name="location" label="Location" />

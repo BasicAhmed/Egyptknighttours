@@ -4,6 +4,7 @@ import { requireStaff } from "@/lib/auth";
 import Notice from "@/components/Notice";
 import { createStaff, updateStaffRole, resetStaffPassword, removeStaff } from "../staff-actions";
 import ConfirmButton from "@/components/ConfirmButton";
+import FormKeeper from "@/components/FormKeeper";
 
 const ROLE_LABEL: Record<string, string> = { SUPER_ADMIN: "Owner (full access)", MANAGER: "Manager", SALES: "Sales", CONTENT_EDITOR: "Content editor", TOUR_OPERATOR: "Tour operator" };
 
@@ -19,7 +20,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
 
       <details className="mt-5 rounded-2xl border border-ink/10 bg-white p-4" open={staff.length <= 1}>
         <summary className="cursor-pointer font-display text-lg font-bold">+ Add a staff account</summary>
-        <form action={createStaff} className="mt-3 grid gap-3 sm:grid-cols-2">
+        <form action={createStaff} className="mt-3 grid gap-3 sm:grid-cols-2"><FormKeeper />
           <label className="block"><span className="label">Name</span><input name="name" required className="input" /></label>
           <label className="block"><span className="label">Email (this is what they log in with)</span><input name="email" type="email" required className="input" /></label>
           <label className="block"><span className="label">Password</span><input name="password" type="text" required minLength={8} className="input" placeholder="At least 8 characters" /></label>
@@ -34,7 +35,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
           <div key={u.id} className="card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div><p className="font-semibold">{u.name} {u.id === me.uid && <span className="text-xs font-normal text-ink/65">(you)</span>}</p><p className="text-sm text-ink/65">{u.email}</p></div>
-              <form action={updateStaffRole.bind(null, u.id)} className="flex items-center gap-2">
+              <form action={updateStaffRole.bind(null, u.id)} className="flex items-center gap-2"><FormKeeper />
                 <label className="sr-only" htmlFor={`role-${u.id}`}>Role for {u.name}</label><select id={`role-${u.id}`} name="role" defaultValue={u.role} className="input !w-auto !py-1.5 !text-sm">{Object.entries(ROLE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
                 <button className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]">Save role</button>
               </form>

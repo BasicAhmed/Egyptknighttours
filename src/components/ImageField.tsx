@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compressImage } from "@/lib/image-client";
 
 // Upload a photo from your phone or computer. Works inside normal forms (hidden input) or with onChange.
@@ -7,6 +7,12 @@ export default function ImageField({ label, name, value, onChange, hint, compact
   const [url, setUrl] = useState(value ?? ""); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const set = (u: string) => { setUrl(u); onChange?.(u); };
+  // After a failed save the form is put back the way it was typed (see FormKeeper), photo included.
+  useEffect(() => {
+    if (!name) return;
+    const h = (e: Event) => { const d = (e as CustomEvent<Record<string, string>>).detail; if (d && name in d) { setUrl(d[name]); onChange?.(d[name]); } };
+    window.addEventListener("fk-restore", h); return () => window.removeEventListener("fk-restore", h);
+  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
   async function pick(f: File) {
     setErr(""); setBusy(true);
     try {

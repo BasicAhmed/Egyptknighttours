@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { createCorporateRequest } from "../../corporate-actions";
 import Notice from "@/components/Notice";
+import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, req, type = "text", ph, cls = "" }: { name: string; label: string; req?: boolean; type?: string; ph?: string; cls?: string }) => (
@@ -17,7 +18,7 @@ export default async function NewCorporateRequest({ searchParams }: { searchPara
       <p className="mt-1 text-sm text-ink/65">Start with who asked and what it's for — you'll add the individual services (transfer, tickets, guide, etc.) on the next screen.</p>
       <div className="mt-3"><Notice e={sp.e} /></div>
 
-      <form action={createCorporateRequest} className="card mt-5 grid gap-4 p-5 sm:grid-cols-2">
+      <form action={createCorporateRequest} className="card mt-5 grid gap-4 p-5 sm:grid-cols-2"><FormKeeper />
         <h2 className="font-display text-lg font-bold sm:col-span-2">Company</h2>
         <F name="companyName" label="Requesting company" req ph="ABC Travel" />
         <F name="companyContact" label="Contact person" ph="Name of who to reach at the company" />
