@@ -1,4 +1,5 @@
 "use client";
+import { COUNTRIES } from "@/lib/countries";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -79,7 +80,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         {tab === "overview" && <div className="space-y-4">
         <Checklist o={o} go={(t) => setTab(t)} />
         <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Customer" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setCustOpen(!custOpen)}>{custOpen ? "Close" : "Edit"}</button>}><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email || "–"} /><Row k="WhatsApp" v={phone || "–"} /><Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
+          <Card title="Customer" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setCustOpen(!custOpen)}>{custOpen ? "Close" : "Edit"}</button>}><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email || "–"} /><Row k="WhatsApp" v={o.customer.whatsapp || "–"} />{o.customer.phone && o.customer.phone !== o.customer.whatsapp && <Row k="Phone" v={o.customer.phone} />}<Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
             <Row k="Source" v={SOURCE_LABEL[o.source] ?? o.source} /><Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
             <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />
@@ -217,15 +218,19 @@ function ItinCreate({ o, busy, onCreate, onImported }: { o: Order; busy: boolean
     </form>
   );
 }
-function CustomerForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: { email: string; whatsapp: string }) => void }) {
-  const [v, setV] = useState({ email: o.customer.email, whatsapp: o.customer.whatsapp || o.customer.phone });
-  const none = !v.email.trim() && !v.whatsapp.trim();
+function CustomerForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: Record<string, string>) => void }) {
+  const [v, setV] = useState({ name: o.customer.name, email: o.customer.email, whatsapp: o.customer.whatsapp, phone: o.customer.phone !== o.customer.whatsapp ? o.customer.phone : "", nationality: o.customer.nationality, country: o.customer.country });
+  const none = !v.email.trim() && !v.whatsapp.trim() && !v.phone.trim();
+  const f = (k: keyof typeof v, label: string, type = "text", ph = "", list?: string) => (
+    <div><label className="label" htmlFor={`cu-${k}`}>{label}</label><input id={`cu-${k}`} type={type} list={list} className="input !py-2" value={v[k]} placeholder={ph} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></div>);
   return (
-    <form className="card grid gap-3 p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); if (!none) onSave(v); }}>
-      <div><label className="label" htmlFor="cu-email">Email</label><input id="cu-email" type="email" className="input !py-2" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} /></div>
-      <div><label className="label" htmlFor="cu-wa">WhatsApp number (with country code)</label><input id="cu-wa" type="tel" className="input !py-2" value={v.whatsapp} onChange={(e) => setV({ ...v, whatsapp: e.target.value })} placeholder="+351 912 345 678" /></div>
-      <p className={`text-xs sm:col-span-2 ${none ? "font-semibold text-red-800" : "text-ink/60"}`}>{none ? "Keep at least one: email or WhatsApp." : "One is enough. This updates the customer on all their orders."}</p>
-      <div className="sm:col-span-2"><button disabled={busy || none} className="btn btn-dark !min-h-[44px]">Save contact</button></div>
+    <form className="card grid gap-3 p-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); if (!none && v.name.trim().length >= 2) onSave(v); }}>
+      <div className="sm:col-span-2">{f("name", "Name (for this order)")}</div>
+      {f("email", "Email", "email")}{f("whatsapp", "WhatsApp number (with country code)", "tel", "+351 912 345 678")}
+      {f("phone", "Other phone (if different)", "tel")}{f("nationality", "Nationality", "text", "", "cu-countries")}
+      {f("country", "Country of residence", "text", "", "cu-countries")}<datalist id="cu-countries">{COUNTRIES.map((x) => <option key={x} value={x} />)}</datalist>
+      <p className={`text-xs sm:col-span-2 ${none ? "font-semibold text-red-800" : "text-ink/60"}`}>{none ? "Keep at least one: email or WhatsApp." : "The name changes this order only. Email, phone, nationality and country update the customer on all their orders."}</p>
+      <div className="flex gap-2 sm:col-span-2"><button disabled={busy || none || v.name.trim().length < 2} className="btn btn-dark !min-h-[44px]">Save customer</button></div>
     </form>
   );
 }

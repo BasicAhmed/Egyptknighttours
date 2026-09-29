@@ -111,17 +111,38 @@ async function ensureCustomTour() {
   return t.id;
 }
 // Customer card edit: fix or add the email / WhatsApp later. Still needs at least one; an email already used by another customer is refused.
-const custSchema = z.object({ email: optEmail, whatsapp: optPhone });
+// Customer card edit: every detail can be corrected after the order is made. Email or WhatsApp — at least one stays required;
+// an email already used by another customer is refused. The name is THIS order's guest name (two orders can share an email but be
+// different people), so renaming here never renames the customer's other orders. Contact, nationality and country are the customer's own
+// details and update everywhere.
+const custSchema = z.object({ name: z.string().trim().min(2, "Enter the customer's name").max(120), email: optEmail, whatsapp: optPhone, phone: optPhone,
+  nationality: z.string().trim().max(60).optional().default(""), country: z.string().trim().max(80).optional().default("") });
 export async function orderUpdateCustomer(id: string, input: Record<string, unknown>): Promise<R> {
   const u = await requireStaff("bookings");
   const p = custSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues[0].message };
-  const email = p.data.email.toLowerCase(), wa = p.data.whatsapp;
-  if (!email && !wa) return { ok: false, message: "Keep at least one: email or WhatsApp number." };
-  const [b] = await db.select({ customerId: s.bookings.customerId }).from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "Order not found" };
+  const d = p.data; const email = d.email.toLowerCase(), wa = d.whatsapp, phone = d.phone || d.whatsapp;
+  if (!email && !wa && !phone) return { ok: false, message: "Keep at least one: email or WhatsApp number." };
+  const [b] = await db.select({ customerId: s.bookings.customerId, guestName: s.bookings.guestName, cname: s.customers.name }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, id));
+  if (!b) return { ok: false, message: "Order not found" };
   if (email) { const [other] = await db.select({ id: s.customers.id, name: s.customers.name }).from(s.customers).where(and(eq(s.customers.email, email), ne(s.customers.id, b.customerId))); if (other) return { ok: false, message: `That email already belongs to another customer (${other.name}).` }; }
-  await db.update(s.customers).set({ email: email || null, whatsapp: wa || null, phone: wa || null }).where(eq(s.customers.id, b.customerId));
+  const oldName = b.guestName || b.cname;
+  const [cur] = await db.select({ nationality: s.customers.nationality }).from(s.customers).where(eq(s.customers.id, b.customerId));
+  await db.transaction(async (tx) => {
+    await tx.update(s.customers).set({ email: email || null, whatsapp: wa || null, phone: phone || null, nationality: d.nationality || null, country: d.country || null }).where(eq(s.customers.id, b.customerId));
+    if (d.name !== oldName) {
+      await tx.update(s.bookings).set({ guestName: d.name }).where(eq(s.bookings.id, id));
+      // Keep the lead traveler in step when they were simply the same person under the old spelling.
+      await tx.update(s.travelers).set({ fullName: d.name }).where(and(eq(s.travelers.bookingId, id), eq(s.travelers.fullName, oldName)));
+      await tx.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `Customer name changed from "${oldName}" to "${d.name}"` });
+    }
+    // Lead traveler's nationality follows the customer's when it was just a copy of it (or empty); a nationality staff typed from a passport is left alone.
+    if ((d.nationality || null) !== (cur?.nationality ?? null) && d.nationality) {
+      const lead = await tx.select({ id: s.travelers.id, nat: s.travelers.nationality }).from(s.travelers).where(and(eq(s.travelers.bookingId, id), eq(s.travelers.fullName, d.name)));
+      for (const t of lead) if (!t.nat || t.nat === cur?.nationality) await tx.update(s.travelers).set({ nationality: d.nationality }).where(eq(s.travelers.id, t.id));
+    }
+  });
   await audit(u.uid, "UPDATE", "customer", b.customerId);
-  return done(id, "Customer contact saved");
+  return done(id, "Customer details saved");
 }
 
 // Orders that come in by WhatsApp or phone: staff enter them here and the rest of the flow (invoice, payment, itinerary) is identical.

@@ -304,3 +304,6 @@ Verified in a real generated PDF: a 1-block "quick PDF" itinerary with Days=8/Ni
 - **"Paid in full" on an unpriced $0 order** (order window, guide sheet, corporate requests) now says "Not priced yet" / "No services priced yet".
 - **No-email customers:** the invoice form no longer offers "Email it to (blank)"; the Email button is hidden and WhatsApp is suggested.
 - Staff "fully paid" notification summed voided payments too; now counts only real payments. Tour form showed a raw "pricingModel" label.
+
+## Customer card: every detail editable
+Order window → Overview → Customer → Edit now edits name, email, WhatsApp, other phone, nationality and country (email or WhatsApp still required; an email used by another customer is refused). The name is this order's guest name only, so other orders on the same email keep theirs; the lead traveler is renamed with it when they were the same person, and the change is written to the order's history. Contact details, nationality and country belong to the customer and update on all their orders; the lead traveler's nationality follows when it was just a copy of the customer's (a nationality typed from a passport is never overwritten).
