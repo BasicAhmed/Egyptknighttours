@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { sendEmail, brandedEmail } from "./email";
 import { getSettings, staffAlertEmails } from "./settings";
 import { BUILDER_NAME } from "./builder";
@@ -89,7 +89,7 @@ export async function notifyOrderCancelled(bookingId: string, origin: string = S
     const [r] = await db.select({ b: s.bookings, c: s.customers, t: s.tours }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.id, bookingId)); if (!r) return;
     const g = await getSettings(); const to = staffAlertEmails(g); if (!to.length) return;
     const { sql } = await import("drizzle-orm");
-    const [paidRow] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(eq(s.payments.bookingId, bookingId));
+    const [paidRow] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PAID")));
     const paid = paidRow?.paid ?? 0;
     const rows: [string, string][] = [["Booking", r.b.ref], ["Customer", [r.b.guestName || r.c.name, r.c.email, r.c.whatsapp || r.c.phone].filter(Boolean).join(" · ")], ["Experience", r.b.titleOverride || r.t.title], ["Amount already paid", money(paid, r.b.currency)]];
     const sub = paid > 0 ? `This order was cancelled after ${money(paid, r.b.currency)} was already paid — check whether a refund is owed.` : "This order was cancelled. Nothing had been paid on it yet.";

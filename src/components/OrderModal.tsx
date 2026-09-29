@@ -6,7 +6,7 @@ import CopyButton from "./CopyButton";
 import Modal from "./Modal";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
-import { orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
+import { orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
 
 const cache = new Map<string, Order>();
@@ -104,15 +104,15 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
               {o.costTotal != null ? <>
                 <span>Cost <b className="text-ink">{money(o.costTotal, o.currency)}</b></span><span className="text-ink/30">·</span>
                 <span>Profit <b className={o.total - o.costTotal >= 0 ? "text-[#17663A]" : "text-red-700"}>{money(o.total - o.costTotal, o.currency)}</b></span><span className="text-ink/30">·</span>
-                <span>Margin <b className="text-ink">{Math.round(((o.total - o.costTotal) / o.total) * 100)}%</b></span>
+                <span>{o.costTotal > 0 && <><b className="text-ink">{Math.round(((o.total - o.costTotal) / o.costTotal) * 100)}%</b> on top of cost · </>}<b className="text-ink">{Math.round(((o.total - o.costTotal) / o.total) * 100)}%</b> of the price</span>
               </> : <span className="text-ink/65">No cost recorded, so profit is unknown for this order.</span>}
             </div>
           ) : (
             <div className="mb-3 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm font-semibold">Not priced yet — add an itinerary and enter its cost and profit margin to set this order's price.</div>
           ))}
-          <div className="flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : "Paid in full"}</p></div>
+          <div className="flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</p><p className="font-display text-xl font-extrabold">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : o.total > 0 ? "Paid in full" : "Not priced yet"}</p></div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
-          {o.payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{o.payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><b className={p.status === "PAID" ? "" : "text-ink/65"}>{money(p.amount, o.currency)}{p.status !== "PAID" && ` (${p.status.toLowerCase()})`}</b></li>)}</ul>}
+          {o.payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{o.payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><span className="flex items-center gap-3"><b>{money(p.amount, o.currency)}</b><button type="button" disabled={busy} aria-label={`Remove payment of ${money(p.amount, o.currency)}`} className="text-xs font-semibold text-red-700 underline underline-offset-2" onClick={() => { if (window.confirm(`Remove this ${money(p.amount, o.currency)} payment? Use this only for a payment entered by mistake. It stays in the order's history.`)) void run(() => orderRemovePayment(o.id, p.id)); }}>Remove</button></span></li>)}</ul>}
           {o.balance > 0 && <PayForm o={o} busy={busy} onPay={(v) => run(() => orderAddPayment(o.id, v))} />}
         </Card></div>
 
@@ -157,7 +157,7 @@ function PayForm({ o, busy, onPay }: { o: Order; busy: boolean; onPay: (v: { amo
   );
 }
 function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate: (v: { dueNow: number; deadline: string; currency: string; extras: string; notes: string; status: string; sendNow: boolean }) => void }) {
-  const [v, setV] = useState({ dueNow: String(o.defaults.dueNow), deadline: o.defaults.deadline, currency: o.defaults.currency, extras: "", notes: "", status: "AUTO", sendNow: true }); const [more, setMore] = useState(false);
+  const [v, setV] = useState({ dueNow: String(o.defaults.dueNow), deadline: o.defaults.deadline, currency: o.defaults.currency, extras: "", notes: "", status: "AUTO", sendNow: !!o.customer.email }); const [more, setMore] = useState(false);
   return (
     <form className="mb-3 rounded-xl bg-gold-500/15 p-3" onSubmit={(e) => { e.preventDefault(); onCreate({ ...v, dueNow: Number(v.dueNow) }); }}>
       <div className="grid gap-2 sm:grid-cols-2">
@@ -170,7 +170,8 @@ function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate:
         <div><label className="label" htmlFor="ist">Order status after</label><select id="ist" className="input !py-2" value={v.status} onChange={(e) => setV({ ...v, status: e.target.value })}><option value="AUTO">Awaiting payment (automatic)</option><option value="KEEP">Keep current status</option></select></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="ixt">Extra fees or taxes (Label | amount, one per line)</label><textarea id="ixt" className="input !py-2" rows={2} value={v.extras} onChange={(e) => setV({ ...v, extras: e.target.value })} /></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="ino">Note to customer</label><textarea id="ino" className="input !py-2" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div></div>}
-      <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-black" checked={v.sendNow} onChange={(e) => setV({ ...v, sendNow: e.target.checked })} />Email it to {o.customer.email} now</label>
+      {o.customer.email ? <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-black" checked={v.sendNow} onChange={(e) => setV({ ...v, sendNow: e.target.checked })} />Email it to {o.customer.email} now</label>
+        : <p className="mt-3 text-sm text-ink/70">No email on file for this customer — after creating it, send it with the WhatsApp button below (or add an email in the Customer card).</p>}
       <div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} className="btn btn-primary !min-h-[44px]">{busy ? "Working…" : "Create invoice PDF"}</button><a className="btn btn-outline !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`/api/admin/preview/invoice/${o.id}?dueNow=${encodeURIComponent(v.dueNow)}&deadline=${v.deadline}&currency=${encodeURIComponent(v.currency)}`}>Preview</a></div>
     </form>
   );
@@ -184,7 +185,7 @@ function DocList({ o, kind, run, busy }: { o: Order; kind: "INVOICE" | "ITINERAR
       <li key={d.id} className="rounded-xl border border-ink/10 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{d.number}{d.amount != null && kind === "INVOICE" && <span className="font-normal text-ink/65"> · due {money(d.amount, d.currency)}</span>}</p>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${d.sentAt ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/65"}`}>{d.sentAt ? `Sent ${ago(d.sentAt)}${d.sentVia ? ` · ${d.sentVia.toLowerCase()}` : ""}` : "Not sent yet"}</span></div>
         <div className="mt-2 flex flex-wrap gap-2"><a className={Small} target="_blank" rel="noopener noreferrer" href={`/api/documents/${d.id}/pdf?inline=1`}>Preview</a><a className={Small} href={`/api/documents/${d.id}/pdf`}>Download</a>
-          <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderEmailDoc(o.id, d.id))}>{d.sentAt ? "Resend email" : "Email"}</button>
+          {o.customer.email && <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderEmailDoc(o.id, d.id))}>{d.sentAt ? "Resend email" : "Email"}</button>}
           {phone && <a className="btn btn-wa !min-h-[38px] !py-1.5 !px-3 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, here's your ${kind === "INVOICE" ? "invoice" : "itinerary"} from Egypt Knight: ${d.shareUrl}`)} onClick={() => { if (!d.sentAt) void run(() => orderMarkSent(o.id, d.id, "WHATSAPP")); }}>Send on WhatsApp</a>}
           {!d.sentAt && <button className={Small} disabled={busy} onClick={() => run(() => orderMarkSent(o.id, d.id, "MANUAL"))}>Mark as sent</button>}</div></li>))}</ul>
   );

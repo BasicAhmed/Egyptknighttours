@@ -58,7 +58,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
 
       <div className="card mt-5 p-5">
         <h2 className="font-display text-lg font-bold">Payment</h2>
-        <div className="mt-3 flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(paid, r.currency)}</b> of {money(t.price, r.currency)}</p><p className="font-display text-xl font-extrabold">{balance > 0 ? `${money(balance, r.currency)} left` : "Paid in full"}</p></div>
+        <div className="mt-3 flex items-end justify-between"><p className="text-sm text-ink/65">Paid <b className="text-ink">{money(paid, r.currency)}</b> of {money(t.price, r.currency)}</p><p className="font-display text-xl font-extrabold">{balance > 0 ? `${money(balance, r.currency)} left` : t.price > 0 ? "Paid in full" : "No services priced yet"}</p></div>
         <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
         {payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{payments.map((p) => <li key={p.id} className="flex justify-between py-1.5"><span className="text-ink/70">{new Date(p.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · {p.method}{p.note ? ` · ${p.note}` : ""}</span><span className="font-semibold">{money(p.amount, r.currency)}</span></li>)}</ul>}
         {balance > 0 && <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3">

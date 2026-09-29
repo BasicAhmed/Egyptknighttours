@@ -159,7 +159,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
           {bookingId && <p className="mt-3 text-xs text-ink/65">Currency: <b>{currency}</b>, following the linked order.</p>}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div><label className="label" htmlFor="ip-cost">Cost per person ({bookingId ? currency : curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
-            <div><label className="label" htmlFor="ip-margin">Profit margin (%)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
+            <div><label className="label" htmlFor="ip-margin">Profit margin (% added on top of cost)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
             <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
           </div>
           {bookingId ? (

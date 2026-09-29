@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { loadOrder, type Order } from "@/lib/orders";
-import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus } from "@/lib/documents";
+import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus, voidPayment } from "@/lib/documents";
 import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
 import { newBookingRef } from "@/lib/booking";
 import { syncTravelers } from "@/lib/travelers";
@@ -31,6 +31,12 @@ export async function orderAddPayment(id: string, input: { amount: number; metho
   const r = await recordPayment(id, u.uid, { amount, method: String(input.method ?? "").slice(0, 60), note: String(input.note ?? "").slice(0, 200) });
   await audit(u.uid, "PAYMENT", "booking", id);
   return done(id, r.next === "PAID" ? "Payment recorded. Order is fully paid." : "Partial payment recorded.");
+}
+export async function orderRemovePayment(id: string, paymentId: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const r = await voidPayment(id, paymentId, u.name || u.email); if (!r) return { ok: false, message: "That payment was already removed." };
+  await audit(u.uid, "VOID_PAYMENT", "booking", id);
+  return done(id, "Payment removed. The order's balance and status were updated.");
 }
 export async function orderAddNote(id: string, text: string): Promise<R> {
   const u = await requireStaff();

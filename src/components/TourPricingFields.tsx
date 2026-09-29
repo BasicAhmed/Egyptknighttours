@@ -8,7 +8,7 @@ export default function TourPricingFields({ discountPrice, costPrice, marginPerc
   return (
     <>
       <div><label className="label" htmlFor="tf-cost">Cost of the program (USD, no profit)</label><input id="tf-cost" name="costPrice" type="number" step="any" min={0} required value={cost} onChange={(e) => setCost(e.target.value)} className="input" placeholder="hotel, guide, driver, entrance fees" /></div>
-      <div><label className="label" htmlFor="tf-margin">Profit margin (%)</label><input id="tf-margin" name="marginPercent" type="number" step="any" min={0} required value={margin} onChange={(e) => setMargin(e.target.value)} className="input" /></div>
+      <div><label className="label" htmlFor="tf-margin">Profit margin (% added on top of cost)</label><input id="tf-margin" name="marginPercent" type="number" step="any" min={0} required value={margin} onChange={(e) => setMargin(e.target.value)} className="input" /></div>
       <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm">
         <span className="font-semibold">List price shown to customers: </span>{calc != null ? `$${calc.toFixed(2)} per person` : "Enter a cost and a profit % to see it"}
       </div>

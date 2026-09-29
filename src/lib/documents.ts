@@ -136,6 +136,26 @@ export async function recordPayment(bookingId: string, userId: string, o: { amou
   return { paid, next };
 }
 
+// Undo a payment entered by mistake (wrong amount, wrong order). The row is kept as VOID for the record — never deleted — and
+// the order's status is worked out again from what is really paid, exactly as recordPayment does going forward.
+export async function voidPayment(bookingId: string, paymentId: string, userName: string) {
+  const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, bookingId));
+  const [p] = await db.select().from(s.payments).where(and(eq(s.payments.id, paymentId), eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PAID")));
+  if (!b || !p) return null;
+  await db.update(s.payments).set({ status: "VOID" }).where(eq(s.payments.id, paymentId));
+  const rows = await db.select().from(s.payments).where(and(eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PAID")));
+  const paid = rows.reduce((a, r) => a + r.amount, 0);
+  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: b.currency }).format(p.amount);
+  await db.insert(s.bookingEvents).values({ bookingId, type: "PAYMENT_REMOVED", note: `Payment removed: ${money} (${p.provider}${p.providerRef ? ` · ${p.providerRef}` : ""}) by ${userName}` });
+  if (["PAID", "PARTIALLY_PAID"].includes(b.status)) {
+    const hasInvoice = (await db.select({ id: s.documents.id }).from(s.documents).where(and(eq(s.documents.bookingId, bookingId), eq(s.documents.kind, "INVOICE")))).length > 0;
+    const next = b.total > 0 && paid >= b.total - 0.005 ? "PAID" : paid > 0 ? "PARTIALLY_PAID" : hasInvoice ? "INVOICED" : "PENDING";
+    if (next !== b.status) await setBookingStatus(bookingId, next);
+  }
+  if (rows.length === 0) { const { reverseRewardForBooking } = await import("./referrals"); await reverseRewardForBooking(bookingId); } // no money left on a referred booking: no reward either
+  return { paid };
+}
+
 export async function bookingDocuments(bookingId: string) {
   return db.select().from(s.documents).where(eq(s.documents.bookingId, bookingId)).orderBy(desc(s.documents.createdAt));
 }

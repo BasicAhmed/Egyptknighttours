@@ -23,6 +23,7 @@ const NEXT: Record<string, string> = {
 
 export default function BookingView({ data, token, mode }: { data: LoadedBooking; token: string; mode: "confirmation" | "track" }) {
   const { b, tour, dest, c } = data;
+  const custom = tour.slug === "custom-experience"; // staff-entered custom orders sit on a placeholder tour: show the order's own title, no tour link or destination
   const cur = currentMilestone(b.status);
   const first = c.name.split(" ")[0];
   const when = (types: readonly string[]) => { const e = data.events.find((x) => types.includes(x.type)); return e ? short(e.createdAt) : null; };
@@ -57,7 +58,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
       <div className="mt-8 grid gap-6 md:grid-cols-[1.4fr_1fr]">
         <section className="rounded-2xl border border-ink/15 p-5">
           <div className="flex gap-4"><SiteImage src={tour.imageUrl} alt="" destination={dest.slug} className="relative h-24 w-32 shrink-0 rounded-xl" />
-            <div><Link href={`/tours/${tour.slug}`} className="font-display text-xl font-bold hover:underline">{tour.title}</Link><p className="text-sm text-ink/65">{dest.name}</p></div></div>
+            <div>{custom || tour.status !== "PUBLISHED" ? <p className="font-display text-xl font-bold">{b.titleOverride || tour.title}</p> : <Link href={`/tours/${tour.slug}`} className="font-display text-xl font-bold hover:underline">{b.titleOverride || tour.title}</Link>}{!custom && <p className="text-sm text-ink/65">{dest.name}</p>}</div></div>
           <dl className="mt-5 space-y-3 text-sm">
             {([["Date", nice(b.travelDate)], ["Travelers", people], ["Style", b.isPrivate ? "Private" : "Shared"], ["Pickup", b.hotel ? `${b.hotel}${b.pickupLocation ? ` (${b.pickupLocation})` : ""}` : "To be confirmed"], ["Meeting point", tour.meetingPoint || "We'll message you"], ["Extras", data.addons.length ? data.addons.map((a) => a.name).join(", ") : "None"]] as [string, string][]).map(([k, v]) => (
               <div key={k} className="flex justify-between gap-6"><dt className="text-ink/65">{k}</dt><dd className="text-right font-medium">{v}</dd></div>))}

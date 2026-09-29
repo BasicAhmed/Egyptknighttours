@@ -46,6 +46,7 @@ const EVENT_TEXT = (type: string, note: string | null) => {
   if (type === "CREATED") return "Order created";
   if (type.startsWith("STATUS_")) return `Status changed to ${BOOKING_STATUS_LABEL[type.slice(7)] ?? type.slice(7)}`;
   if (type === "NOTE") return note ?? "";
+  if (type === "PAYMENT_REMOVED") return note ?? "Payment removed";
   return type;
 };
 const DOC_EVENT_TEXT = (type: string, kind: string, number: string, note: string | null) => {
@@ -106,7 +107,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     customer: { name: b.guestName || c.name, email: c.email ?? "", whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
     travelDate: b.travelDate, adults: b.adults, children: b.children, infants: b.infants, isPrivate: b.isPrivate, hotel: b.hotel ?? "", pickupNotes: b.pickupLocation ?? "", requests: b.specialRequests ?? "", dietary: b.dietary ?? "", accessibility: b.accessibility ?? "",
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "", costTotal: b.costTotal,
-    payments: payments.filter((p) => p.status !== "SUPERSEDED").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
+    payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
     defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
