@@ -84,13 +84,14 @@ export async function saveItinerary(id: string, payload: string) {
   let bookingNote = "";
   // Cost and margin are always per person. unitPrice is what one traveler pays; total is unitPrice × the travelers on the linked order.
   // Unlinked (a template, quick PDF, or website-tour itinerary): price in whatever currency was chosen for it, USD by default.
-  let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = p.data.currency || "USD"; let bookingStatus: string | null = null; let paidSoFar = 0;
+  let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = p.data.currency || "USD"; let orderCurrency: string | null = null; let bookingStatus: string | null = null; let paidSoFar = 0;
 
   if (priced && p.data.bookingId && !isViatorBooking) {
     const [b] = await db.select({ currency: s.bookings.currency, status: s.bookings.status, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
-    if (b) { currency = b.currency; bookingStatus = b.status; travelers = Math.max(1, b.adults + b.children); }
+    if (b) { orderCurrency = b.currency; currency = p.data.currency || b.currency; bookingStatus = b.status; travelers = Math.max(1, b.adults + b.children); }
     const [row] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, p.data.bookingId), eq(s.payments.status, "PAID")));
     paidSoFar = row?.paid ?? 0;
+    if (orderCurrency && currency !== orderCurrency && paidSoFar > 0) return { ok: false, message: `Payments are already recorded on this order in ${orderCurrency}, so its currency can't change to ${currency}. Remove those payments first, or keep ${orderCurrency}.` };
   }
   if (priced) { unitPrice = calcSellPrice(costPrice!, marginPercent!); total = Math.round(unitPrice * travelers * 100) / 100; }
 
@@ -110,8 +111,9 @@ export async function saveItinerary(id: string, payload: string) {
       : `${money(unitPrice!, currency)} per person`;
     if (p.data.bookingId && !isViatorBooking) {
       const [before] = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
-      await db.update(s.bookings).set({ subtotal: total!, total: total!, costTotal: Math.round(costPrice! * travelers * 100) / 100 }).where(eq(s.bookings.id, p.data.bookingId));
+      await db.update(s.bookings).set({ currency, subtotal: total!, total: total!, costTotal: Math.round(costPrice! * travelers * 100) / 100 }).where(eq(s.bookings.id, p.data.bookingId));
       if (before && before.total !== total) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Price changed from ${money(before.total, currency)} to ${money(total!, currency)} via the itinerary (${money(costPrice!, currency)} per person cost, ${marginPercent}% margin, ${travelers} traveler${travelers === 1 ? "" : "s"}) by ${u.email ?? u.uid}.` });
+      if (orderCurrency && orderCurrency !== currency) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Currency changed from ${orderCurrency} to ${currency} via the itinerary by ${u.email ?? u.uid}.` });
       bookingNote = ` The linked order's total is now ${money(total!, currency)} (${money(unitPrice!, currency)} per person × ${travelers}).`;
     }
   }

@@ -7,7 +7,7 @@ import type { Block, BlockType, Day, ItineraryContent } from "@/pdf/types";
 
 const TYPES: [BlockType, string][] = [["ACTIVITY", "Activity"], ["TOUR", "Tour"], ["TRANSFER", "Airport transfer"], ["TRANSPORT", "Transportation"], ["FLIGHT", "Flight"], ["HOTEL", "Hotel"], ["MEAL", "Restaurant / meal"], ["FREE_TIME", "Free time"], ["MEETING_POINT", "Meeting point"], ["GUIDE", "Guide information"], ["INFO", "Important information"], ["NOTE", "Notes"]];
 type Init = { name: string; description: string; bookingId: string | null; costPrice: number | null; marginPercent: number | null; content: ItineraryContent };
-type BookingOpt = { id: string; label: string; travelers: number };
+type BookingOpt = { id: string; label: string; travelers: number; currency?: string };
 const lines = (v: string) => v.split("\n").map((x) => x.trim()).filter(Boolean);
 const swap = <T,>(a: T[], i: number, j: number) => { if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
 const In = ({ label, value, onChange, ph, type = "text", cls = "" }: { label: string; value: string; onChange: (v: string) => void; ph?: string; type?: string; cls?: string }) => (
@@ -34,12 +34,12 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [name, setName] = useState(initial.name); const [desc, setDesc] = useState(initial.description);
   const [bookingId, setBookingId] = useState(initial.bookingId ?? "");
   const [cost, setCost] = useState(initial.costPrice != null ? String(initial.costPrice) : ""); const [margin, setMargin] = useState(initial.marginPercent != null ? String(initial.marginPercent) : "");
-  const [curr, setCurr] = useState(currency); // only used while unlinked — a linked order's own currency always wins once one is chosen
+  const [curr, setCurr] = useState(currency); // starts as the linked order's currency (or USD); changing it on a linked order changes that order's currency too
   const priced = cost !== "" && margin !== "" && Number(cost) >= 0 && Number(margin) >= 0;
   const unitCalc = priced ? Math.round(Number(cost) * (1 + Number(margin) / 100) * 100) / 100 : null;
   const travelers = bookings.find((b) => b.id === bookingId)?.travelers ?? 1;
   const totalCalc = unitCalc != null ? Math.round(unitCalc * travelers * 100) / 100 : null;
-  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: bookingId ? currency : curr, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+  const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: curr, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
   const [c, setC] = useState<ItineraryContent>(initial.content);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [tab, setTab] = useState<"content" | "days" | "price" | "booking">("content");
@@ -155,10 +155,9 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
       <div hidden={tab !== "price"} className="space-y-5">
         <Panel id="price" title="Price settings" openState={open} setOpenState={setOpen}>
           <p className="text-sm text-ink/65">Cost and price are always <b>per person</b>. Adding or removing a traveler on the linked order multiplies the total automatically — nothing to recalculate by hand.</p>
-          {!bookingId && <div className="mt-3"><label className="label" htmlFor="ip-curr">Currency</label><select id="ip-curr" className="input !w-auto !py-2" value={curr} onChange={(e) => setCurr(e.target.value)}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c2) => <option key={c2}>{c2}</option>)}</select></div>}
-          {bookingId && <p className="mt-3 text-xs text-ink/65">Currency: <b>{currency}</b>, following the linked order.</p>}
+          <div className="mt-3"><label className="label" htmlFor="ip-curr">Currency</label><select id="ip-curr" className="input !w-auto !py-2" value={curr} onChange={(e) => setCurr(e.target.value)}>{Array.from(new Set(["USD", "EUR", "GBP", "EGP", "AED", "SAR", "QAR", "KWD", "CAD", "AUD", "CHF", "ZAR", curr])).map((c2) => <option key={c2}>{c2}</option>)}</select>{bookingId && <p className="mt-1 text-xs text-ink/65">Saving also sets the linked order's currency to {curr}. Prices are not converted — enter the cost in {curr}.</p>}</div>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div><label className="label" htmlFor="ip-cost">Cost per person ({bookingId ? currency : curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
+            <div><label className="label" htmlFor="ip-cost">Cost per person ({curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
             <div><label className="label" htmlFor="ip-margin">Profit margin (% added on top of cost)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
             <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
           </div>
@@ -180,7 +179,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
           </div>
         </Panel>
         <Panel id="attach" title="Attach to a booking" openState={open} setOpenState={setOpen}>
-          <form action={attachItinerary.bind(null, id)} className="flex gap-2"><select name="bookingId" aria-label="Choose the order" className="input !py-2" value={bookingId} onChange={(e) => setBookingId(e.target.value)}><option value="">Not attached</option>{bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select><button className="btn btn-outline !min-h-[44px]">Attach</button></form>
+          <form action={attachItinerary.bind(null, id)} className="flex gap-2"><select name="bookingId" aria-label="Choose the order" className="input !py-2" value={bookingId} onChange={(e) => { setBookingId(e.target.value); const bc = bookings.find((x) => x.id === e.target.value)?.currency; if (bc) setCurr(bc); }}><option value="">Not attached</option>{bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select><button className="btn btn-outline !min-h-[44px]">Attach</button></form>
           {docs.length > 0 && <div className="mt-4"><p className="text-sm font-semibold">Generated PDFs</p><ul className="mt-1 space-y-1 text-sm">{docs.map((x) => <li key={x.id} className="flex flex-wrap items-center justify-between gap-2"><span>{x.number} · {x.created}{x.sent ? ` · sent ${x.sent}` : ""}</span><a className="underline" href={`/api/documents/${x.id}/pdf`}>Download</a></li>)}</ul></div>}
         </Panel>
         <Panel id="manage" title="Template and sharing" openState={open} setOpenState={setOpen}>
