@@ -1,5 +1,6 @@
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { saveItinerary, generateItineraryPdf, duplicateItinerary, saveAsTemplate, deleteItinerary, attachItinerary } from "@/app/admin/doc-actions";
 import { blk, day as newDay, suggestHook, uid } from "@/lib/itinerary-templates";
 import ImageField from "./ImageField";
@@ -18,7 +19,7 @@ const Mini = ({ onClick, children, danger = false, disabled = false }: { onClick
 
 // A collapsible panel used inside every tab, so a long tab can be tucked away without leaving the tab itself.
 function Panel({ id, title, right, openState, setOpenState, children }: { id: string; title: string; right?: React.ReactNode; openState: Record<string, boolean>; setOpenState: (o: Record<string, boolean>) => void; children: React.ReactNode }) {
-  const open = openState[id] ?? true;
+  const open = openState[id] ?? !["closing", "attach", "manage"].includes(id);
   return (
     <section className="card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -46,13 +47,17 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [dayOpen, setDayOpen] = useState<Record<string, boolean>>({});
   const [pending, start] = useTransition();
+  // What is on screen vs. what was last saved, so the bar can say "Unsaved changes" and warn before the page is left.
+  const snap = JSON.stringify([name, desc, bookingId, cost, margin, curr, c]);
+  const [savedSnap, setSavedSnap] = useState(snap); const dirty = snap !== savedSnap;
+  useEffect(() => { if (!dirty) return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h); }, [dirty]);
   const upd = (fn: (n: ItineraryContent) => void) => setC((p) => { const n = structuredClone(p); fn(n); return n; });
   const updDay = (i: number, fn: (d: Day) => void) => upd((n) => fn(n.days[i]));
 
   async function save(force = false): Promise<boolean> {
     const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), currency: curr, force }));
     if (!r.ok && r.needsConfirm) { if (window.confirm(r.message)) return save(true); setMsg({ t: "Not saved — the order was left as it was.", err: true }); return false; }
-    setMsg({ t: r.message, err: !r.ok }); return r.ok;
+    setMsg({ t: r.message, err: !r.ok }); if (r.ok) setSavedSnap(snap); return r.ok;
   }
   const run = (fn: () => Promise<unknown>) => start(async () => { if (await save()) await fn(); });
   const generate = (send: boolean) => run(async () => { const fd = new FormData(); if (send) fd.set("sendNow", "on"); await generateItineraryPdf(id, fd); });
@@ -67,26 +72,51 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
     });
   };
 
-  const TABS = [["content", "Content"], ["days", `Days (${c.days.length})`], ["price", priced ? "Price ✓" : "Price"], ["booking", "Booking & sharing"]] as const;
+  const linked = bookings.find((b) => b.id === bookingId);
+  const sent = docs.some((d) => d.sent);
+  // The four steps are also the tabs: fill in the trip, plan the days, set the price, send it.
+  const STEPS: { k: typeof tab; label: string; done: boolean }[] = [
+    { k: "content", label: "Trip details", done: !!c.title && (isTemplate || !!c.startDate) },
+    { k: "days", label: `Days (${c.days.length})`, done: c.days.some((d) => d.title) },
+    { k: "price", label: "Price", done: priced },
+    { k: "booking", label: isTemplate ? "Manage" : "Send", done: !isTemplate && sent },
+  ];
+  const at = STEPS.findIndex((x) => x.k === tab); const nextTab = STEPS[at + 1];
+  const go = (k: typeof tab) => { setTab(k); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   return (
-    <div className="space-y-5 pb-24">
+    <div className="space-y-4 pb-36 md:pb-24">
       <h1 className="sr-only">{isTemplate ? "Edit template" : "Edit itinerary"}: {name || "Untitled"}</h1>
-      <div className="sticky top-14 z-20 -mx-4 border-b border-ink/10 bg-white/95 px-4 py-3 backdrop-blur md:top-0 md:-mx-8 md:px-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Itinerary name" className="input !w-64 !py-2 font-semibold" />
-          <span className="badge">{isTemplate ? "TEMPLATE" : status}</span>
-          <div className="ml-auto flex flex-wrap gap-2">
-            <button type="button" className="btn btn-outline !min-h-[40px] !py-2" disabled={pending} onClick={() => start(async () => { await save(); })}>Save</button>
-            <button type="button" className="btn btn-outline !min-h-[40px] !py-2" disabled={pending} onClick={preview}>Preview PDF</button>
-            {!isTemplate && <button type="button" className="btn btn-dark !min-h-[40px] !py-2" disabled={pending} onClick={() => generate(false)}>Generate PDF</button>}
-            {!isTemplate && <button type="button" className="btn btn-primary !min-h-[40px] !py-2" disabled={pending} onClick={() => generate(true)}>Generate + email</button>}
-          </div>
+      <div className="rounded-2xl bg-ink p-4 text-white">
+        <div className="flex items-center gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Itinerary name" className="min-w-0 flex-1 rounded-[10px] border border-white/15 bg-white/10 px-3 py-2 font-display text-[17px] font-extrabold text-white outline-none placeholder:text-white/40 focus:border-gold-500" placeholder="Itinerary name" />
+          <span className="shrink-0 rounded-md bg-white/15 px-2 py-1 text-[11.5px] font-bold">{isTemplate ? "Template" : status === "DRAFT" ? "Draft" : status.charAt(0) + status.slice(1).toLowerCase()}</span>
         </div>
-        {msg && <p role="status" className={`mt-2 text-sm font-medium ${msg.err ? "text-red-700" : "text-[#17663A]"}`}>{pending ? "Working…" : msg.t}</p>}
-        <div role="tablist" aria-label="Itinerary sections" className="no-scrollbar -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1">
-          {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`chip ${tab === k ? "on" : ""}`}>{l}</button>)}
+        <p className="mt-2.5 text-[13.5px] text-white/65">{linked ? <>For order <Link href={`/admin?open=${linked.id}`} className="font-semibold text-white underline decoration-gold-500 decoration-2 underline-offset-4">{linked.label.split(" · ").slice(0, 2).join(", ")}</Link></> : isTemplate ? "A reusable plan. Start new itineraries from it." : "Not linked to an order."}</p>
+        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none">{c.durationDays ?? c.days.length}</p><p className="mt-1 text-[11.5px] text-white/60">days</p></div>
+          <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none">{unitCalc != null ? fmt(unitCalc) : "–"}</p><p className="mt-1 text-[11.5px] text-white/60">per person</p></div>
+          <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none text-gold-500">{linked && totalCalc != null ? fmt(totalCalc) : "–"}</p><p className="mt-1 text-[11.5px] text-white/60">{linked ? `total, ${travelers} traveler${travelers === 1 ? "" : "s"}` : "order total"}</p></div>
         </div>
+      </div>
+
+      <div role="tablist" aria-label="Itinerary steps" className="sticky top-14 z-20 -mx-4 flex bg-[#EFEDE7]/95 px-4 py-2.5 backdrop-blur md:top-0 md:-mx-9 md:px-9">
+        {STEPS.map((x, i) => <button key={x.k} role="tab" aria-selected={tab === x.k} onClick={() => go(x.k)} className="relative flex flex-1 flex-col items-center text-center">
+          {i > 0 && <span aria-hidden="true" className={`absolute right-1/2 top-[13px] h-0.5 w-full ${STEPS[i - 1].done ? "bg-[#1F8A4C]" : "bg-ink/10"}`} />}
+          <span className={`relative flex h-7 w-7 items-center justify-center rounded-full text-[12.5px] font-bold ${tab === x.k ? "bg-ink text-white ring-4 ring-ink/15" : x.done ? "bg-[#1F8A4C] text-white" : "bg-white text-ink/55"}`}>{x.done && tab !== x.k ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : i + 1}</span>
+          <span className={`mt-1.5 text-[12px] font-semibold leading-tight ${tab === x.k ? "text-ink" : "text-ink/55"}`}>{x.label}<span className="sr-only">{x.done ? ", done" : ""}</span></span>
+        </button>)}
+      </div>
+
+      {/* Always within reach: what state the work is in, save, preview, and the next step. */}
+      <div className="fixed inset-x-0 bottom-[calc(3.7rem+env(safe-area-inset-bottom))] z-20 border-t border-ink/10 bg-white px-4 py-2.5 shadow-[0_-8px_24px_-16px_rgba(20,16,16,.3)] md:bottom-0 md:left-[248px] md:px-9">
+        <div className="mx-auto flex max-w-[1108px] items-center gap-2">
+          <p role="status" className={`line-clamp-2 min-w-0 flex-1 text-[12.5px] font-semibold leading-tight ${pending ? "text-ink/60" : msg?.err ? "text-red-700" : dirty ? "text-[#8A4B0A]" : "text-[#17663A]"}`}>{pending ? "Working…" : msg?.err ? msg.t : dirty ? "Unsaved changes" : msg?.t ?? "Saved"}</p>
+          <button type="button" className="btn btn-outline !min-h-[40px] !px-3 !py-2 !text-[13.5px]" disabled={pending} onClick={preview}>Preview</button>
+          <button type="button" className={`btn !min-h-[40px] !px-4 !py-2 !text-[13.5px] ${dirty ? "btn-primary" : "btn-outline"}`} disabled={pending} onClick={() => start(async () => { await save(); })}>Save</button>
+          {nextTab && <button type="button" className="btn btn-dark !min-h-[40px] !px-3 !py-2 !text-[13.5px]" onClick={() => go(nextTab.k)}>Next: {nextTab.label.replace(/ \(\d+\)/, "")}</button>}
+        </div>
+        {msg?.err && <p className="mx-auto mt-1 max-w-[1108px] text-[12.5px] text-red-700 md:hidden">{msg.t}</p>}
       </div>
 
       <div hidden={tab !== "content"} className="space-y-5">
@@ -118,15 +148,17 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
       </div>
 
       <div hidden={tab !== "days"} className="space-y-5">
-        <div className="flex items-center justify-between"><h2 className="font-display text-2xl font-bold">Days <span className="text-base font-normal text-ink/65">({c.days.length})</span></h2><Mini onClick={() => upd((n) => { n.days.push(newDay("", "", "", [])); })}>+ Add day</Mini></div>
+        {!c.days.length && <p className="rounded-2xl border border-dashed border-ink/20 px-5 py-8 text-center text-sm text-ink/60">No days yet. Add the first day and build its timeline.</p>}
         {c.days.map((d, i) => (
           <section key={d.id} className="card p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <button type="button" onClick={() => setDayOpen({ ...dayOpen, [d.id]: !(dayOpen[d.id] ?? i < 2) })} className="text-left"><span className="font-display text-2xl font-extrabold text-ink">Day {i + 1}</span><span className="ml-3 font-semibold">{d.title || "Untitled day"}</span><span className="ml-2 text-sm text-ink/65">{d.location}</span></button>
-              <div className="flex flex-wrap gap-1.5"><Mini disabled={i === 0} onClick={() => upd((n) => swap(n.days, i, i - 1))}>↑</Mini><Mini disabled={i === c.days.length - 1} onClick={() => upd((n) => swap(n.days, i, i + 1))}>↓</Mini>
-                <Mini onClick={() => upd((n) => { const cp = structuredClone(n.days[i]); cp.id = uid(); cp.blocks.forEach((b) => { b.id = uid(); }); n.days.splice(i + 1, 0, cp); })}>Duplicate</Mini><Mini danger onClick={() => { if (confirm(`Delete Day ${i + 1}?`)) upd((n) => { n.days.splice(i, 1); }); }}>Delete</Mini></div>
-            </div>
-            {(dayOpen[d.id] ?? i < 2) && <div className="mt-4 space-y-4">
+            <button type="button" aria-expanded={dayOpen[d.id] ?? i < 1} onClick={() => setDayOpen({ ...dayOpen, [d.id]: !(dayOpen[d.id] ?? i < 1) })} className="flex w-full items-center gap-3 text-left">
+              <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#F7F5F0] leading-none"><span className="text-[10px] font-semibold text-ink/55">Day</span><b className="font-display text-[17px] font-extrabold">{i + 1}</b></span>
+              <span className="min-w-0 flex-1"><span className="block truncate font-display text-[16px] font-extrabold">{d.title || "Untitled day"}</span><span className="block truncate text-[13px] text-ink/55">{[d.location, `${d.blocks.length} timeline item${d.blocks.length === 1 ? "" : "s"}`, d.hotel.name].filter(Boolean).join(", ")}</span></span>
+              <span aria-hidden="true" className={`text-xl leading-none text-ink/45 transition-transform ${(dayOpen[d.id] ?? i < 1) ? "rotate-45" : ""}`}>+</span>
+            </button>
+            {(dayOpen[d.id] ?? i < 1) && <div className="mt-3 flex flex-wrap gap-1.5"><Mini disabled={i === 0} onClick={() => upd((n) => swap(n.days, i, i - 1))}>Move up</Mini><Mini disabled={i === c.days.length - 1} onClick={() => upd((n) => swap(n.days, i, i + 1))}>Move down</Mini>
+                <Mini onClick={() => upd((n) => { const cp = structuredClone(n.days[i]); cp.id = uid(); cp.blocks.forEach((b) => { b.id = uid(); }); n.days.splice(i + 1, 0, cp); })}>Duplicate</Mini><Mini danger onClick={() => { if (confirm(`Delete Day ${i + 1}?`)) upd((n) => { n.days.splice(i, 1); }); }}>Delete</Mini></div>}
+            {(dayOpen[d.id] ?? i < 1) && <div className="mt-4 space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2"><div className="flex items-end gap-2"><div className="flex-1"><In label="Headline (what the traveler will feel)" value={d.title} onChange={(v) => updDay(i, (x) => { x.title = v; })} ph="Stand Before the Great Pyramids" /></div><Mini onClick={() => { const sgt = suggestHook(`${d.location} ${d.title}`, i + 1); updDay(i, (x) => { x.title = sgt.title; x.hook = sgt.hook; }); }}>Suggest</Mini></div></div>
                 <Ta cls="sm:col-span-2" label="Short hook (one or two sentences)" value={d.hook} onChange={(v) => updDay(i, (x) => { x.hook = v; })} rows={2} />
@@ -149,7 +181,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
               <Ta label="Notes for this day (optional)" value={d.notes} onChange={(v) => updDay(i, (x) => { x.notes = v; })} rows={2} />
             </div>}
           </section>))}
-        <div><Mini onClick={() => upd((n) => { n.days.push(newDay("", "", "", [])); })}>+ Add day</Mini></div>
+        <button type="button" onClick={() => upd((n) => { const d = newDay("", "", "", []); n.days.push(d); setDayOpen((o) => ({ ...o, [d.id]: true })); })} className="w-full rounded-2xl border-2 border-dashed border-ink/20 py-4 text-[15px] font-semibold text-ink/70 hover:border-ink/50 hover:text-ink">+ Add day {c.days.length + 1}</button>
       </div>
 
       <div hidden={tab !== "price"} className="space-y-5">
@@ -162,27 +194,39 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
             <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
           </div>
           {bookingId ? (
-            <div className="mt-3 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm">
-              <b>{totalCalc != null ? fmt(totalCalc) : "—"} total</b> for {travelers} traveler{travelers === 1 ? "" : "s"} on the linked order ({unitCalc != null ? fmt(unitCalc) : "—"} × {travelers}).
-              <p className="mt-1 text-xs text-ink/65">Required: saving sets the linked order's total and profit tracking to match.</p>
+            <div className="mt-4 rounded-2xl bg-ink p-4 text-white">
+              <div className="flex items-end justify-between gap-3"><div><p className="text-[13px] text-white/60">Order total</p><p className="font-display text-[30px] font-extrabold leading-none text-gold-500">{totalCalc != null ? fmt(totalCalc) : "–"}</p></div><p className="text-right text-[13.5px] text-white/70">{unitCalc != null ? fmt(unitCalc) : "–"} × {travelers} traveler{travelers === 1 ? "" : "s"}</p></div>
+              {priced && <p className="mt-3 border-t border-white/10 pt-3 text-[13.5px] text-white/70">Your profit: <b className="text-white">{fmt(Math.round((unitCalc! - Number(cost)) * travelers * 100) / 100)}</b> ({fmt(Math.round((unitCalc! - Number(cost)) * 100) / 100)} per person)</p>}
+              <p className="mt-2 text-[12.5px] text-white/50">Saving sets this as the order's total.</p>
             </div>
           ) : <p className="mt-3 text-xs text-ink/65">Fills in the price line on the PDF. Link this itinerary to an order in the Booking tab to also set its total automatically.</p>}
         </Panel>
       </div>
 
       <div hidden={tab !== "booking"} className="space-y-5">
-        <Panel id="closing" title="Closing page (drives the booking)" openState={open} setOpenState={setOpen}>
+        {!isTemplate && <section className="card p-4">
+          <h2 className="font-display text-xl font-bold">Send to the customer</h2>
+          {bookingId && !priced && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><p className="text-[14px] text-ink/80">This order has no price yet. Set the cost and profit margin first.</p><button type="button" className="btn btn-dark !min-h-[40px] !py-2" onClick={() => go("price")}>Set the price</button></div>}
+          <p className="mt-2 text-sm text-ink/65">Each PDF you create is saved with its own number{bookingId ? " on the order" : ""}, so you can always see what was sent.</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <button type="button" className="btn btn-outline" disabled={pending} onClick={preview}>Preview PDF</button>
+            <button type="button" className="btn btn-dark" disabled={pending} onClick={() => generate(false)}>Create PDF</button>
+            <button type="button" className="btn btn-primary" disabled={pending} onClick={() => generate(true)}>Create and email</button>
+          </div>
+          {docs.length > 0 && <ul className="mt-4 divide-y divide-ink/10 border-t border-ink/10 text-sm">{docs.map((x) => <li key={x.id} className="flex items-center justify-between gap-2 py-2.5"><span className="min-w-0"><b className="block truncate">{x.number}</b><span className="text-[13px] text-ink/55">Created {x.created}{x.sent ? `, sent ${x.sent}` : ", not sent"}</span></span><a className="shrink-0 font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" href={`/api/documents/${x.id}/pdf`}>Download</a></li>)}</ul>}
+          {linked && <Link href={`/admin?open=${linked.id}`} className="mt-3 inline-block text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4">Back to the order</Link>}
+        </section>}
+        <Panel id="closing" title="Closing page of the PDF" openState={open} setOpenState={setOpen}>
           <div className="grid gap-3 sm:grid-cols-2">
             <In label="Button text" value={c.ctaLabel} onChange={(v) => upd((n) => { n.ctaLabel = v; })} ph="Complete your booking" />
             <Ta cls="sm:col-span-2" label="Payment terms" value={c.paymentTerms} onChange={(v) => upd((n) => { n.paymentTerms = v; })} rows={2} />
             <In cls="sm:col-span-2" label="Button link (payment link). Leave blank to use the booking tracker or WhatsApp" value={c.ctaUrl} onChange={(v) => upd((n) => { n.ctaUrl = v; })} ph="https://" />
           </div>
         </Panel>
-        <Panel id="attach" title="Attach to a booking" openState={open} setOpenState={setOpen}>
+        <Panel id="attach" title="Link to an order" openState={open} setOpenState={setOpen}>
           <form action={attachItinerary.bind(null, id)} className="flex gap-2"><select name="bookingId" aria-label="Choose the order" className="input !py-2" value={bookingId} onChange={(e) => { setBookingId(e.target.value); const bc = bookings.find((x) => x.id === e.target.value)?.currency; if (bc) setCurr(bc); }}><option value="">Not attached</option>{bookings.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}</select><button className="btn btn-outline !min-h-[44px]">Attach</button></form>
-          {docs.length > 0 && <div className="mt-4"><p className="text-sm font-semibold">Generated PDFs</p><ul className="mt-1 space-y-1 text-sm">{docs.map((x) => <li key={x.id} className="flex flex-wrap items-center justify-between gap-2"><span>{x.number} · {x.created}{x.sent ? ` · sent ${x.sent}` : ""}</span><a className="underline" href={`/api/documents/${x.id}/pdf`}>Download</a></li>)}</ul></div>}
         </Panel>
-        <Panel id="manage" title="Template and sharing" openState={open} setOpenState={setOpen}>
+        <Panel id="manage" title="Template, duplicate, delete" openState={open} setOpenState={setOpen}>
           <div className="space-y-3">
             <form action={saveAsTemplate.bind(null, id)} className="flex gap-2"><input name="templateName" placeholder="Template name" defaultValue={name} className="input !py-2" /><button className="btn btn-outline !min-h-[44px]" onClick={() => void 0}>Save as template</button></form>
             <div className="flex flex-wrap gap-2"><form action={duplicateItinerary.bind(null, id)}><button className="btn btn-outline">Duplicate</button></form>

@@ -327,3 +327,11 @@ Order window → Overview → Customer → Edit now edits name, email, WhatsApp,
 - **Five-step flow.** Price → Invoice → Payment → Itinerary → Trip done, ticked off from the order's real data, with one "Next step" button that explains why and jumps straight to the right place (create the itinerary, create or send the invoice, record a payment, send the itinerary, collect traveler details, mark the trip completed).
 - **Less clutter.** Welcome message, customer link, booking ID and review link live under "Messages and links". Tabs stay pinned while scrolling and follow the flow order (Overview, Payment & documents, Travelers, Operations, Notes).
 - **New order form.** Grouped into Customer, Trip and Price, more currencies, and the Create button stays visible at the bottom.
+
+## Itinerary flow
+- **Four steps that are also the tabs.** Trip details → Days → Price → Send, each ticked when done. A summary on top shows the linked order (tap to go back to it), days, price per person and the order total.
+- **Action bar always in reach.** Saved / Unsaved changes, Preview, Save and "Next: …" sit at the bottom of the screen. Leaving with unsaved changes asks first.
+- **Days.** Each day is a compact row (number, headline, location, item count, hotel); one is open at a time by default. Big "+ Add day N" at the end.
+- **Price.** Live order total, per-person price and your profit in one dark card.
+- **Send.** Preview PDF, Create PDF, Create and email, with the list of PDFs already created and whether each was sent. Warns when a linked order has no price yet.
+- **Starting from an order.** "Price it" now opens a single "For this customer" start screen with the order preselected; the other kinds sit below.

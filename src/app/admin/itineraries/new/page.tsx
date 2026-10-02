@@ -35,20 +35,23 @@ export default async function NewItinerary({ searchParams }: { searchParams: Pro
 
   return (
     <div>
-      <Link href="/admin/itineraries" className="text-sm text-ink/65">← Itineraries</Link>
-      <h1 className="mt-2 font-display text-2xl font-extrabold sm:text-3xl">New itinerary</h1>
-      <p className="mt-1 max-w-2xl text-sm text-ink/65">Pick what this itinerary is for. Each one takes you straight to the day-by-day editor, ready to fill in.</p>
-      {sp.bookingId && <p className="mt-2 text-sm font-semibold text-[#17663A]">Order created. Now price it: choose "For a customer" below to build its itinerary and set the cost and profit margin.</p>}
+      <Link href="/admin/itineraries" className="text-sm font-semibold text-ink/65 hover:text-ink">← Itineraries</Link>
+      <h1 className="mt-2 font-display text-[26px] font-extrabold leading-tight sm:text-[32px]">{sp.bookingId ? "Price this order" : "New itinerary"}</h1>
+      <p className="mt-1 max-w-2xl text-sm text-ink/60">{sp.bookingId ? "The itinerary is where the price is set. Choose how to start it, then enter the cost and profit margin in its Price step." : "Pick what this itinerary is for. Each one opens the editor, ready to fill in."}</p>
       <div className="mt-3"><Notice e={sp.e} /></div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <Card title="For a customer" blurb="Attach it to one of your orders. Their name, dates and travelers are filled in for you. This is where you set the price — enter the cost and profit margin and the order's total is set for you.">
+      {sp.bookingId && bookings.length > 0 && <div className="mt-4 max-w-xl"><Card title="For this customer" blurb="Their name, dates and travelers are filled in for you.">
+        <CustomerItineraryStart bookings={bookings} templates={templates} defaultBookingId={sp.bookingId} action={createItinerary} /></Card></div>}
+      {sp.bookingId && <p className="mt-8 text-sm font-semibold text-ink/60">Or make a different kind of itinerary</p>}
+
+      <div className={`grid gap-4 sm:grid-cols-2 ${sp.bookingId ? "mt-3" : "mt-5"}`}>
+        {!sp.bookingId && <Card title="For a customer" blurb="Attach it to one of your orders. Their name, dates and travelers are filled in for you, and its cost and profit margin set the order's price.">
           {bookings.length ? (
-            <CustomerItineraryStart bookings={bookings} templates={templates} defaultBookingId={sp.bookingId ?? ""} action={createItinerary} />
+            <CustomerItineraryStart bookings={bookings} templates={templates} defaultBookingId="" action={createItinerary} />
           ) : (
             <p className="rounded-xl bg-ink/5 p-3 text-sm text-ink/65">No orders yet. <Link href="/admin" className="font-semibold underline">Create one first</Link>, then come back here.</p>
           )}
-        </Card>
+        </Card>}
 
         <Card title="For the website (a tour)" blurb="Build the day-by-day plan and price it, then publish it as a tour. Only an itinerary started here can ever become a website tour.">
           <form action={createItinerary} className="grid gap-3"><FormKeeper />
