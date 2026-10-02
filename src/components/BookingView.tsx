@@ -68,13 +68,13 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
         <section className="rounded-2xl border border-ink/15 p-5 text-sm">
           <h2 className="font-display text-lg font-bold">Payment</h2>
           <dl className="mt-3 space-y-2">
-            <div className="flex justify-between"><dt className="text-ink/65">Subtotal</dt><dd>{money(b.subtotal)}</dd></div>
-            {b.discount > 0 && <div className="flex justify-between"><dt className="text-ink/65">Discount</dt><dd className="text-[#1a7f45]">−{money(b.discount)}</dd></div>}
-            <div className="flex justify-between border-t border-ink/10 pt-2 text-base font-bold"><dt>Total</dt><dd>{money(b.total)}</dd></div>
-            <div className="flex justify-between"><dt className="text-ink/65">Paid so far</dt><dd>{money(data.paid)}</dd></div>
-            <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink/65">Subtotal</dt><dd>{money(b.subtotal, b.currency)}</dd></div>
+            {b.discount > 0 && <div className="flex justify-between"><dt className="text-ink/65">Discount</dt><dd className="text-[#1a7f45]">−{money(b.discount, b.currency)}</dd></div>}
+            <div className="flex justify-between border-t border-ink/10 pt-2 text-base font-bold"><dt>Total</dt><dd>{money(b.total, b.currency)}</dd></div>
+            <div className="flex justify-between"><dt className="text-ink/65">Paid so far</dt><dd>{money(data.paid, b.currency)}</dd></div>
+            <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due, b.currency)}</dd></div>
           </dl>
-          <p className="mt-3 text-xs text-ink/65">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit)}).`} We'll send a secure payment link.</p>
+          <p className="mt-3 text-xs text-ink/65">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit, b.currency)}).`} We'll send a secure payment link.</p>
         </section>
       </div>
 
