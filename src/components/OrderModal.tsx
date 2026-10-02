@@ -52,30 +52,41 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
       {err && !o && <p className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">Couldn't load this order. Close and try again.</p>}
       {!o && !err && <div className="animate-pulse space-y-3" aria-label="Loading"><div className="h-20 rounded-2xl bg-ink/5" /><div className="h-32 rounded-2xl bg-ink/5" /><div className="h-24 rounded-2xl bg-ink/5" /></div>}
       {o && <div className="space-y-4">
-        <div className="space-y-2.5">
-          <div className="flex flex-wrap gap-2">
-            {phone && <a className="btn btn-wa !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${first}, it's Egypt Knight about your booking ${o.ref}.`)}>WhatsApp {first}</a>}
-            {phone && <a className="btn btn-outline !min-h-[44px]" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
-            {o.customer.email && <a className="btn btn-outline !min-h-[44px]" href={`mailto:${o.customer.email}`}>Email</a>}
+        {/* At a glance: who, what, when, and how much is paid. */}
+        <div className="rounded-2xl bg-ink p-4 text-white">
+          <div className="flex items-start gap-3">
+            <div className="flex w-[54px] shrink-0 flex-col items-center rounded-xl bg-white/10 py-2 leading-none"><b className="font-display text-[22px] font-extrabold">{new Date(o.travelDate + "T00:00:00").getDate()}</b><span className="mt-1 text-[11px] font-semibold text-white/65">{new Date(o.travelDate + "T00:00:00").toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}</span></div>
+            <div className="min-w-0 flex-1"><p className="truncate font-display text-[18px] font-extrabold leading-tight">{o.customer.name}</p><p className="mt-0.5 truncate text-[14px] text-white/75">{o.title}</p>
+              <p className="mt-0.5 text-[13px] text-white/55">{o.adults + o.children + o.infants} traveler{o.adults + o.children + o.infants > 1 ? "s" : ""}, {o.isPrivate ? "private" : "shared"}{daysUntil(o.travelDate) >= 0 && stage !== "DONE" && stage !== "CANCELLED" ? `, ${daysUntil(o.travelDate) === 0 ? "travelling today" : `in ${daysUntil(o.travelDate)} days`}` : ""}</p></div>
           </div>
-          {phone && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-gold-500/10 p-2">
-            <span className="px-1 text-[11px] font-extrabold uppercase tracking-wide text-gold-800">Welcome</span>
-            <CopyButton text={o.welcomeMessage} label="Copy welcome message" className="rounded-lg border border-gold-600/30 bg-white px-3 py-2 text-[13px] font-semibold text-gold-800 hover:border-gold-600/60" />
-            <a className="btn btn-wa !min-h-[40px] !py-2 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, o.welcomeMessage)}>Send welcome message</a>
-          </div>}
-          <div className="flex flex-wrap gap-1.5">
-            <a className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" href={o.trackUrl} target="_blank" rel="noopener noreferrer">Customer view</a>
-            <CopyButton text={o.ref} label="Copy booking ID" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
-            <CopyButton text={o.trackUrl} label="Copy customer link" className="rounded-lg border border-ink/15 bg-white px-3 py-2 text-[13px] font-semibold text-ink/70 hover:border-ink/40 hover:text-ink" />
+          <div className="mt-3.5 flex items-end justify-between gap-3"><p className="text-[13.5px] text-white/65">{o.total > 0 ? <>Paid <b className="text-white">{money(o.paid, o.currency)}</b> of {money(o.total, o.currency)}</> : "No price yet"}</p><p className="font-display text-[17px] font-extrabold text-gold-500">{o.balance > 0 ? `${money(o.balance, o.currency)} left` : o.total > 0 ? "Paid in full" : ""}</p></div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-gold-500 transition-all" style={{ width: `${pct}%` }} /></div>
+          <div className="mt-3.5 flex flex-wrap gap-2">
+            {phone && <a className="btn btn-wa !min-h-[40px] flex-1 !py-2 !text-[14px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${first}, it's Egypt Knight about your booking ${o.ref}.`)}>WhatsApp {first}</a>}
+            {phone && <a className="rounded-[10px] border border-white/20 px-4 py-2 text-[14px] font-semibold hover:bg-white/10" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>Call</a>}
+            {o.customer.email && <a className="rounded-[10px] border border-white/20 px-4 py-2 text-[14px] font-semibold hover:bg-white/10" href={`mailto:${o.customer.email}`}>Email</a>}
           </div>
-          {o.reviewUrl && <div className="flex flex-wrap items-center gap-2 rounded-xl bg-[#E9F6EE] p-2">
-            <span className="px-1 text-[11px] font-extrabold uppercase tracking-wide text-[#17663A]">Review</span>
-            <CopyButton text={o.reviewUrl} label="Copy review link" className="rounded-lg border border-[#17663A]/25 bg-white px-3 py-2 text-[13px] font-semibold text-[#17663A] hover:border-[#17663A]/50" />
-            <a className="btn btn-wa !min-h-[40px] !py-2 !text-[13px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with ${o.companyName}! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a></div>}
         </div>
 
-        <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-          {([["overview", "Overview"], ["travelers", `Travelers${completeness(o).withPassport < completeness(o).pax ? " •" : ""}`], ["ops", "Operations"], ["money", "Payment & documents"], ["notes", "Notes"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`chip ${tab === k ? "on" : ""}`}>{l}</button>)}
+        <Flow o={o} busy={busy} onStep={(s) => {
+          if (s.href) { router.push(s.href); return; }
+          if (s.complete) { void run(() => orderSetStatus(o.id, "COMPLETED")); return; }
+          if (s.tab) { setTab(s.tab); if (s.focus === "invoice") setInvOpen(true); if (s.focus) setTimeout(() => refs[s.focus!]?.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80); }
+        }} />
+
+        <details className="group rounded-2xl bg-[#F7F5F0] px-4 py-3"><summary className="flex cursor-pointer items-center justify-between text-[14.5px] font-semibold">Messages and links<span aria-hidden="true" className="text-lg leading-none text-ink/45 transition-transform group-open:rotate-45">+</span></summary>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {phone && <a className="btn btn-wa !min-h-[42px] !py-2 !text-[14px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, o.welcomeMessage)}>Send welcome message</a>}
+            {phone && <CopyButton text={o.welcomeMessage} label="Copy welcome message" className="btn btn-outline !min-h-[42px] !py-2 !text-[14px]" />}
+            <a className="btn btn-outline !min-h-[42px] !py-2 !text-[14px]" href={o.trackUrl} target="_blank" rel="noopener noreferrer">Open customer view</a>
+            <CopyButton text={o.trackUrl} label="Copy customer link" className="btn btn-outline !min-h-[42px] !py-2 !text-[14px]" />
+            <CopyButton text={o.ref} label="Copy booking ID" className="btn btn-outline !min-h-[42px] !py-2 !text-[14px]" />
+            {o.reviewUrl && <a className="btn btn-wa !min-h-[42px] !py-2 !text-[14px]" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${(phone || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${first}, thank you for traveling with ${o.companyName}! We would love it if you shared a quick review: ${o.reviewUrl}`)}`}>Send review link</a>}
+            {o.reviewUrl && <CopyButton text={o.reviewUrl} label="Copy review link" className="btn btn-outline !min-h-[42px] !py-2 !text-[14px]" />}
+          </div></details>
+
+        <div role="tablist" aria-label="Order sections" className="no-scrollbar sticky -top-4 z-10 -mx-4 flex gap-1.5 overflow-x-auto bg-white px-4 py-2 sm:-mx-6 sm:px-6">
+          {([["overview", "Overview"], ["money", "Payment & documents"], ["travelers", `Travelers${completeness(o).withPassport < completeness(o).pax ? " •" : ""}`], ["ops", "Operations"], ["notes", "Notes"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`chip !bg-[#F3F1EC] ${tab === k ? "on !bg-ink" : ""}`}>{l}</button>)}
         </div>
         {tab === "overview" && <div className="space-y-4">
         <Checklist o={o} go={(t) => setTab(t)} />
@@ -250,6 +261,41 @@ function EditForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: Re
       {f("pickupNotes", "Pickup notes", "text", "sm:col-span-2")}{f("requests", "Requests", "text", "sm:col-span-2")}
       <div className="sm:col-span-4"><button disabled={busy} className="btn btn-dark !min-h-[44px]">Save changes</button></div>
     </form>
+  );
+}
+
+type Step = { label: string; why: string; tab?: "money" | "travelers" | "ops"; focus?: Focus; href?: string; complete?: boolean };
+// The order's journey in five steps, with the one thing to do next. Staff never have to work out where an order stands.
+function Flow({ o, busy, onStep }: { o: Order; busy: boolean; onStep: (s: Step) => void }) {
+  const st = stageOf(o.status); const viator = o.source === "VIATOR";
+  const inv = o.documents.filter((d) => d.kind === "INVOICE"); const itinDocs = o.documents.filter((d) => d.kind === "ITINERARY");
+  const priced = o.total > 0 || viator; const invoiced = viator || inv.length > 0; const invSent = viator || inv.some((d) => d.sentAt);
+  const paid = viator || (o.total > 0 && o.balance <= 0); const itinSent = itinDocs.some((d) => d.sentAt); const done = st === "DONE";
+  const steps = [["Price", priced], ["Invoice", invSent], ["Payment", paid], ["Itinerary", itinSent], ["Trip done", done]] as const;
+  const current = steps.findIndex(([, ok]) => !ok);
+  const c = completeness(o); const past = daysUntil(o.travelDate) < 0;
+  let next: Step | null = null;
+  if (st === "CANCELLED") next = null;
+  else if (!priced) next = o.itineraries.length ? { label: "Open itinerary to set the price", why: "The price comes from the itinerary: enter its cost and profit margin.", href: `/admin/itineraries/${o.itineraries[0].id}` } : { label: "Create the itinerary", why: "The itinerary sets this order's price, so it comes first.", tab: "money", focus: "itinerary" };
+  else if (!invoiced) next = { label: "Create invoice", why: "The order has a price. Send the customer an invoice to collect it.", tab: "money", focus: "invoice" };
+  else if (!invSent) next = { label: "Send the invoice", why: "The invoice is ready but hasn't been sent yet.", tab: "money", focus: "invoice" };
+  else if (!paid) next = { label: "Record a payment", why: `${money(o.balance, o.currency)} is still to be paid.`, tab: "money", focus: "payment" };
+  else if (!itinSent) next = { label: itinDocs.length || o.itineraries.length ? "Send the itinerary" : "Create the itinerary", why: "Paid. The customer now needs their day-by-day plan.", tab: "money", focus: "itinerary" };
+  else if (c.missing.length && !done) next = { label: "Collect traveler details", why: `Still missing: ${c.missing.map((m) => m.label.toLowerCase()).join(", ")}.`, tab: c.missing[0].tab };
+  else if (!done && past) next = { label: "Mark trip completed", why: "The travel date has passed.", complete: true };
+  return (
+    <div className="rounded-2xl border border-ink/10 p-3.5">
+      {st === "CANCELLED" ? <p className="text-sm font-semibold text-red-800">This order is cancelled.</p> : <>
+        <ol className="flex items-start">{steps.map(([l, ok], i) => (
+          <li key={l} className="relative flex flex-1 flex-col items-center text-center" aria-current={i === current ? "step" : undefined}>
+            {i > 0 && <span aria-hidden="true" className={`absolute right-1/2 top-[13px] h-0.5 w-full ${steps[i - 1][1] && (ok || i === current) ? "bg-[#1F8A4C]" : "bg-ink/10"}`} />}
+            <span className={`relative flex h-7 w-7 items-center justify-center rounded-full text-[12.5px] font-bold ${ok ? "bg-[#1F8A4C] text-white" : i === current ? "bg-gold-500 text-ink ring-4 ring-gold-500/25" : "bg-[#EFEDE7] text-ink/50"}`}>{ok ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : i + 1}<span className="sr-only">{ok ? " done" : i === current ? " current" : ""}</span></span>
+            <span className={`mt-1.5 text-[11.5px] font-semibold leading-tight ${ok || i === current ? "text-ink" : "text-ink/50"}`}>{l}</span>
+          </li>))}</ol>
+        {next ? <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-[#6B4A0C]">Next step</p><p className="text-[14px] text-ink/80">{next.why}</p></div><button type="button" disabled={busy} onClick={() => onStep(next!)} className="btn btn-dark !min-h-[42px] w-full !py-2 sm:w-auto">{next.label}</button></div>
+          : <p className="mt-3.5 rounded-xl bg-[#E9F6EE] px-3 py-2.5 text-sm font-semibold text-[#17663A]">{done ? "Trip completed. Nothing left to do." : "Everything is in place for this trip."}</p>}
+      </>}
+    </div>
   );
 }
 

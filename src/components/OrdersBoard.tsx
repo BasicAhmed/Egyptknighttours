@@ -108,23 +108,26 @@ function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: s
     <Modal onClose={onClose} title="New order" subtitle="For customers who booked by WhatsApp, phone or email">
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2"><label className="label" htmlFor="n-source">How was this booked?</label><select id="n-source" className="input !py-2.5" value={v.source} onChange={set("source")}><option value="WHATSAPP">WhatsApp</option><option value="EMAIL">Email</option><option value="PHONE">Phone</option><option value="VIATOR">Viator</option></select></div>
+        <h3 className="mt-2 border-t border-ink/10 pt-4 font-display text-[15px] font-extrabold first:mt-0 first:border-0 first:pt-0 sm:col-span-2">Customer</h3>
         <F k="name" label="Customer name" req cls="sm:col-span-2" /><F k="whatsapp" label="WhatsApp number (with country code)" type="tel" ph="+351 912 345 678" />
         <F k="email" label="Email" type="email" /><p className="-mt-1 text-xs text-ink/60 sm:col-span-2">Email or WhatsApp — one is enough. You can add the other later from the order&apos;s Customer card.</p><div><label className="label" htmlFor="n-nat">Nationality</label><input id="n-nat" list="n-countries" className="input !py-2.5" value={v.nationality} onChange={set("nationality")} /><datalist id="n-countries">{COUNTRIES.map((x) => <option key={x} value={x} />)}</datalist></div><F k="country" label="Country of residence" />
+        <h3 className="mt-2 border-t border-ink/10 pt-4 font-display text-[15px] font-extrabold first:mt-0 first:border-0 first:pt-0 sm:col-span-2">Trip</h3>
         <div className="sm:col-span-2"><label className="label" htmlFor="n-tour">Experience</label><select id="n-tour" className="input !py-2.5" value={v.tourId} onChange={set("tourId")}><option value="custom">Custom experience (type the name)</option>{tours.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}</select></div>
         {v.tourId === "custom" && <F k="customTitle" label="Experience name" req cls="sm:col-span-2" ph="Cruise 4 Days 3 Nights MS Ciela" />}
         <F k="travelDate" label="Travel date" type="date" req /><F k="hotel" label="Pickup (hotel or airport)" ph="Aswan Airport" />
         <F k="adults" label="Adults" type="number" req /><F k="children" label="Children" type="number" />
-        <div><label className="label" htmlFor="n-cur">Currency</label><select id="n-cur" className="input !py-2.5" value={v.currency} onChange={set("currency")}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
+        <div><label className="label" htmlFor="n-cur">Currency</label><select id="n-cur" className="input !py-2.5" value={v.currency} onChange={set("currency")}>{["USD", "EUR", "GBP", "EGP", "AED", "SAR", "QAR", "KWD", "CAD", "AUD", "CHF", "ZAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
         <div className="sm:col-span-2"><label className="label" htmlFor="n-notes">Notes / special requests</label><textarea id="n-notes" className="input !py-2.5" rows={2} value={v.notes} onChange={set("notes")} /></div>
+        <h3 className="mt-2 border-t border-ink/10 pt-4 font-display text-[15px] font-extrabold first:mt-0 first:border-0 first:pt-0 sm:col-span-2">Price</h3>
         {v.source === "VIATOR"
           ? <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3">
               <label className="label" htmlFor="n-viatorTotal">Total the guest paid through Viator</label>
               <input id="n-viatorTotal" type="number" min={0} step="any" required className="input !py-2.5" value={v.viatorTotal} onChange={set("viatorTotal")} />
               <p className="mt-2 text-xs text-ink/65">Already paid, so this order is marked Paid right away — no deposit to collect. If there's an optional extra to charge for later, note it on the order's Notes tab instead.</p>
             </div>
-          : <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm">No price yet — the next screen creates an itinerary for this customer, where you enter the cost and profit margin that set the price.</div>}
+          : <div className="sm:col-span-2 rounded-xl border border-gold-600/40 bg-gold-500/10 p-3 text-sm">No price yet. After you create the order, its first step is the itinerary, where the cost and profit margin set the price.</div>}
         {err && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800 sm:col-span-2">{err}</p>}
-        <div className="flex gap-2 sm:col-span-2"><button disabled={busy} className="btn btn-primary !min-h-[48px] flex-1">{busy ? "Creating…" : "Create order"}</button><button type="button" onClick={onClose} className="btn btn-outline !min-h-[48px]">Cancel</button></div>
+        <div className="sticky -bottom-4 -mx-4 flex gap-2 border-t border-ink/10 bg-white px-4 py-3 sm:col-span-2 sm:-mx-6 sm:px-6"><button disabled={busy} className="btn btn-primary !min-h-[48px] flex-1">{busy ? "Creating…" : "Create order"}</button><button type="button" onClick={onClose} className="btn btn-outline !min-h-[48px]">Cancel</button></div>
       </form>
     </Modal>
     </FieldCtx.Provider>

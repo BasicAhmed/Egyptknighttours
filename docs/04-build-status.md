@@ -321,3 +321,9 @@ Order window → Overview → Customer → Edit now edits name, email, WhatsApp,
 - **Orders.** The four counters and the row of filter pills were two copies of the same thing; they are now one stage strip that both counts and filters (plus "This week"). Each order leads with its travel date as a ticket stub whose edge colour is the stage. Search and filters take one row.
 - **Tours / Itineraries.** Photo thumbnail and status on each tour, one primary action (Edit) with quiet links for the rest, Delete asks first. Itineraries show their day count and linked order.
 - **Shared.** Admin-only styles live under `.adm` in `globals.css` (`.seg` section switcher, `.chip` filter, `.stub`), so the public site is untouched. Stat cards are 2-up on phones, Finance profit is the emphasised card. New split login screen.
+
+## Order window and flow
+- **At a glance.** The order window opens with one dark summary: travel date, customer, trip, travelers, paid of total with a bar, and WhatsApp / Call / Email.
+- **Five-step flow.** Price → Invoice → Payment → Itinerary → Trip done, ticked off from the order's real data, with one "Next step" button that explains why and jumps straight to the right place (create the itinerary, create or send the invoice, record a payment, send the itinerary, collect traveler details, mark the trip completed).
+- **Less clutter.** Welcome message, customer link, booking ID and review link live under "Messages and links". Tabs stay pinned while scrolling and follow the flow order (Overview, Payment & documents, Travelers, Operations, Notes).
+- **New order form.** Grouped into Customer, Trip and Price, more currencies, and the Create button stays visible at the bottom.
