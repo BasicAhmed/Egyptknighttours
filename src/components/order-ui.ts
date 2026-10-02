@@ -6,6 +6,8 @@ export const stageOf = (st: string): Stage => STAGE[st] ?? "NEW";
 export const STATUS_LABEL: Record<string, string> = { INQUIRY: "Inquiry", QUOTE_SENT: "Quote sent", PENDING: "New order", CONFIRMED: "Confirmed", INVOICED: "Awaiting payment", PARTIALLY_PAID: "Partly paid", DEPOSIT_PAID: "Deposit paid", PAID: "Paid / confirmed", COMPLETED: "Completed", CANCELLED: "Cancelled" };
 export const STATUS_OPTIONS = ["INQUIRY", "QUOTE_SENT", "PENDING", "INVOICED", "PARTIALLY_PAID", "PAID", "COMPLETED", "CANCELLED"];
 export const PILL: Record<Stage, string> = { NEW: "bg-gold-500/25 text-[#6B4A0C]", QUOTE: "bg-gold-500/25 text-[#6B4A0C]", AWAITING: "bg-[#FDE9D3] text-[#8A4B0A]", PARTIAL: "bg-[#E3EEFB] text-[#1D4E89]", PAID: "bg-[#DFF3E6] text-[#17663A]", DONE: "bg-ink/10 text-ink/70", CANCELLED: "bg-red-100 text-red-800" };
+// The colour of each stage on the order list (the edge of the date stub and the stage counters).
+export const STAGE_COLOR: Record<Stage, string> = { NEW: "#F0B050", QUOTE: "#F0B050", AWAITING: "#D9772B", PARTIAL: "#2F6FB5", PAID: "#1F8A4C", DONE: "#B9B3A8", CANCELLED: "#C0392B" };
 export const money = (n: number, c = "USD") => new Intl.NumberFormat("en-US", { style: "currency", currency: c, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
 export const shortDate = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" });
 export const ago = (ms: number) => { const m = Math.round((Date.now() - ms) / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`; const h = Math.round(m / 60); if (h < 24) return `${h}h ago`; const d = Math.round(h / 24); return d < 30 ? `${d}d ago` : new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };

@@ -75,7 +75,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         </div>
 
         <div role="tablist" aria-label="Order sections" className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1">
-          {([["overview", "Overview"], ["travelers", `Travelers${completeness(o).withPassport < completeness(o).pax ? " •" : ""}`], ["ops", "Operations"], ["money", "Payment & documents"], ["notes", "Notes"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70 hover:border-ink/40"}`}>{l}</button>)}
+          {([["overview", "Overview"], ["travelers", `Travelers${completeness(o).withPassport < completeness(o).pax ? " •" : ""}`], ["ops", "Operations"], ["money", "Payment & documents"], ["notes", "Notes"]] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`chip ${tab === k ? "on" : ""}`}>{l}</button>)}
         </div>
         {tab === "overview" && <div className="space-y-4">
         <Checklist o={o} go={(t) => setTab(t)} />

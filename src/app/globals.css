@@ -28,6 +28,41 @@ body { background: #fff; color: #141010; -webkit-font-smoothing: antialiased; fo
   .table-modern tbody tr { @apply transition-colors hover:bg-ink/[.02]; }
   .table-modern tbody tr:last-child td { @apply border-0; }
 }
+/* ---------- Staff panel ----------
+   Everything below is scoped to .adm (the admin shell), so the public website keeps its own look.
+   The panel is a working desk: dark ink frame, warm stone canvas, white work surfaces, gold only for the one thing to do next. */
+.adm { font-variant-numeric: tabular-nums; }
+.adm .btn { border-radius: 10px; min-height: 44px; padding: 10px 16px; font-size: 14.5px; }
+.adm .btn-primary { box-shadow: 0 1px 0 rgba(20,16,16,.18), inset 0 1px 0 rgba(255,255,255,.35); }
+.adm .btn-outline { border-color: rgba(20,16,16,.14); box-shadow: 0 1px 0 rgba(20,16,16,.04); }
+.adm .input { border-radius: 10px; padding: 10px 13px; border-color: rgba(20,16,16,.16); }
+.adm select.input { padding-right: 34px; }
+.adm .label { font-size: 13px; font-weight: 600; color: rgba(20,16,16,.72); margin-bottom: 5px; }
+.adm .card { border-radius: 16px; border-color: rgba(20,16,16,.07); box-shadow: 0 1px 0 rgba(20,16,16,.04), 0 8px 24px -16px rgba(20,16,16,.18); }
+.adm h1 { letter-spacing: -.02em; }
+.adm .stat-card { padding: 14px 16px; }
+.adm .stat-label { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 600; color: rgba(20,16,16,.6); }
+.adm .stat-value { font-size: 28px; margin-top: 8px; }
+.adm .table-modern th { text-transform: none; letter-spacing: 0; font-size: 12.5px; font-weight: 600; color: rgba(20,16,16,.6); background: #F7F5F0; }
+.adm .table-modern thead { background: #F7F5F0; }
+.adm details > summary { list-style: none; }
+.adm details > summary::-webkit-details-marker { display: none; }
+/* Section switcher (Tours / Destinations, Itineraries / Templates, settings tabs): one track, the current one lifted. */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: rgba(20,16,16,.07); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.seg::-webkit-scrollbar { display: none; }
+.seg > * { flex-shrink: 0; border-radius: 9px; padding: 7px 14px; font-size: 14px; font-weight: 600; color: rgba(20,16,16,.62); white-space: nowrap; }
+.seg > [aria-current="page"], .seg > [aria-selected="true"], .seg > .on { background: #fff; color: #141010; box-shadow: 0 1px 2px rgba(20,16,16,.12); }
+.chip { flex-shrink: 0; border-radius: 10px; background: #fff; padding: 8px 14px; font-size: 14px; font-weight: 600; color: rgba(20,16,16,.68); white-space: nowrap; transition: background .12s, color .12s; }
+.chip:hover { color: #141010; }
+.chip.on { background: #141010; color: #fff; }
+/* Work surfaces sit on the stone canvas without an outline; a hairline of shadow is enough to lift them. */
+.adm :is(.rounded-2xl, .rounded-xl).border.bg-white[class*="border-ink/10"]:not(.border-dashed) { border-color: transparent; box-shadow: 0 1px 0 rgba(20,16,16,.05); }
+/* Order row: the travel date reads like a ticket stub, with the stage as its coloured edge. */
+.stub { align-self: flex-start; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 58px; flex-shrink: 0; border-radius: 12px; background: #F7F5F0; padding: 8px 4px 7px; line-height: 1; }
+.stub::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 4px; border-radius: 0 4px 4px 0; background: var(--stage, #C9C4BA); }
+.stub b { font-family: var(--font-display); font-size: 22px; font-weight: 800; }
+.stub i { font-style: normal; font-size: 11.5px; font-weight: 600; color: rgba(20,16,16,.6); margin-top: 3px; }
+.stub em { font-style: normal; font-size: 10.5px; font-weight: 700; margin-top: 5px; padding: 2px 5px; border-radius: 6px; }
 .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { scrollbar-width: none; }
 @keyframes step-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .step-in { animation: step-in .22s ease-out backwards; }

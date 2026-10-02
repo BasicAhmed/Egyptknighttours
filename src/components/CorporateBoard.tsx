@@ -26,9 +26,9 @@ export default function CorporateBoard({ rows, canFinance }: { rows: CorpRow[]; 
           <input aria-label="Search corporate requests" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search company, request ID, customer…" className="input !rounded-xl !bg-white !pl-11" /></div>
       </div>
       <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0" role="tablist" aria-label="Status filters">
-        <button role="tab" aria-selected={status === "all"} onClick={() => setStatus("all")} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${status === "all" ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70 hover:border-ink/40"}`}>All {rows.length}</button>
+        <button role="tab" aria-selected={status === "all"} onClick={() => setStatus("all")} className={`chip ${status === "all" ? "on" : ""}`}>All {rows.length}</button>
         {REQUEST_STATUS.map((st) => { const n = rows.filter((r) => r.status === st).length; return (
-          <button key={st} role="tab" aria-selected={status === st} onClick={() => setStatus(st)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${status === st ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70 hover:border-ink/40"}`}>{REQUEST_STATUS_LABEL[st]} {n}</button>
+          <button key={st} role="tab" aria-selected={status === st} onClick={() => setStatus(st)} className={`chip ${status === st ? "on" : ""}`}>{REQUEST_STATUS_LABEL[st]} {n}</button>
         ); })}
       </div>
 

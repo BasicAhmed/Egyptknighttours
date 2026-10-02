@@ -18,11 +18,13 @@ const ICON = {
   settings: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
 };
 const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inquiries"], ["Tours", "/admin/tours", "tours"], ["Itineraries", "/admin/itineraries", "itineraries"], ["Reports", "/admin/reports", "reports"], ["Finance", "/admin/finance", "finance"], ["Referrals", "/admin/referrals", "referrals"], ["Corporate", "/admin/corporate", "corporate"], ["Staff", "/admin/staff", "staff"], ["Settings", "/admin/settings", "settings"]] as const;
+// The desktop menu is grouped by what staff are doing, so the daily work sits apart from the occasional admin.
+const GROUPS: [string, string[]][] = [["Daily work", ["orders", "inquiries", "corporate"]], ["What you sell", ["tours", "itineraries"]], ["Business", ["reports", "finance", "referrals"]], ["Admin", ["staff", "settings"]]];
 
 export default function AdminShell({ user, logout, credit, creditLight, badges = {}, children }: { user: { name: string; role: string }; logout: () => Promise<void>; credit?: React.ReactNode; creditLight?: React.ReactNode; badges?: Record<string, number>; children: React.ReactNode }) {
   const path = usePathname() ?? "";
-  const [moreOpen, setMoreOpen] = useState(false);
-  useEffect(() => setMoreOpen(false), [path]);
+  const [moreOpen, setMoreOpen] = useState(false); const [meOpen, setMeOpen] = useState(false);
+  useEffect(() => { setMoreOpen(false); setMeOpen(false); }, [path]);
   const items = NAV.filter(([, , k]) => {
     if (k === "staff") return user.role === "SUPER_ADMIN";
     if (k === "corporate") return ["SUPER_ADMIN", "MANAGER", "SALES", "TOUR_OPERATOR"].includes(user.role);
@@ -30,36 +32,52 @@ export default function AdminShell({ user, logout, credit, creditLight, badges =
   });
   const badge = (h: string, cls: string) => (badges[h] ? <span className={cls}><span aria-hidden="true">{badges[h] > 99 ? "99+" : badges[h]}</span><span className="sr-only"> {badges[h]} waiting</span></span> : null);
   const on = (h: string) => (h === "/admin" ? path === "/admin" : path.startsWith(h));
+  const initials = user.name.split(/\s+/).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const role = user.role.replace("_", " ").toLowerCase();
+  const Avatar = ({ cls = "" }: { cls?: string }) => <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-full bg-gold-500 font-display font-extrabold text-ink ${cls}`}>{initials}</span>;
   return (
-    <div className="min-h-screen bg-[#F5F4F0] md:pl-60">
+    <div className="adm min-h-screen bg-[#EFEDE7] md:pl-[248px]">
       <a href="#admin-content" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-ink focus:px-4 focus:py-3 focus:font-semibold focus:text-white">Skip to content</a>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-ink/[.08] bg-white shadow-[1px_0_0_rgba(20,16,16,.02)] md:flex">
-        <div className="flex h-16 items-center gap-2 border-b border-ink/10 px-4"><Image src="/logo.webp" alt="" width={56} height={42} className="h-9 w-auto" /><div className="leading-tight"><p className="font-display text-[15px] font-extrabold">Egypt Knight</p><p className="text-[11px] text-ink/65">Staff panel</p></div></div>
-        <nav aria-label="Admin" className="flex-1 space-y-0.5 p-3">{items.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex items-center gap-3 rounded-xl border-l-[3px] px-3 py-2.5 text-[15px] font-semibold transition-colors ${on(h) ? "border-gold-600 bg-gold-500/[.14] text-ink" : "border-transparent text-ink/65 hover:bg-ink/[.04] hover:text-ink"}`}>{I(ICON[k])}{l}{badge(h, "ml-auto rounded-full bg-ink px-2 py-0.5 text-xs font-bold text-white")}</Link>)}</nav>
-        <div className="border-t border-ink/10 p-3">{credit && <div className="mb-2 rounded-xl bg-ink px-3 py-2 text-[11px] leading-snug text-white/70">{credit}</div>}<p className="truncate px-2 text-sm font-semibold">{user.name}</p><p className="px-2 text-xs text-ink/65">{user.role.replace("_", " ").toLowerCase()}</p>
-          <div className="mt-2 flex gap-2"><a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-outline !min-h-[38px] !flex-1 !py-1.5 !text-[13px]">View site</a><form action={logout}><button className="btn btn-outline !min-h-[38px] !py-1.5 !text-[13px]">Log out</button></form></div></div>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col bg-ink text-white md:flex">
+        <div className="flex h-[68px] items-center gap-3 px-5"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white"><Image src="/logo.webp" alt="" width={56} height={42} className="h-7 w-auto" /></span><div className="leading-tight"><p className="font-display text-[16px] font-extrabold">Egypt Knight</p><p className="text-[12px] text-white/55">Staff panel</p></div></div>
+        <nav aria-label="Admin" className="no-scrollbar flex-1 overflow-y-auto px-3 pb-4">
+          {GROUPS.map(([g, keys]) => { const its = items.filter(([, , k]) => keys.includes(k)).sort((a, b) => keys.indexOf(a[2]) - keys.indexOf(b[2])); if (!its.length) return null; return (
+            <div key={g} className="mt-4 first:mt-1"><p className="px-3 pb-1.5 text-[11.5px] font-semibold text-white/40">{g}</p>
+              {its.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`relative mb-0.5 flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14.5px] font-semibold transition-colors ${on(h) ? "bg-white/[.09] text-white" : "text-white/65 hover:bg-white/[.05] hover:text-white"}`}>{on(h) && <span aria-hidden="true" className="absolute -left-3 top-2 bottom-2 w-1 rounded-r-full bg-gold-500" />}<span className={on(h) ? "text-gold-500" : ""}>{I(ICON[k])}</span>{l}{badge(h, "ml-auto rounded-full bg-gold-500 px-2 py-0.5 text-xs font-bold text-ink")}</Link>)}
+            </div>); })}
+        </nav>
+        <div className="border-t border-white/10 p-3">
+          <div className="flex items-center gap-3 px-2 py-1.5"><Avatar cls="h-9 w-9 text-[13px]" /><div className="min-w-0 leading-tight"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs capitalize text-white/55">{role}</p></div></div>
+          <div className="mt-2 flex gap-2"><a href="/" target="_blank" rel="noopener noreferrer" className="flex-1 rounded-[10px] border border-white/15 px-3 py-2 text-center text-[13px] font-semibold text-white/85 hover:bg-white/[.06]">View site</a><form action={logout}><button className="rounded-[10px] border border-white/15 px-3 py-2 text-[13px] font-semibold text-white/85 hover:bg-white/[.06]">Log out</button></form></div>
+          {credit && <div className="mt-3 px-2 text-[11px] leading-snug text-white/45">{credit}</div>}
+        </div>
       </aside>
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-ink/10 bg-white px-4 md:hidden">
-        <Link href="/admin" className="flex items-center gap-2"><Image src="/logo.webp" alt="" width={48} height={36} className="h-8 w-auto" /><span className="font-display text-[15px] font-extrabold">Staff panel</span></Link>
-        <form action={logout}><button className="rounded-lg border border-ink/20 px-3 py-1.5 text-sm font-semibold">Log out</button></form>
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between bg-ink px-4 text-white md:hidden">
+        <Link href="/admin" className="flex min-w-0 items-center gap-2.5"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white"><Image src="/logo.webp" alt="" width={48} height={36} className="h-6 w-auto" /></span><span className="min-w-0 leading-tight"><span className="block truncate font-display text-[16px] font-extrabold">Egypt Knight</span><span className="block text-[11px] text-white/55">Staff panel</span></span></Link>
+        <button type="button" aria-label="Your account" aria-expanded={meOpen} onClick={() => setMeOpen((v) => !v)} className="rounded-full p-0.5 ring-2 ring-white/15"><Avatar cls="h-8 w-8 text-[12px]" /></button>
       </header>
-      <div id="admin-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 pb-28 pt-5 outline-none md:px-8 md:pb-12 md:pt-8">{children}<div className="mt-12 text-center text-xs text-ink/65 md:hidden">{creditLight ?? credit}</div></div>
+      {meOpen && <><button aria-label="Close account menu" onClick={() => setMeOpen(false)} className="fixed inset-0 z-40 bg-ink/40 md:hidden" />
+        <div className="fixed right-3 top-[60px] z-50 w-60 rounded-2xl bg-white p-3 shadow-[0_18px_50px_rgba(20,16,16,.28)] md:hidden"><div className="flex items-center gap-3 px-1 pb-3"><Avatar cls="h-10 w-10 text-[14px]" /><div className="min-w-0 leading-tight"><p className="truncate font-semibold">{user.name}</p><p className="text-xs capitalize text-ink/60">{role}</p></div></div>
+          <a href="/" target="_blank" rel="noopener noreferrer" className="btn btn-outline w-full !min-h-[42px] !py-2 !text-sm">View website</a><form action={logout} className="mt-2"><button className="btn btn-dark w-full !min-h-[42px] !py-2 !text-sm">Log out</button></form></div></>}
+      <div id="admin-content" tabIndex={-1} className="mx-auto w-full max-w-[1180px] px-4 pb-28 pt-5 outline-none md:px-9 md:pb-14 md:pt-9">{children}<div className="mt-12 text-center text-xs text-ink/55 md:hidden">{creditLight ?? credit}</div></div>
       {(() => {
         // Only as many items fit a phone row with readable labels; everything past that lives behind "More" instead of being crushed together.
         const PRIMARY = 4;
         const primary = items.slice(0, PRIMARY); const overflow = items.slice(PRIMARY);
         const overflowActive = overflow.some(([, h]) => on(h));
-        const NavIcon = ([l, h, k]: (typeof items)[number]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${on(h) ? "text-ink" : "text-ink/65"}`}><span className={`relative flex h-7 w-11 items-center justify-center rounded-full ${on(h) ? "bg-gold-500" : ""}`}>{I(ICON[k])}{badge(h, "absolute -right-0.5 -top-1 min-w-[18px] rounded-full bg-ink px-1 text-center text-[10px] font-bold leading-[18px] text-white")}</span>{l}</Link>;
+        const tab = (active: boolean) => `relative flex flex-col items-center gap-1 pb-2 pt-2.5 text-[10.5px] font-semibold ${active ? "text-white" : "text-white/55"}`;
+        const bar = (active: boolean) => active ? <span aria-hidden="true" className="absolute inset-x-5 top-0 h-[3px] rounded-b-full bg-gold-500" /> : null;
+        const NavIcon = ([l, h, k]: (typeof items)[number]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={tab(on(h))}>{bar(on(h))}<span className={`relative ${on(h) ? "text-gold-500" : ""}`}>{I(ICON[k])}{badge(h, "absolute -right-3 -top-1.5 min-w-[18px] rounded-full bg-gold-500 px-1 text-center text-[10px] font-bold leading-[18px] text-ink")}</span>{l}</Link>;
         return (
           <>
-            {moreOpen && <button aria-label="Close menu" onClick={() => setMoreOpen(false)} className="fixed inset-0 z-30 bg-ink/30 md:hidden" />}
-            {moreOpen && <nav aria-label="More sections" className="fixed inset-x-3 z-40 grid grid-cols-3 gap-1 rounded-2xl border border-ink/10 bg-white p-2 shadow-lg md:hidden" style={{ bottom: "calc(4.25rem + env(safe-area-inset-bottom))" }}>
-              {overflow.map((it) => NavIcon(it))}
+            {moreOpen && <button aria-label="Close menu" onClick={() => setMoreOpen(false)} className="fixed inset-0 z-30 bg-ink/40 md:hidden" />}
+            {moreOpen && <nav aria-label="More sections" className="fixed inset-x-3 z-40 grid grid-cols-3 gap-1 rounded-2xl bg-ink p-2 shadow-[0_18px_50px_rgba(20,16,16,.35)] md:hidden" style={{ bottom: "calc(4.5rem + env(safe-area-inset-bottom))" }}>
+              {overflow.map(([l, h, k]) => <Link key={h} href={h} aria-current={on(h) ? "page" : undefined} className={`flex flex-col items-center gap-1 rounded-xl py-3 text-[11.5px] font-semibold ${on(h) ? "bg-white/10 text-white" : "text-white/70"}`}><span className={on(h) ? "text-gold-500" : ""}>{I(ICON[k])}</span>{l}</Link>)}
             </nav>}
-            <nav aria-label="Admin (mobile)" className="fixed inset-x-0 bottom-0 z-30 grid border-t border-ink/10 bg-white md:hidden" style={{ gridTemplateColumns: `repeat(${primary.length + (overflow.length ? 1 : 0)}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <nav aria-label="Admin (mobile)" className="fixed inset-x-0 bottom-0 z-30 grid bg-ink md:hidden" style={{ gridTemplateColumns: `repeat(${primary.length + (overflow.length ? 1 : 0)}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
               {primary.map((it) => NavIcon(it))}
-              {overflow.length > 0 && <button type="button" aria-expanded={moreOpen} aria-haspopup="menu" onClick={() => setMoreOpen((v) => !v)} className={`flex flex-col items-center gap-0.5 py-2 text-[10.5px] font-semibold ${moreOpen || overflowActive ? "text-ink" : "text-ink/65"}`}>
-                <span className={`flex h-7 w-11 items-center justify-center rounded-full ${moreOpen || overflowActive ? "bg-gold-500" : ""}`}>{I("M6 10a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z")}</span>More
+              {overflow.length > 0 && <button type="button" aria-expanded={moreOpen} aria-haspopup="menu" onClick={() => setMoreOpen((v) => !v)} className={tab(moreOpen || overflowActive)}>{bar(moreOpen || overflowActive)}
+                <span className={moreOpen || overflowActive ? "text-gold-500" : ""}>{I("M6 10a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0zm8 0a2 2 0 11-4 0 2 2 0 014 0z")}</span>More
               </button>}
             </nav>
           </>

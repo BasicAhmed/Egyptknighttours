@@ -46,7 +46,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
   return (
     <div>
       <h1 className="font-display text-2xl font-extrabold sm:text-3xl">Settings</h1><p className="text-sm text-ink/65">These feed your invoices and itineraries. New PDFs use whatever is saved here.</p>
-      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">{tabs.map(([k, l]) => <a key={k} href={`/admin/settings?tab=${k}`} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70"}`}>{l}</a>)}</div>
+      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0">{tabs.map(([k, l]) => <a key={k} href={`/admin/settings?tab=${k}`} className={`chip ${tab === k ? "on" : ""}`}>{l}</a>)}</div>
       <div className="mt-4"><Notice n={sp.n} e={sp.e} /></div>
       {tab === "payment" && <section>
         <p className="mb-4 text-sm text-ink/65">Bank details are stored here only, never in the code. Add a payment link to make the invoice button clickable.</p>

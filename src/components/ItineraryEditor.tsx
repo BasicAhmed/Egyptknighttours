@@ -85,7 +85,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
         </div>
         {msg && <p role="status" className={`mt-2 text-sm font-medium ${msg.err ? "text-red-700" : "text-[#17663A]"}`}>{pending ? "Working…" : msg.t}</p>}
         <div role="tablist" aria-label="Itinerary sections" className="no-scrollbar -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1">
-          {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${tab === k ? "border-ink bg-ink text-white" : "border-ink/15 text-ink/70 hover:border-ink/40"}`}>{l}</button>)}
+          {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`chip ${tab === k ? "on" : ""}`}>{l}</button>)}
         </div>
       </div>
 

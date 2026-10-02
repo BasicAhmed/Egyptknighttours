@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState, useEffect } from "react";
 import OrderModal, { prefetchOrder } from "./OrderModal";
 import Modal from "./Modal";
-import { PILL, STATUS_LABEL, SOURCE_LABEL, stageOf, money, shortDate, ago, daysUntil, nextStep, rowFromOrder, type Focus, type Stage } from "./order-ui";
+import { PILL, STAGE_COLOR, STATUS_LABEL, SOURCE_LABEL, stageOf, money, shortDate, ago, daysUntil, nextStep, rowFromOrder, type Focus, type Stage } from "./order-ui";
 import { orderCreate } from "@/app/admin/order-actions";
 import { COUNTRIES } from "@/lib/countries";
 import { F, FieldCtx, fieldApi } from "./FormField";
@@ -34,49 +34,52 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
   const openRow = open ? rows.find((r) => r.id === open.id) ?? null : null;
   const update = (o: Order) => setRows((rs) => rs.map((r) => (r.id === o.id ? rowFromOrder(o) : r)));
 
-  const kpi = (label: string, value: number, on: () => void, tone = "") => <button onClick={on} className={`rounded-2xl border border-ink/10 bg-white p-3 text-left transition hover:border-ink/40 ${tone}`}><p className="text-xs font-semibold text-ink/65">{label}</p><p className="font-display text-3xl font-extrabold leading-none mt-1">{value}</p></button>;
+  const pick = (k: string) => { setTab(k); setSoon(false); };
+  const DOT: Record<string, string> = { todo: STAGE_COLOR.NEW, pay: STAGE_COLOR.AWAITING, paid: STAGE_COLOR.PAID, done: STAGE_COLOR.DONE, all: "#141010", cancelled: STAGE_COLOR.CANCELLED };
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">Orders</h1><p className="text-sm text-ink/65">Tap an order to see everything and take the next step.</p></div><button className="btn btn-primary !min-h-[46px]" onClick={() => setCreating(true)}>+ New order</button></div>
+      <div className="flex items-center justify-between gap-3"><div className="min-w-0"><h1 className="font-display text-[26px] font-extrabold leading-tight sm:text-[32px]">Orders</h1><p className="text-sm text-ink/60">{counts.todo ? `${counts.todo} waiting for you` : "Nothing waiting. You're all caught up."}{travelSoon ? `, ${travelSoon} travelling this week` : ""}</p></div><button className="btn btn-primary shrink-0" onClick={() => setCreating(true)}><span aria-hidden="true" className="-ml-0.5 text-lg leading-none">+</span>New order</button></div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {kpi("To do", counts.todo, () => { setTab("todo"); setSoon(false); }, counts.todo ? "border-gold-600" : "")}
-        {kpi("Awaiting payment", counts.pay, () => { setTab("pay"); setSoon(false); })}
-        {kpi("Travelling in 7 days", travelSoon, () => { setTab("all"); setSoon(true); })}
-        {kpi("Confirmed", counts.paid, () => { setTab("paid"); setSoon(false); })}
+      {/* One strip does two jobs: it shows how many orders sit at each stage and it filters the list. */}
+      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-7 md:overflow-visible md:px-0" role="tablist" aria-label="Order stages">
+        {TABS.map((t) => { const sel = tab === t.key && !soon; return <button key={t.key} role="tab" aria-selected={sel} onClick={() => pick(t.key)} className={`min-w-[104px] shrink-0 rounded-[14px] px-3.5 py-3 text-left transition md:min-w-0 ${sel ? "bg-ink text-white shadow-[0_10px_24px_-12px_rgba(20,16,16,.6)]" : "bg-white text-ink hover:bg-white/70"}`}><span className="flex items-center gap-1.5 text-[12.5px] font-semibold"><span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: sel && t.key === "all" ? "#fff" : DOT[t.key] }} /><span className={sel ? "text-white/80" : "text-ink/65"}>{t.label}</span></span><span className="mt-1.5 block font-display text-[26px] font-extrabold leading-none">{counts[t.key]}</span></button>; })}
+        <button role="tab" aria-selected={soon} onClick={() => { setTab("all"); setSoon(!soon); }} className={`min-w-[120px] shrink-0 rounded-[14px] px-3.5 py-3 text-left transition md:min-w-0 ${soon ? "bg-ink text-white shadow-[0_10px_24px_-12px_rgba(20,16,16,.6)]" : "bg-white text-ink hover:bg-white/70"}`}><span className="flex items-center gap-1.5 text-[12.5px] font-semibold"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={soon ? "text-gold-500" : "text-gold-700"}><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg><span className={soon ? "text-white/80" : "text-ink/65"}>This week</span></span><span className="mt-1.5 block font-display text-[26px] font-extrabold leading-none">{travelSoon}</span></button>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1"><svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/65" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
-          <input aria-label="Search orders" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, booking ID, phone, tour…" className="input !rounded-xl !bg-white !pl-11" /></div>
-        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as "new" | "trip")} className="input !w-auto !bg-white"><option value="new">Newest first</option><option value="trip">Travel date</option></select>
-        <select aria-label="Filter by source" value={src} onChange={(e) => setSrc(e.target.value)} className="input !w-auto !bg-white"><option value="all">All sources</option>{Object.entries(SOURCE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
-      </div>
-      <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 md:mx-0 md:px-0" role="tablist" aria-label="Order filters">
-        {TABS.map((t) => <button key={t.key} role="tab" aria-selected={tab === t.key && !soon} onClick={() => { setTab(t.key); setSoon(false); }} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${tab === t.key && !soon ? "border-ink bg-ink text-white" : "border-ink/15 bg-white text-ink/70 hover:border-ink/40"}`}>{t.label} <span className={tab === t.key && !soon ? "text-white/70" : "text-ink/65"}>{counts[t.key]}</span></button>)}
-        {soon && <span className="shrink-0 rounded-full border border-gold-600 bg-gold-500/25 px-4 py-2 text-sm font-semibold">Travelling in 7 days <button className="ml-1" onClick={() => setSoon(false)} aria-label="Clear filter">×</button></span>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <div className="relative min-w-[200px] flex-1 basis-full sm:basis-0"><svg className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/50" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
+          <input aria-label="Search orders" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, booking ID, phone, tour" className="input !border-transparent !bg-white !pl-11" /></div>
+        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as "new" | "trip")} className="input !w-auto flex-1 !border-transparent !bg-white !text-[14.5px] sm:flex-none"><option value="new">Newest first</option><option value="trip">By travel date</option></select>
+        <select aria-label="Filter by source" value={src} onChange={(e) => setSrc(e.target.value)} className="input !w-auto flex-1 !border-transparent !bg-white !text-[14.5px] sm:flex-none"><option value="all">All sources</option>{Object.entries(SOURCE_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
       </div>
 
-      <ul className="mt-4 space-y-2.5">
+      <ul className="mt-4 space-y-2">
         {list.map((r) => {
           const st = stageOf(r.status); const next = nextStep(r); const d = daysUntil(r.travelDate); const pct = r.total ? Math.min(100, Math.round((r.paid / r.total) * 100)) : 0;
+          const dt = new Date(r.travelDate + "T00:00:00"); const live = !["DONE", "CANCELLED"].includes(st);
           return (
             <li key={r.id}>
               <div onClick={() => setOpen({ id: r.id, focus: null })} onMouseEnter={() => prefetchOrder(r.id)} onTouchStart={() => prefetchOrder(r.id)}
-                className="grid cursor-pointer gap-x-4 gap-y-2 rounded-2xl border border-ink/10 bg-white p-4 transition hover:border-ink/40 hover:shadow-sm md:grid-cols-[1.1fr_1.4fr_1fr_auto] md:items-center">
-                <div className="min-w-0"><div className="flex flex-wrap items-center gap-1.5"><button type="button" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: null }); }} aria-label={`Open order ${r.ref} for ${r.name}`} className="block max-w-full truncate text-left font-display text-[17px] font-extrabold hover:underline">{r.name}</button><span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${r.source === "VIATOR" ? "bg-[#2A5C8A]/10 text-[#2A5C8A]" : "bg-ink/[.06] text-ink/60"}`}>{SOURCE_LABEL[r.source] ?? r.source}</span></div><p className="truncate text-sm text-ink/65">{r.ref} · {ago(r.createdAt)}{r.country ? ` · ${r.country}` : ""}</p></div>
-                <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{r.title}</p><p className="text-sm text-ink/65">{shortDate(r.travelDate)}{d >= 0 && d <= 14 ? <b className={d <= 3 ? "text-red-700" : "text-[#8A4B0A]"}> · {d === 0 ? "today" : `in ${d}d`}</b> : ""} · {r.pax} traveler{r.pax > 1 ? "s" : ""}{r.hotel ? ` · ${r.hotel}` : ""}</p></div>
-                <div>{r.total > 0 ? <><p className="text-sm"><b>{money(r.paid, r.currency)}</b> <span className="text-ink/65">of {money(r.total, r.currency)}</span></p><div className="mt-1 h-1.5 w-full max-w-[160px] overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full bg-gold-500" style={{ width: `${pct}%` }} /></div></> : <p className="text-sm font-semibold text-[#8A4B0A]">Not priced yet</p>}
-                  <p className="mt-1 text-xs text-ink/65">{r.invoices ? `Invoice ${r.invoiceSent ? "sent" : "made"}` : "No invoice"}{r.itineraries ? ` · Itinerary ${r.itinerarySent ? "sent" : "made"}` : ""}</p>
-                  {["AWAITING", "PARTIAL", "PAID"].includes(st) && <p className="mt-0.5 text-xs font-semibold"><span className={r.guideName ? "text-ink/65" : "text-[#8A4B0A]"}>{r.guideName ? `Guide: ${r.guideName}` : "No guide yet"}</span><span className={r.passports >= r.pax ? "text-[#17663A]" : "text-[#8A4B0A]"}> · Passports {r.passports}/{r.pax}</span></p>}</div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end"><span className={`rounded-full px-3 py-1 text-xs font-bold ${PILL[st]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
-                  {next && (next.href
-                    ? <Link href={next.href} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="btn btn-dark !min-h-[38px] !py-1.5 !px-3.5 !text-[13px]">{next.label}</Link>
-                    : <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3.5 !text-[13px]" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: next.focus }); }}>{next.label}</button>)}</div>
+                className="flex cursor-pointer gap-3 rounded-2xl bg-white p-3 shadow-[0_1px_0_rgba(20,16,16,.04)] transition hover:shadow-[0_10px_28px_-16px_rgba(20,16,16,.35)] sm:gap-4 sm:p-3.5">
+                <div className="stub" style={{ "--stage": STAGE_COLOR[st] } as React.CSSProperties} title={shortDate(r.travelDate)}><b>{dt.getDate()}</b><i>{dt.toLocaleDateString("en-GB", { month: "short" })} {String(dt.getFullYear()).slice(2)}</i>{live && d >= 0 && d <= 14 && <em className={d <= 3 ? "bg-red-100 text-red-800" : "bg-gold-500/30 text-[#6B4A0C]"}>{d === 0 ? "today" : `in ${d}d`}</em>}</div>
+                <div className="grid min-w-0 flex-1 gap-x-5 gap-y-2 md:grid-cols-[1.5fr_1fr_auto] md:items-center">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2"><button type="button" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: null }); }} aria-label={`Open order ${r.ref} for ${r.name}`} className="min-w-0 truncate text-left font-display text-[17px] font-extrabold leading-tight hover:underline">{r.name}</button><span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${r.source === "VIATOR" ? "bg-[#2A5C8A]/10 text-[#2A5C8A]" : "bg-ink/[.06] text-ink/60"}`}>{SOURCE_LABEL[r.source] ?? r.source}</span></div>
+                    <p className="mt-0.5 truncate text-[14.5px] font-medium text-ink/85">{r.title}</p>
+                    <p className="mt-0.5 truncate text-[13px] text-ink/55">{r.ref}, {r.pax} traveler{r.pax > 1 ? "s" : ""}{r.country ? `, ${r.country}` : ""}{r.hotel ? `, ${r.hotel}` : ""}, added {ago(r.createdAt)}</p>
+                  </div>
+                  <div className="min-w-0">{r.total > 0 ? <><p className="text-[14.5px]"><b>{money(r.paid, r.currency)}</b> <span className="text-ink/55">of {money(r.total, r.currency)}</span></p><div className="mt-1.5 h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STAGE_COLOR.PAID : "#F0B050" }} /></div></> : <p className="text-[14.5px] font-semibold text-[#8A4B0A]">Not priced yet</p>}
+                    <p className="mt-1 truncate text-[12.5px] text-ink/55">{r.invoices ? `Invoice ${r.invoiceSent ? "sent" : "made"}` : "No invoice"}{r.itineraries ? `, itinerary ${r.itinerarySent ? "sent" : "made"}` : ""}</p>
+                    {["AWAITING", "PARTIAL", "PAID"].includes(st) && <p className="mt-0.5 truncate text-[12.5px] font-semibold"><span className={r.guideName ? "text-ink/60" : "text-[#8A4B0A]"}>{r.guideName ? `Guide: ${r.guideName}` : "No guide yet"}</span><span className={r.passports >= r.pax ? "text-[#17663A]" : "text-[#8A4B0A]"}>, passports {r.passports}/{r.pax}</span></p>}</div>
+                  <div className="flex items-center gap-2 md:flex-col md:items-end"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PILL[st]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
+                    {next && (next.href
+                      ? <Link href={next.href} onClick={(e: React.MouseEvent) => e.stopPropagation()} className="btn btn-dark ml-auto !min-h-[36px] !px-3.5 !py-1.5 !text-[13px] md:ml-0">{next.label}</Link>
+                      : <button className="btn btn-dark ml-auto !min-h-[36px] !px-3.5 !py-1.5 !text-[13px] md:ml-0" onClick={(e) => { e.stopPropagation(); setOpen({ id: r.id, focus: next.focus }); }}>{next.label}</button>)}</div>
+                </div>
               </div>
             </li>);
         })}
-        {!list.length && <li className="rounded-2xl border border-dashed border-ink/20 bg-white p-10 text-center text-ink/65">{q ? "No orders match your search." : "Nothing here. You're all caught up."}</li>}
+        {!list.length && <li className="rounded-2xl border border-dashed border-ink/20 px-6 py-12 text-center"><p className="font-display text-lg font-bold">{q ? "No orders match that search" : "No orders at this stage"}</p><p className="mt-1 text-sm text-ink/60">{q ? "Try a name, a booking ID or a phone number." : "Pick another stage above, or add a new order."}</p></li>}
       </ul>
 
       {openRow && <OrderModal key={openRow.id} row={openRow} focus={open?.focus} onClose={() => setOpen(null)} onChanged={update} canFinance={canFinance} />}

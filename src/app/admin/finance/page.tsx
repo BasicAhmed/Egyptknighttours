@@ -33,15 +33,15 @@ export default async function FinancePage({ searchParams }: { searchParams: Prom
         {!isCurrent && <Link href={`/admin/finance?m=${monthValue(shift(m, 1))}`} className="btn btn-outline !min-h-[44px] !px-3" aria-label="Next month">→</Link>}
       </form>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div className="stat-card"><p className="stat-label">Revenue collected</p><p className="stat-value">{money(r.revenue)}</p></div>
         <div className="stat-card"><p className="stat-label">Cost</p><p className="stat-value text-ink/70">{money(r.cost)}</p></div>
-        <div className="stat-card"><p className="stat-label">Profit</p><p className={`stat-value ${r.profit >= 0 ? "text-[#17663A]" : "text-red-700"}`}>{money(r.profit)}</p></div>
+        <div className="stat-card col-span-2 !bg-ink sm:col-span-1"><p className="stat-label !text-white/60">Profit</p><p className={`stat-value ${r.profit >= 0 ? "!text-gold-500" : "!text-red-300"}`}>{money(r.profit)}</p></div>
       </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid grid-cols-3 gap-3">
         <div className="stat-card"><p className="stat-label">Margin</p><p className="stat-value">{r.margin != null ? `${r.margin.toFixed(1)}%` : "—"}</p></div>
-        <div className="stat-card"><p className="stat-label">Payments counted</p><p className="stat-value">{r.paymentCount}</p></div>
-        <div className="stat-card"><p className="stat-label">Bookings involved</p><p className="stat-value">{r.bookingCount}</p></div>
+        <div className="stat-card"><p className="stat-label">Payments</p><p className="stat-value">{r.paymentCount}</p></div>
+        <div className="stat-card"><p className="stat-label">Bookings</p><p className="stat-value">{r.bookingCount}</p></div>
       </div>
 
       {r.noCostCount > 0 && <div className="mt-4 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-4 text-sm">
