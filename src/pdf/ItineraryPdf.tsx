@@ -75,8 +75,11 @@ function DayView({ day, n, d }: { day: Day; n: number; d: ItineraryPdfData }) {
 export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
   const c = d.content; const n = c.durationDays ?? c.days.length; const nights = c.durationNights ?? Math.max(0, n - 1);
   const coverKind = c.sceneKind && c.sceneKind !== "auto" ? c.sceneKind : sceneKind(`${c.title} ${c.destinations.join(" ")}`);
-  const wa = d.company.whatsapp ? `https://wa.me/${d.company.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi Egypt Knight, I'd like to book "${c.title}" (${d.ref}).`)}` : "";
-  const cta = d.ctaUrl || wa || (d.company.email ? `mailto:${d.company.email}` : "");
+  // The customer's copy with the price hidden (prepaid through a marketplace such as Viator, or switched off by staff): the
+  // closing page has no price, no payment terms and no "complete your booking" button, only how to reach us.
+  const priced = d.showPrice !== false;
+  const wa = d.company.whatsapp ? `https://wa.me/${d.company.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(priced ? `Hi Egypt Knight, I'd like to book "${c.title}" (${d.ref}).` : `Hi Egypt Knight, I have a question about my trip "${c.title}" (${d.ref}).`)}` : "";
+  const cta = priced ? d.ctaUrl || wa || (d.company.email ? `mailto:${d.company.email}` : "") : "";
   const cover = c.coverImageUrl && d.images[c.coverImageUrl];
   const footer = (
     <View fixed style={s.footer}><Text>{d.company.name}  ·  {c.title}</Text><Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}${d.company.builder ? `  ·  Booking system by ${d.company.builder}` : ""}`} /></View>
@@ -172,11 +175,11 @@ export default function ItineraryPdf({ d }: { d: ItineraryPdfData }) {
       <Page size="A4" style={{ backgroundColor: C.ink, padding: 44 }}>
         <Image src={LOGO} style={{ height: 46, objectFit: "contain", alignSelf: "flex-start" }} />
         <View style={{ marginTop: 90 }}>
-          <Text style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2.4, color: C.gold, textTransform: "uppercase" }}>Ready to make it official?</Text>
+          <Text style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2.4, color: C.gold, textTransform: "uppercase" }}>{priced ? "Ready to make it official?" : "We're here for you"}</Text>
           <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 46, lineHeight: 1.02, color: C.white, marginTop: 10, letterSpacing: -1.5 }}>Your Egyptian adventure is waiting.</Text>
-          <Text style={{ fontSize: 12, color: "#D9D1C3", marginTop: 12, lineHeight: 1.5, maxWidth: 380 }}>Everything above is ready to go. One quick step and we'll lock in your dates, your guides and your hotels.</Text>
+          <Text style={{ fontSize: 12, color: "#D9D1C3", marginTop: 12, lineHeight: 1.5, maxWidth: 380 }}>{priced ? "Everything above is ready to go. One quick step and we'll lock in your dates, your guides and your hotels." : "Everything above is arranged for you. If you have a question before or during your trip, message us any time."}</Text>
         </View>
-        {(c.priceLabel || c.paymentTerms) && <View style={{ marginTop: 26, backgroundColor: "#211B1B", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "#3A3030" }}>
+        {priced && (c.priceLabel || c.paymentTerms) && <View style={{ marginTop: 26, backgroundColor: "#211B1B", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "#3A3030" }}>
           {c.priceLabel ? <><Text style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: 1.6, color: C.gold, textTransform: "uppercase" }}>Your price</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 24, color: C.white, marginTop: 4 }}>{c.priceLabel}</Text></> : null}
           {c.paymentTerms ? <Text style={{ fontSize: 10, color: "#D9D1C3", marginTop: 8, lineHeight: 1.5 }}>{c.paymentTerms}</Text> : null}
         </View>}

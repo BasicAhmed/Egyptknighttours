@@ -7,6 +7,8 @@ import { linkOrigin } from "./origin";
 import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
 import { signGuide, signReview } from "./booking-token";
+import { prepaidVia } from "./order-rules";
+import { styleSwitchFor, type StyleSwitch } from "./order-style";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
@@ -14,13 +16,21 @@ export type OrderDoc = { id: string; kind: string; number: string; sentAt: numbe
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
 export type Traveler = { id: string; name: string; type: string; age: number | null; nationality: string; dob: string; passportNumber: string; passportExpiry: string; notes: string; files: TravelerFile[] };
 export type Guide = { id: string; name: string; phone: string; languages: string; active: boolean };
-export type Ops = { preferredLanguage: string; guideId: string; driver: string; vehicle: string; flightArrival: string; flightDeparture: string; roomType: string; pickupTime: string; occasion: string; emergencyContact: string; visaStatus: string; guideNotes: string };
+export type Ops = { preferredLanguage: string; guideId: string; driver: string; vehicle: string; flightArrival: string; flightDeparture: string; roomType: string; pickupTime: string; occasion: string; emergencyContact: string; visaStatus: string; guideNotes: string;
+  // What the office asks the guide to collect on the day (empty = nothing). The only money a guide ever sees.
+  collectAmount: string; collectNote: string };
 export type Order = {
   id: string; ref: string; status: string; title: string; tourId: string; tourTitle: string; destination: string;
   customer: { name: string; email: string; whatsapp: string; phone: string; country: string; nationality: string };
   travelDate: string; adults: number; children: number; infants: number; isPrivate: boolean; hotel: string; pickupNotes: string; requests: string; dietary: string; accessibility: string;
   addons: { name: string; price: number; unit: string }[]; subtotal: number; discount: number; total: number; deposit: number; payMode: string; currency: string; paid: number; balance: number; source: string; createdAt: number; titleOverride: string;
   costTotal: number | null;
+  // Set (to the marketplace's name) when the money was collected by a marketplace such as Viator: nothing sent to the customer shows a price.
+  prepaidVia: string;
+  // This order's own meeting point and pickup details (null = the tour's text is used), with the tour's text beside them.
+  pickup: { meetingPoint: string | null; details: string | null; defaults: { meetingPoint: string; details: string } };
+  // What switching between private and shared would do to this order (see order-style.ts).
+  styleSwitch: StyleSwitch;
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
   documents: OrderDoc[]; itineraries: { id: string; name: string; status: string }[];
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
@@ -107,6 +117,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     customer: { name: b.guestName || c.name, email: c.email ?? "", whatsapp: c.whatsapp ?? "", phone: c.phone ?? "", country: c.country ?? "", nationality: c.nationality ?? "" },
     travelDate: b.travelDate, adults: b.adults, children: b.children, infants: b.infants, isPrivate: b.isPrivate, hotel: b.hotel ?? "", pickupNotes: b.pickupLocation ?? "", requests: b.specialRequests ?? "", dietary: b.dietary ?? "", accessibility: b.accessibility ?? "",
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "", costTotal: b.costTotal,
+    prepaidVia: prepaidVia(b.source), pickup: { meetingPoint: b.meetingPoint, details: b.pickupInfo, defaults: { meetingPoint: tour.meetingPoint ?? "", details: tour.pickupInfo ?? "" } }, styleSwitch: await styleSwitchFor(b, tour),
     payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
@@ -114,6 +125,6 @@ export async function loadOrder(id: string): Promise<Order | null> {
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),
-    ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "" },
+    ops: { preferredLanguage: b.preferredLanguage ?? "", guideId: b.guideId ?? "", driver: b.driver ?? "", vehicle: b.vehicle ?? "", flightArrival: b.flightArrival ?? "", flightDeparture: b.flightDeparture ?? "", roomType: b.roomType ?? "", pickupTime: b.pickupTime ?? "", occasion: b.occasion ?? "", emergencyContact: b.emergencyContact ?? "", visaStatus: b.visaStatus ?? "", guideNotes: b.guideNotes ?? "", collectAmount: b.guideCollectAmount != null ? String(b.guideCollectAmount) : "", collectNote: b.guideCollectNote ?? "" },
   };
 }

@@ -19,6 +19,8 @@ export type InvoiceData = {
   methods: PayMethod[]; ctaUrl: string; trackUrl: string;
   terms: { payment: string[]; documents: string[]; cancellation: string[]; note: string };
   company: Company; notes: string;
+  // The marketplace that collected the money ("Viator"), when there is one. A settled invoice then says so and carries no "How to pay".
+  prepaidVia?: string;
 };
 
 export type BlockType = "ACTIVITY" | "TOUR" | "TRANSPORT" | "TRANSFER" | "FLIGHT" | "HOTEL" | "MEAL" | "FREE_TIME" | "NOTE" | "MEETING_POINT" | "GUIDE" | "INFO";
@@ -33,7 +35,10 @@ export type ItineraryContent = {
   // actual trip length (a summary itinerary with fewer detailed blocks than calendar days, a cruise leg counted in nights only, etc.).
   durationDays: number | null; durationNights: number | null;
 };
-export type ItineraryPdfData = { content: ItineraryContent; ref: string; company: Company; ctaUrl: string; generatedAt: string; images: Record<string, string> };
+// showPrice false: the customer's copy carries no price, payment terms or pay button (the order was prepaid through a marketplace
+// such as Viator, or staff switched the price off for this itinerary). Absent on documents made before the switch existed: those
+// are drawn exactly as they were.
+export type ItineraryPdfData = { content: ItineraryContent; ref: string; company: Company; ctaUrl: string; generatedAt: string; images: Record<string, string>; showPrice?: boolean };
 
 export type FinanceReportData = {
   label: string; from: string; to: string; currency: string; generatedAt: string; company: Company;

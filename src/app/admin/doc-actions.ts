@@ -14,6 +14,7 @@ import { calcSellPrice } from "@/lib/pricing";
 import { cleanImageRef } from "@/lib/media";
 import { invalidate } from "@/lib/cache";
 import { parseJson, money } from "@/lib/format";
+import { isPrepaid } from "@/lib/order-rules";
 import type { ItineraryContent } from "@/pdf/types";
 
 const go = (path: string, msg: string, err = false): never => redirect(`${path}${path.includes("?") ? "&" : "?"}${err ? "e" : "n"}=${encodeURIComponent(msg)}`);
@@ -72,12 +73,15 @@ export async function saveItinerary(id: string, payload: string) {
     costPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(), marginPercent: z.coerce.number().min(0).max(500).nullable().optional(),
     currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     force: z.boolean().optional(),
+    // "Show price to customer" on this itinerary: true or false once staff chose, null to follow the order (off for an order prepaid
+    // through a marketplace such as Viator, on otherwise). Left out by an editor opened before the switch existed: nothing changes.
+    showPrice: z.boolean().nullable().optional(),
   }).safeParse(raw);
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
   const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
   const priced = costPrice != null && marginPercent != null;
   // A Viator booking already has a settled price paid through Viator — the itinerary is just the trip plan for it, never the pricing mechanism.
-  const isViatorBooking = p.data.bookingId ? !!(await db.select({ id: s.bookings.id }).from(s.bookings).where(and(eq(s.bookings.id, p.data.bookingId), eq(s.bookings.source, "VIATOR"))))[0] : false;
+  const isViatorBooking = p.data.bookingId ? isPrepaid((await db.select({ source: s.bookings.source }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)))[0]?.source) : false;
   // A price is required for any itinerary attached to a real order — there is no manual price line to fall back on.
   if (p.data.bookingId && !priced && !isViatorBooking) return { ok: false, message: "Enter the cost and the profit margin to price this order — there is no manual price." };
   const content = clean(p.data.content);
@@ -93,6 +97,8 @@ export async function saveItinerary(id: string, payload: string) {
     paidSoFar = row?.paid ?? 0;
     if (orderCurrency && currency !== orderCurrency && paidSoFar > 0) return { ok: false, message: `Payments are already recorded on this order in ${orderCurrency}, so its currency can't change to ${currency}. Remove those payments first, or keep ${orderCurrency}.` };
   }
+  // A prepaid (Viator) order is never repriced here, but if staff switch "Show price to customer" on, the price line must still count its real travelers.
+  if (priced && p.data.bookingId && isViatorBooking) { const [b] = await db.select({ adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)); if (b) travelers = Math.max(1, b.adults + b.children); }
   if (priced) { unitPrice = calcSellPrice(costPrice!, marginPercent!); total = Math.round(unitPrice * travelers * 100) / 100; }
 
   // Repricing a cancelled or completed trip, or one that already has money paid on it, needs a clear "are you sure" — it is easy to do by
@@ -117,7 +123,7 @@ export async function saveItinerary(id: string, payload: string) {
       bookingNote = ` The linked order's total is now ${money(total!, currency)} (${money(unitPrice!, currency)} per person × ${travelers}).`;
     }
   }
-  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, currency: p.data.bookingId ? null : currency, updatedAt: new Date() }).where(eq(s.itineraries.id, id));
+  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, currency: p.data.bookingId ? null : currency, ...(p.data.showPrice !== undefined ? { showPrice: p.data.showPrice } : {}), updatedAt: new Date() }).where(eq(s.itineraries.id, id));
   await audit(u.uid, "UPDATE", "itinerary", id); return { ok: true, message: bookingNote ? `Saved.${bookingNote}` : "Saved" };
 }
 export async function duplicateItinerary(id: string) {

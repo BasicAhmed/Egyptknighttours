@@ -5,10 +5,11 @@ import { saveItinerary, generateItineraryPdf, duplicateItinerary, saveAsTemplate
 import { blk, day as newDay, suggestHook, uid } from "@/lib/itinerary-templates";
 import ImageField from "./ImageField";
 import type { Block, BlockType, Day, ItineraryContent } from "@/pdf/types";
+import { prepaidVia, showPriceToCustomer } from "@/lib/order-rules";
 
 const TYPES: [BlockType, string][] = [["ACTIVITY", "Activity"], ["TOUR", "Tour"], ["TRANSFER", "Airport transfer"], ["TRANSPORT", "Transportation"], ["FLIGHT", "Flight"], ["HOTEL", "Hotel"], ["MEAL", "Restaurant / meal"], ["FREE_TIME", "Free time"], ["MEETING_POINT", "Meeting point"], ["GUIDE", "Guide information"], ["INFO", "Important information"], ["NOTE", "Notes"]];
-type Init = { name: string; description: string; bookingId: string | null; costPrice: number | null; marginPercent: number | null; content: ItineraryContent };
-type BookingOpt = { id: string; label: string; travelers: number; currency?: string };
+type Init = { name: string; description: string; bookingId: string | null; costPrice: number | null; marginPercent: number | null; showPrice?: boolean | null; content: ItineraryContent };
+type BookingOpt = { id: string; label: string; travelers: number; currency?: string; source?: string };
 const lines = (v: string) => v.split("\n").map((x) => x.trim()).filter(Boolean);
 const swap = <T,>(a: T[], i: number, j: number) => { if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
 const In = ({ label, value, onChange, ph, type = "text", cls = "" }: { label: string; value: string; onChange: (v: string) => void; ph?: string; type?: string; cls?: string }) => (
@@ -41,6 +42,12 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const travelers = bookings.find((b) => b.id === bookingId)?.travelers ?? 1;
   const totalCalc = unitCalc != null ? Math.round(unitCalc * travelers * 100) / 100 : null;
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: curr, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+  // "Show price to customer": staff's own choice for this itinerary (true / false), or null while it simply follows the order
+  // (off for an order prepaid through a marketplace such as Viator, on otherwise). Only the customer's copy changes; the price
+  // stays here, on the order and in Finance.
+  const [showChoice, setShowChoice] = useState<boolean | null>(initial.showPrice ?? null);
+  const orderSource = bookings.find((b) => b.id === bookingId)?.source ?? null; const market = prepaidVia(orderSource);
+  const showPrice = showPriceToCustomer(showChoice, orderSource);
   const [c, setC] = useState<ItineraryContent>(initial.content);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [tab, setTab] = useState<"content" | "days" | "price" | "booking">("content");
@@ -48,14 +55,14 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [dayOpen, setDayOpen] = useState<Record<string, boolean>>({});
   const [pending, start] = useTransition();
   // What is on screen vs. what was last saved, so the bar can say "Unsaved changes" and warn before the page is left.
-  const snap = JSON.stringify([name, desc, bookingId, cost, margin, curr, c]);
+  const snap = JSON.stringify([name, desc, bookingId, cost, margin, curr, c, showChoice]);
   const [savedSnap, setSavedSnap] = useState(snap); const dirty = snap !== savedSnap;
   useEffect(() => { if (!dirty) return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h); }, [dirty]);
   const upd = (fn: (n: ItineraryContent) => void) => setC((p) => { const n = structuredClone(p); fn(n); return n; });
   const updDay = (i: number, fn: (d: Day) => void) => upd((n) => fn(n.days[i]));
 
   async function save(force = false): Promise<boolean> {
-    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), currency: curr, force }));
+    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), currency: curr, force, showPrice: showChoice }));
     if (!r.ok && r.needsConfirm) { if (window.confirm(r.message)) return save(true); setMsg({ t: "Not saved — the order was left as it was.", err: true }); return false; }
     setMsg({ t: r.message, err: !r.ok }); if (r.ok) setSavedSnap(snap); return r.ok;
   }
@@ -193,21 +200,27 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
             <div><label className="label" htmlFor="ip-margin">Profit margin (% added on top of cost)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
             <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
           </div>
-          {bookingId ? (
+          {bookingId && market ? <p className="mt-3 text-xs text-ink/65">This order was paid through {market}, so its total stays as it was entered on the order. The cost and margin here are for your own records and are never applied to it.</p> : bookingId ? (
             <div className="mt-4 rounded-2xl bg-ink p-4 text-white">
               <div className="flex items-end justify-between gap-3"><div><p className="text-[13px] text-white/60">Order total</p><p className="font-display text-[30px] font-extrabold leading-none text-gold-500">{totalCalc != null ? fmt(totalCalc) : "–"}</p></div><p className="text-right text-[13.5px] text-white/70">{unitCalc != null ? fmt(unitCalc) : "–"} × {travelers} traveler{travelers === 1 ? "" : "s"}</p></div>
               {priced && <p className="mt-3 border-t border-white/10 pt-3 text-[13.5px] text-white/70">Your profit: <b className="text-white">{fmt(Math.round((unitCalc! - Number(cost)) * travelers * 100) / 100)}</b> ({fmt(Math.round((unitCalc! - Number(cost)) * 100) / 100)} per person)</p>}
               <p className="mt-2 text-[12.5px] text-white/50">Saving sets this as the order's total.</p>
             </div>
           ) : <p className="mt-3 text-xs text-ink/65">Fills in the price line on the PDF. Link this itinerary to an order in the Booking tab to also set its total automatically.</p>}
+          {!isTemplate && !showPrice && <p className="mt-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-[13.5px] font-semibold text-[#2A5C8A]">The customer does not see this price{market ? `: this order was paid through ${market}` : ""}. It is for your own records. You can change that in the Send step.</p>}
         </Panel>
       </div>
 
       <div hidden={tab !== "booking"} className="space-y-5">
         {!isTemplate && <section className="card p-4">
           <h2 className="font-display text-xl font-bold">Send to the customer</h2>
-          {bookingId && !priced && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><p className="text-[14px] text-ink/80">This order has no price yet. Set the cost and profit margin first.</p><button type="button" className="btn btn-dark !min-h-[40px] !py-2" onClick={() => go("price")}>Set the price</button></div>}
+          {bookingId && !priced && !market && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><p className="text-[14px] text-ink/80">This order has no price yet. Set the cost and profit margin first.</p><button type="button" className="btn btn-dark !min-h-[40px] !py-2" onClick={() => go("price")}>Set the price</button></div>}
           <p className="mt-2 text-sm text-ink/65">Each PDF you create is saved with its own number{bookingId ? " on the order" : ""}, so you can always see what was sent.</p>
+          <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-ink/15 p-3" htmlFor="ip-showprice">
+            <input id="ip-showprice" type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-black" checked={showPrice} onChange={(e) => setShowChoice(e.target.checked)} />
+            <span className="min-w-0"><span className="block text-[14.5px] font-semibold">Show price to customer</span>
+              <span className="mt-0.5 block text-[13px] text-ink/65">{showPrice ? "The PDF, its link and the email show the price, the payment terms and the pay button." : "The customer's PDF, its link and the email carry no price, no payment terms and no pay button. You still see the price here and on the order."}{market && showChoice === null ? ` Off because this order was paid through ${market}.` : ""}</span></span>
+          </label>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             <button type="button" className="btn btn-outline" disabled={pending} onClick={preview}>Preview PDF</button>
             <button type="button" className="btn btn-dark" disabled={pending} onClick={() => generate(false)}>Create PDF</button>

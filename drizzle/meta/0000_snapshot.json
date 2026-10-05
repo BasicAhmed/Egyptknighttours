@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8b0fa63f-2f81-4722-ae52-1283b1b2701e",
+  "id": "cdcd94fd-01ec-4ebc-bd96-eeeb12b0a080",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "addons": {
@@ -581,6 +581,34 @@
         "cost_total": {
           "name": "cost_total",
           "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "meeting_point": {
+          "name": "meeting_point",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "pickup_info": {
+          "name": "pickup_info",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "guide_collect_amount": {
+          "name": "guide_collect_amount",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "guide_collect_note": {
+          "name": "guide_collect_note",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -2073,6 +2101,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'pdf'"
+        },
+        "show_price": {
+          "name": "show_price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

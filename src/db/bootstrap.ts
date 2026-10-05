@@ -25,6 +25,10 @@ const COLUMNS = [
   { table: "itineraries", name: "currency", ddl: "text" },
   { table: "tours", name: "duration_nights", ddl: "integer" },
   { table: "customer_rewards", name: "status", ddl: "text NOT NULL DEFAULT 'ACTIVE'" },
+  // Per-order meeting point and pickup details, what the guide collects on the day, and the price switch on an itinerary. All optional.
+  { table: "bookings", name: "meeting_point", ddl: "text" }, { table: "bookings", name: "pickup_info", ddl: "text" },
+  { table: "bookings", name: "guide_collect_amount", ddl: "real" }, { table: "bookings", name: "guide_collect_note", ddl: "text" },
+  { table: "itineraries", name: "show_price", ddl: "integer" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
 export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;

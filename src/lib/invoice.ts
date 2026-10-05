@@ -5,6 +5,7 @@ import { linkOrigin } from "./origin";
 import { getSettings, companyFrom } from "./settings";
 import { signRef } from "./booking-token";
 import type { InvoiceData, PayMethod } from "@/pdf/types";
+import { prepaidVia, resolvePickup, styleLabel } from "./order-rules";
 
 export type InvoiceOptions = { currency?: string; dueNow?: number; deadline?: string; extras?: { label: string; amount: number }[]; notes?: string };
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -53,10 +54,10 @@ export async function buildInvoiceData(bookingId: string, opts: InvoiceOptions =
   return {
     number: `INV-${b.ref}-${version}`, issuedAt: today, currency, ref: b.ref,
     customer: { name: b.guestName || c.name, email: c.email ?? "", phone: c.whatsapp || c.phone || "", country: c.country || "" },
-    trip: { title: b.titleOverride || tour.title, destination: tour.slug === "custom-experience" ? "" : dest.name, date: b.travelDate, travelers, style: b.isPrivate ? "Private" : "Shared", pickup: [b.hotel, b.pickupLocation].filter(Boolean).join(" · "), includes: parseJson<string[]>(tour.included, []) },
+    trip: { title: b.titleOverride || tour.title, destination: tour.slug === "custom-experience" ? "" : dest.name, date: b.travelDate, travelers, style: styleLabel(b.isPrivate), pickup: resolvePickup(b, tour).summary, includes: parseJson<string[]>(tour.included, []) },
     lines: [{ label: `${b.titleOverride || tour.title} (${travelers})`, amount: tourAmount }, ...addonLines], subtotal: r2(b.subtotal), discount: r2(b.discount), extras,
     total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: linkMethod?.paymentUrl ?? "", trackUrl: `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`,
     terms: { payment: list("invoice.paymentTerms"), documents: list("invoice.documents"), cancellation: list("invoice.cancellation"), note: g["invoice.note"] },
-    company: companyFrom(g), notes: opts.notes ?? "",
+    company: companyFrom(g), notes: opts.notes ?? "", ...(prepaidVia(b.source) ? { prepaidVia: prepaidVia(b.source) } : {}),
   };
 }

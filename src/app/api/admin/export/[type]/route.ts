@@ -15,7 +15,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ type: stri
   let body = "";
   if (type === "orders") {
     const r = await db.select({ b: s.bookings, tour: s.tours.title, c: s.customers }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt));
-    body = csv(["Booking ID", "Status", "Created", "Customer", "Email", "WhatsApp", "Nationality", "Experience", "Travel date", "Adults", "Children", "Infants", "Total", "Deposit", "Currency", "Hotel", "Source"], r.map(({ b, tour, c }) => [b.ref, b.status, b.createdAt, c.name, c.email, c.whatsapp, c.nationality, b.titleOverride || tour, b.travelDate, b.adults, b.children, b.infants, b.total, b.deposit, b.currency, b.hotel, b.source]));
+    body = csv(["Booking ID", "Status", "Created", "Customer", "Email", "WhatsApp", "Nationality", "Experience", "Travel date", "Adults", "Children", "Infants", "Total", "Deposit", "Currency", "Hotel", "Source", "Style"], r.map(({ b, tour, c }) => [b.ref, b.status, b.createdAt, c.name, c.email, c.whatsapp, c.nationality, b.titleOverride || tour, b.travelDate, b.adults, b.children, b.infants, b.total, b.deposit, b.currency, b.hotel, b.source, b.isPrivate ? "Private" : "Shared"]));
   } else if (type === "customers") {
     const r = await db.select().from(s.customers).orderBy(desc(s.customers.createdAt));
     body = csv(["Name", "Email", "WhatsApp", "Phone", "Country", "Nationality", "Created"], r.map((c) => [c.name, c.email, c.whatsapp, c.phone, c.country, c.nationality, c.createdAt]));

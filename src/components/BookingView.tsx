@@ -5,6 +5,7 @@ import PrintButton from "./PrintButton";
 import WhatsAppButton from "./WhatsAppButton";
 import { money, waLink } from "@/lib/format";
 import { MILESTONES, currentMilestone, type LoadedBooking } from "@/lib/booking-view";
+import { prepaidVia, resolvePickup, styleLabel } from "@/lib/order-rules";
 
 const nice = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const short = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -28,6 +29,9 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
   const first = (b.guestName || c.name).split(" ")[0]; // this order's own guest name, so an edit in the admin shows here at once
   const when = (types: readonly string[]) => { const e = data.events.find((x) => types.includes(x.type)); return e ? short(e.createdAt) : null; };
   const wa = waLink(`Hi Egypt Knight, my booking reference is ${b.ref}${mode === "track" ? "" : ""}. `);
+  // Pickup and meeting point as this order has them (its own text, else the tour's). Paid through a marketplace such as Viator:
+  // the customer paid there, so this page shows no amounts and never asks for money.
+  const pickup = resolvePickup(b, tour); const market = prepaidVia(b.source);
   const people = `${b.adults} adult${b.adults > 1 ? "s" : ""}${b.children ? `, ${b.children} child${b.children > 1 ? "ren" : ""}` : ""}${b.infants ? `, ${b.infants} infant${b.infants > 1 ? "s" : ""}` : ""}`;
   return (
     <div className="container-x max-w-4xl py-10 print:py-0">
@@ -60,12 +64,16 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
           <div className="flex gap-4"><SiteImage src={tour.imageUrl} alt="" destination={dest.slug} className="relative h-24 w-32 shrink-0 rounded-xl" />
             <div>{custom || tour.status !== "PUBLISHED" ? <p className="font-display text-xl font-bold">{b.titleOverride || tour.title}</p> : <Link href={`/tours/${tour.slug}`} className="font-display text-xl font-bold hover:underline">{b.titleOverride || tour.title}</Link>}{!custom && <p className="text-sm text-ink/65">{dest.name}</p>}</div></div>
           <dl className="mt-5 space-y-3 text-sm">
-            {([["Date", nice(b.travelDate)], ["Travelers", people], ["Style", b.isPrivate ? "Private" : "Shared"], ["Pickup", b.hotel ? `${b.hotel}${b.pickupLocation ? ` (${b.pickupLocation})` : ""}` : "To be confirmed"], ["Meeting point", tour.meetingPoint || "We'll message you"], ["Extras", data.addons.length ? data.addons.map((a) => a.name).join(", ") : "None"]] as [string, string][]).map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-6"><dt className="text-ink/65">{k}</dt><dd className="text-right font-medium">{v}</dd></div>))}
+            {([["Date", nice(b.travelDate)], ["Travelers", people], ["Style", styleLabel(b.isPrivate)], ["Pickup", pickup.summary || "To be confirmed"], ["Meeting point", pickup.meetingPoint || "We'll message you"], ["Extras", data.addons.length ? data.addons.map((a) => a.name).join(", ") : "None"]] as [string, string][]).map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-6"><dt className="shrink-0 text-ink/65">{k}</dt><dd className="min-w-0 whitespace-pre-line break-words text-right font-medium">{v}</dd></div>))}
             {b.specialRequests && <div className="flex justify-between gap-6"><dt className="text-ink/65">Requests</dt><dd className="max-w-[60%] whitespace-pre-line text-right font-medium">{b.specialRequests}</dd></div>}
           </dl>
         </section>
-        <section className="rounded-2xl border border-ink/15 p-5 text-sm">
+        {market ? <section className="rounded-2xl border border-ink/15 p-5 text-sm" data-prepaid={market}>
+          <h2 className="font-display text-lg font-bold">Payment</h2>
+          <p className="mt-3 font-semibold">Paid in full through {market}.</p>
+          <p className="mt-1 text-ink/65">There is nothing more to pay us for this booking. For your receipt or any change to your payment, please use your {market} account.</p>
+        </section> : <section className="rounded-2xl border border-ink/15 p-5 text-sm">
           <h2 className="font-display text-lg font-bold">Payment</h2>
           <dl className="mt-3 space-y-2">
             <div className="flex justify-between"><dt className="text-ink/65">Subtotal</dt><dd>{money(b.subtotal, b.currency)}</dd></div>
@@ -75,7 +83,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
             <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due, b.currency)}</dd></div>
           </dl>
           <p className="mt-3 text-xs text-ink/65">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit, b.currency)}).`} We'll send a secure payment link.</p>
-        </section>
+        </section>}
       </div>
 
       {data.docs.length > 0 && <section className="mt-6 rounded-2xl border border-ink/15 p-5 print:hidden"><h2 className="font-display text-lg font-bold">Your documents</h2>

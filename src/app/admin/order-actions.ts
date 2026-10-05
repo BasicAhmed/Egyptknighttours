@@ -12,6 +12,8 @@ import { newBookingRef } from "@/lib/booking";
 import { syncTravelers } from "@/lib/travelers";
 import { encryptText } from "@/lib/crypto";
 import { BOOKING_STATUS } from "@/lib/validation";
+import { changeOrderStyle } from "@/lib/order-style";
+import { parsePickupTime, PICKUP_TIME_HELP, pickupOverride, parseCollect, collectLine } from "@/lib/order-rules";
 
 type R = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
@@ -88,6 +90,16 @@ export async function orderUpdate(id: string, input: Record<string, unknown>): P
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Order details edited` });
   await audit(u.uid, "UPDATE", "booking", id); revalidatePath("/admin");
   return done(id, "Order updated");
+}
+
+// Private or shared, changed after the order exists. The rules (does the tour offer that style, does the price move with it)
+// live in planStyleChange; the write, the history line and the status follow-up are in changeOrderStyle.
+export async function orderSetStyle(id: string, style: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  if (style !== "PRIVATE" && style !== "SHARED") return { ok: false, message: "Choose Private or Shared." };
+  const r = await changeOrderStyle(id, style === "PRIVATE", { name: u.name || u.email });
+  if (r.changed) { await audit(u.uid, "STYLE", "booking", id); revalidatePath("/admin"); }
+  return done(id, r.message, r.ok, r.warn);
 }
 
 // No price is entered when creating an order. Every order's price comes from its itinerary's cost and profit margin, entered afterwards — so an
@@ -209,14 +221,43 @@ export async function orderDeleteTraveler(id: string, travelerId: string): Promi
   await audit(u.uid, "DELETE", "traveler", travelerId); return done(id, "Traveler removed (and their uploaded files)");
 }
 export async function orderSyncTravelers(id: string): Promise<R> { await requireStaff("bookings"); await syncTravelers(id); return done(id, ""); }
-const opsSchema = z.object({ guideNotes: z.string().trim().max(1000), preferredLanguage: z.string().trim().max(40), guideId: z.string().trim().max(60), driver: z.string().trim().max(120), vehicle: z.string().trim().max(120), flightArrival: z.string().trim().max(160), flightDeparture: z.string().trim().max(160), roomType: z.string().trim().max(80), pickupTime: z.string().trim().max(40), occasion: z.string().trim().max(60), emergencyContact: z.string().trim().max(160), visaStatus: z.string().trim().max(40), dietary: z.string().trim().max(300), accessibility: z.string().trim().max(300), hotel: z.string().trim().max(200), requests: z.string().trim().max(1000) });
+const opsSchema = z.object({ guideNotes: z.string().trim().max(1000), preferredLanguage: z.string().trim().max(40), guideId: z.string().trim().max(60), driver: z.string().trim().max(120), vehicle: z.string().trim().max(120), flightArrival: z.string().trim().max(160), flightDeparture: z.string().trim().max(160), roomType: z.string().trim().max(80), pickupTime: z.string().trim().max(40), occasion: z.string().trim().max(60), emergencyContact: z.string().trim().max(160), visaStatus: z.string().trim().max(40), dietary: z.string().trim().max(300), accessibility: z.string().trim().max(300), hotel: z.string().trim().max(200), requests: z.string().trim().max(1000),
+  // Pickup notes, this order's own meeting point and pickup details (null = use the tour's text), and what the guide collects on the
+  // day. Optional, so a window that was open before these fields existed still saves, leaving them untouched.
+  pickupNotes: z.string().trim().max(300).optional(), meetingPoint: z.string().max(600, "Keep the meeting point under 600 letters").nullable().optional(), pickupInfo: z.string().max(600, "Keep the pickup details under 600 letters").nullable().optional(),
+  collectAmount: z.union([z.string().max(20), z.number()]).optional(), collectNote: z.string().max(400).optional() });
 export async function orderSaveOps(id: string, input: Record<string, unknown>): Promise<R> {
   const u = await requireStaff("bookings");
   const p = opsSchema.safeParse(input); if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join(", ") };
   const d = p.data;
   if (d.guideId) { const [g] = await db.select({ id: s.tourGuides.id }).from(s.tourGuides).where(eq(s.tourGuides.id, d.guideId)); if (!g) return { ok: false, message: "That guide no longer exists" }; }
-  const [before] = await db.select({ guideId: s.bookings.guideId }).from(s.bookings).where(eq(s.bookings.id, id));
-  await db.update(s.bookings).set({ guideNotes: d.guideNotes || null, preferredLanguage: d.preferredLanguage || null, guideId: d.guideId || null, driver: d.driver || null, vehicle: d.vehicle || null, flightArrival: d.flightArrival || null, flightDeparture: d.flightDeparture || null, roomType: d.roomType || null, pickupTime: d.pickupTime || null, occasion: d.occasion || null, emergencyContact: d.emergencyContact || null, visaStatus: d.visaStatus || null, dietary: d.dietary || null, accessibility: d.accessibility || null, hotel: d.hotel || null, specialRequests: d.requests || null }).where(eq(s.bookings.id, id));
+  const [row] = await db.select({ b: s.bookings, meetingPoint: s.tours.meetingPoint, pickupInfo: s.tours.pickupInfo }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).where(eq(s.bookings.id, id));
+  if (!row) return { ok: false, message: "Order not found" };
+  const before = row.b;
+  // A pickup time is a time (08:00) or a window (08:00-08:30). One typed before this rule existed is kept until someone changes it.
+  const time = parsePickupTime(d.pickupTime);
+  if (!time.ok && d.pickupTime !== (before.pickupTime ?? "")) return { ok: false, message: PICKUP_TIME_HELP };
+  d.pickupTime = time.ok ? time.value : d.pickupTime;
+  const collect = d.collectAmount === undefined && d.collectNote === undefined ? null : parseCollect(d.collectAmount ?? before.guideCollectAmount ?? "", d.collectNote ?? before.guideCollectNote ?? "");
+  if (collect && !collect.ok) return { ok: false, message: collect.message };
+  const pickup = {
+    ...(d.pickupNotes !== undefined ? { pickupLocation: d.pickupNotes || null } : {}),
+    ...(d.meetingPoint !== undefined ? { meetingPoint: pickupOverride(d.meetingPoint, row.meetingPoint) } : {}),
+    ...(d.pickupInfo !== undefined ? { pickupInfo: pickupOverride(d.pickupInfo, row.pickupInfo) } : {}),
+    ...(collect?.ok ? { guideCollectAmount: collect.amount, guideCollectNote: collect.note || null } : {}),
+  };
+  // What changed about the pickup and the collection, for the order's history.
+  const was = (k: "hotel" | "pickupLocation" | "pickupTime" | "meetingPoint" | "pickupInfo") => before[k] ?? null;
+  const changes: string[] = [];
+  if ((d.hotel || null) !== was("hotel")) changes.push(d.hotel ? `place: ${d.hotel}` : "place cleared");
+  if ((d.pickupTime || null) !== was("pickupTime")) changes.push(d.pickupTime ? `time: ${d.pickupTime}` : "time cleared");
+  if ("pickupLocation" in pickup && pickup.pickupLocation !== was("pickupLocation")) changes.push("pickup notes");
+  if ("meetingPoint" in pickup && pickup.meetingPoint !== was("meetingPoint")) changes.push(pickup.meetingPoint === null ? "meeting point back to the tour's own" : "meeting point set for this order");
+  if ("pickupInfo" in pickup && pickup.pickupInfo !== was("pickupInfo")) changes.push(pickup.pickupInfo === null ? "pickup details back to the tour's own" : "pickup details set for this order");
+  const collectChanged = collect?.ok && (collect.amount !== (before.guideCollectAmount ?? null) || (collect.note || null) !== (before.guideCollectNote ?? null));
+  await db.update(s.bookings).set({ ...pickup, guideNotes: d.guideNotes || null, preferredLanguage: d.preferredLanguage || null, guideId: d.guideId || null, driver: d.driver || null, vehicle: d.vehicle || null, flightArrival: d.flightArrival || null, flightDeparture: d.flightDeparture || null, roomType: d.roomType || null, pickupTime: d.pickupTime || null, occasion: d.occasion || null, emergencyContact: d.emergencyContact || null, visaStatus: d.visaStatus || null, dietary: d.dietary || null, accessibility: d.accessibility || null, hotel: d.hotel || null, specialRequests: d.requests || null }).where(eq(s.bookings.id, id));
   if ((before?.guideId ?? "") !== d.guideId) { const [g] = d.guideId ? await db.select().from(s.tourGuides).where(eq(s.tourGuides.id, d.guideId)) : []; await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${g ? `Guide assigned: ${g.name}` : "Guide unassigned"}` }); }
+  if (changes.length) await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Pickup updated (${changes.join(", ")})`.slice(0, 600) });
+  if (collectChanged && collect?.ok) { const line = collectLine(collect.amount, collect.note, before.currency); await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${line ? `Guide collects on the day: ${line}` : "Guide no longer collects anything on the day"}` }); }
   await audit(u.uid, "UPDATE", "booking_ops", id); return done(id, "Operations details saved");
 }

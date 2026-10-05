@@ -7,8 +7,9 @@ import CopyButton from "./CopyButton";
 import Modal from "./Modal";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
-import { orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
+import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
+import { orderPickup, styleLabel } from "@/lib/order-rules";
 
 const cache = new Map<string, Order>();
 async function fetchOrder(id: string): Promise<Order> { const r = await fetch(`/api/admin/orders/${id}`, { cache: "no-store" }); if (!r.ok) throw new Error("load"); const o = (await r.json()) as Order; cache.set(id, o); return o; }
@@ -94,8 +95,8 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
           <Card title="Customer" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setCustOpen(!custOpen)}>{custOpen ? "Close" : "Edit"}</button>}><Row k="Name" v={o.customer.name} /><Row k="Email" v={o.customer.email || "–"} /><Row k="WhatsApp" v={o.customer.whatsapp || "–"} />{o.customer.phone && o.customer.phone !== o.customer.whatsapp && <Row k="Phone" v={o.customer.phone} />}<Row k="Nationality" v={o.customer.nationality || o.travelers.find((t) => t.nationality)?.nationality || "–"} /><Row k="Country" v={o.customer.country || "–"} /></Card>
           <Card title="Trip" action={<button className="text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setEditOpen(!editOpen)}>{editOpen ? "Close" : "Edit"}</button>}>
             <Row k="Source" v={SOURCE_LABEL[o.source] ?? o.source} /><Row k="Experience" v={o.title} /><Row k="Date" v={<>{shortDate(o.travelDate)}{daysUntil(o.travelDate) >= 0 && <span className="ml-1 text-ink/65">(in {daysUntil(o.travelDate)}d)</span>}</>} />
-            <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><Row k="Style" v={o.isPrivate ? "Private" : "Shared"} />
-            <Row k="Pickup" v={o.hotel || "Not given"} />{o.pickupNotes && <Row k="Pickup notes" v={o.pickupNotes} />}{o.requests && <Row k="Requests" v={<span className="whitespace-pre-line">{o.requests}</span>} />}
+            <Row k="Travelers" v={`${o.adults} adult${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} child` : ""}${o.infants ? `, ${o.infants} infant` : ""}`} /><StyleRow o={o} busy={busy} onChange={(to) => run(() => orderSetStyle(o.id, to))} />
+            <PickupRows o={o} />{o.requests && <Row k="Requests" v={<span className="whitespace-pre-line">{o.requests}</span>} />}
             {o.addons.length > 0 && <Row k="Add-ons" v={o.addons.map((a) => a.name).join(", ")} />}
           </Card>
         </div>
@@ -107,10 +108,10 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
           <select id="st" className="input !w-auto !py-2" value={STATUS_OPTIONS.includes(o.status) ? o.status : "PENDING"} disabled={busy} onChange={(e) => run(() => orderSetStatus(o.id, e.target.value))}>{STATUS_OPTIONS.map((x) => <option key={x} value={x}>{STATUS_LABEL[x]}</option>)}</select></div>
         </div>}
         <div hidden={tab !== "travelers"} onInput={() => setDirty(true)}><TravelersPanel o={o} busy={busy} run={run} refresh={refresh} /></div>
-        <div hidden={tab !== "ops"} onInput={() => setDirty(true)}><OpsPanel key={JSON.stringify(o.ops) + o.dietary + o.hotel} o={o} busy={busy} run={run} /></div>
+        <div hidden={tab !== "ops"} onInput={() => setDirty(true)}><OpsPanel key={JSON.stringify([o.ops, o.pickup, o.pickupNotes, o.dietary, o.hotel])} o={o} busy={busy} run={run} /></div>
         {tab === "money" && <div className="space-y-4">
         <div ref={refs.payment}><Card title="Payment" id="payment">
-          {o.source === "VIATOR" && <div className="mb-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-sm font-semibold text-[#2A5C8A]">Paid in full through Viator — no deposit to track here. Note any extra services to collect on the Notes tab instead.</div>}
+          {o.prepaidVia && <div className="mb-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-sm font-semibold text-[#2A5C8A]">Paid in full through {o.prepaidVia} — no deposit to track here. The customer's itinerary and tracking page show no price. If the guide should collect something on the day, enter it under Operations.</div>}
           {canFinance && (o.total > 0 ? (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl bg-ink/5 p-3 text-sm">
               {o.costTotal != null ? <>
@@ -129,6 +130,7 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
         </Card></div>
 
         <div ref={refs.invoice}><Card title="Invoice" id="invoice" action={<button className={Small} onClick={() => setInvOpen(!invOpen)}>{invOpen ? "Close" : o.documents.some((d) => d.kind === "INVOICE") ? "New version" : "+ Create invoice"}</button>}>
+          {o.prepaidVia && <p className="mb-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-[13.5px] text-[#2A5C8A]">This order was paid through {o.prepaidVia}. An invoice shows the customer the amounts recorded here, so create one only if you need to (for example to bill an extra).</p>}
           {invOpen && <InvoiceForm o={o} busy={busy} onCreate={(v) => run(() => orderCreateInvoice(o.id, v)).then((r) => { if (r?.ok) setInvOpen(false); })} />}
           <DocList o={o} kind="INVOICE" run={run} busy={busy} />
         </Card></div>
@@ -245,6 +247,26 @@ function CustomerForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v
     </form>
   );
 }
+// Private or shared, with what the change would do said before the button is tapped (worked out on the server: see order-style.ts).
+function StyleRow({ o, busy, onChange }: { o: Order; busy: boolean; onChange: (to: "PRIVATE" | "SHARED") => Promise<Res | null> }) {
+  const [open, setOpen] = useState(false); const sw = o.styleSwitch; const to = styleLabel(sw.toPrivate);
+  return (
+    <div className="py-1 text-sm" data-style={styleLabel(o.isPrivate)}>
+      <div className="flex justify-between gap-4"><span className="text-ink/65">Style</span><span className="text-right font-medium">{styleLabel(o.isPrivate)}<button type="button" aria-expanded={open} className="ml-2 font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setOpen(!open)}>{open ? "Close" : "Change"}</button></span></div>
+      {open && <div className="mt-2 rounded-xl bg-gold-500/15 p-3 text-left">
+        {sw.ok ? <>
+          <p className="text-[13.5px] text-ink/80">{sw.newTotal != null ? <>Changing to {to.toLowerCase()} changes the total from <b>{money(o.total, o.currency)}</b> to <b>{money(sw.newTotal, o.currency)}</b>. {sw.note}{o.paid > 0 ? ` ${money(o.paid, o.currency)} is already paid, and the status follows.` : ""}</> : sw.note}</p>
+          <button type="button" disabled={busy} className="btn btn-dark mt-2 !min-h-[44px] w-full !py-2 sm:w-auto" onClick={() => void onChange(sw.toPrivate ? "PRIVATE" : "SHARED").then((r) => { if (r?.ok) setOpen(false); })}>Change to {to}</button>
+        </> : <p role="note" className="text-[13.5px] font-semibold text-[#7A4B00]">{sw.why}</p>}
+      </div>}
+    </div>
+  );
+}
+// Pickup as everything else shows it: the order's own text where it has one, else the tour's.
+function PickupRows({ o }: { o: Order }) {
+  const p = orderPickup(o);
+  return <><Row k="Pickup" v={p.place || "Not given"} />{p.time && <Row k="Pickup time" v={p.time} />}{p.notes && <Row k="Pickup notes" v={p.notes} />}{p.meetingPoint && <Row k="Meeting point" v={<span className="whitespace-pre-line">{p.meetingPoint}</span>} />}</>;
+}
 function NoteForm({ busy, onAdd }: { busy: boolean; onAdd: (t: string) => void }) {
   const [t, setT] = useState("");
   return <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (t.trim()) { onAdd(t); setT(""); } }}><input aria-label="Add a note" className="input !py-2" value={t} onChange={(e) => setT(e.target.value)} placeholder="Add a note, e.g. customer will pay Friday" /><button disabled={busy || !t.trim()} className="btn btn-dark !min-h-[44px]">Add</button></form>;
@@ -267,7 +289,7 @@ function EditForm({ o, busy, onSave }: { o: Order; busy: boolean; onSave: (v: Re
 type Step = { label: string; why: string; tab?: "money" | "travelers" | "ops"; focus?: Focus; href?: string; complete?: boolean };
 // The order's journey in five steps, with the one thing to do next. Staff never have to work out where an order stands.
 function Flow({ o, busy, onStep }: { o: Order; busy: boolean; onStep: (s: Step) => void }) {
-  const st = stageOf(o.status); const viator = o.source === "VIATOR";
+  const st = stageOf(o.status); const viator = !!o.prepaidVia;
   const inv = o.documents.filter((d) => d.kind === "INVOICE"); const itinDocs = o.documents.filter((d) => d.kind === "ITINERARY");
   const priced = o.total > 0 || viator; const invoiced = viator || inv.length > 0; const invSent = viator || inv.some((d) => d.sentAt);
   const paid = viator || (o.total > 0 && o.balance <= 0); const itinSent = itinDocs.some((d) => d.sentAt); const done = st === "DONE";

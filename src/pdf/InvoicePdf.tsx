@@ -40,6 +40,8 @@ function Method({ m }: { m: PayMethod }) {
 export default function InvoicePdf({ d }: { d: InvoiceData }) {
   const first = d.customer.name.split(" ")[0];
   const settled = d.balance <= 0;
+  // Collected in full by a marketplace (Viator): this invoice is a confirmation, so it gives no bank details and no payment terms.
+  const viaMarket = settled && !!d.prepaidVia;
   const cta = settled ? d.trackUrl : d.ctaUrl || "#howtopay";
   const ctaText = settled ? "VIEW YOUR BOOKING" : d.ctaUrl ? "COMPLETE YOUR PAYMENT" : "HOW TO PAY";
   return (
@@ -60,7 +62,7 @@ export default function InvoicePdf({ d }: { d: InvoiceData }) {
           <Text style={{ marginTop: 6, fontSize: 10.5, lineHeight: 1.45 }}>{settled ? `Thank you, ${first}. Everything is paid and organised. We can't wait to welcome you.` : `Hi ${first}, one quick step and your trip is locked in. Here's everything you need to complete your payment.`}</Text>
           <View style={{ marginTop: 14, backgroundColor: C.white, borderRadius: 14, padding: 14, flexDirection: "row" }}>
             <View style={{ flex: 1.3 }}><Text style={s.th}>{settled ? "Total paid" : "Total due now"}</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 30, marginTop: 2, letterSpacing: -0.8 }}>{money(settled ? d.paid : d.dueNow, d.currency)}</Text></View>
-            <View style={{ flex: 1 }}><Text style={s.th}>{settled ? "Status" : "Pay by"}</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 17, marginTop: 8 }}>{settled ? "Paid" : dLong(d.deadline)}</Text>{!settled && d.deadlineNote ? <Text style={{ fontSize: 7.5, color: C.muted, marginTop: 2 }}>{d.deadlineNote}</Text> : null}</View>
+            <View style={{ flex: 1 }}><Text style={s.th}>{settled ? "Status" : "Pay by"}</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 17, marginTop: 8 }}>{viaMarket ? `Paid via ${d.prepaidVia}` : settled ? "Paid" : dLong(d.deadline)}</Text>{!settled && d.deadlineNote ? <Text style={{ fontSize: 7.5, color: C.muted, marginTop: 2 }}>{d.deadlineNote}</Text> : null}</View>
             <View style={{ flex: 1 }}><Text style={s.th}>Booking ID</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 17, marginTop: 8 }}>{d.ref}</Text></View>
           </View>
           <Link src={cta} style={{ textDecoration: "none" }}>
@@ -99,7 +101,7 @@ export default function InvoicePdf({ d }: { d: InvoiceData }) {
         </View>
         {d.notes ? <Text style={{ marginTop: 8, fontSize: 8.5, color: C.muted, lineHeight: 1.5 }}>{d.notes}</Text> : null}
 
-        <View break id="howtopay" style={{ paddingTop: 2 }}>
+        {!viaMarket && <View break id="howtopay" style={{ paddingTop: 2 }}>
           <Text style={s.eyebrow}>Next step</Text>
           <Text style={[s.h2, { marginTop: 3 }]}>How to pay</Text>
           <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
@@ -113,10 +115,10 @@ export default function InvoicePdf({ d }: { d: InvoiceData }) {
             {d.methods.length ? d.methods.map((m) => <Method key={m.id} m={m} />) : <View style={[s.card, { backgroundColor: C.cream }]}><Text style={{ fontWeight: 700 }}>Payment details</Text><Text style={{ marginTop: 3, color: C.muted }}>Message us on WhatsApp{d.company.whatsapp ? ` (${d.company.whatsapp})` : ""} and we'll send your payment details right away.</Text></View>}
           </View>
           {d.terms.note ? <View style={{ flexDirection: "row", backgroundColor: C.cream, borderRadius: 10, padding: 10, marginTop: 2 }}><View style={{ marginRight: 7, marginTop: 1 }}><Icon name="info" size={12} color={C.gold700} /></View><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.5, fontWeight: 600 }}>{d.terms.note}</Text></View> : null}
-        </View>
+        </View>}
 
         <View style={[s.row, { marginTop: 16, gap: 12 }]}>
-          {d.terms.payment.length > 0 && <View wrap={false} style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>Payment terms</Text>{d.terms.payment.map((t, i) => <View key={i} style={{ flexDirection: "row", marginTop: 5 }}><Text style={{ color: C.gold700, marginRight: 5 }}>•</Text><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.45 }}>{t}</Text></View>)}</View>}
+          {!viaMarket && d.terms.payment.length > 0 && <View wrap={false} style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>Payment terms</Text>{d.terms.payment.map((t, i) => <View key={i} style={{ flexDirection: "row", marginTop: 5 }}><Text style={{ color: C.gold700, marginRight: 5 }}>•</Text><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.45 }}>{t}</Text></View>)}</View>}
           {d.terms.documents.length > 0 && <View wrap={false} style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>To finalise, please send</Text>{d.terms.documents.map((t, i) => <View key={i} style={{ flexDirection: "row", marginTop: 5 }}><View style={{ marginRight: 5, marginTop: 1 }}><Icon name="check" size={9} color={C.gold700} /></View><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.45 }}>{t}</Text></View>)}</View>}
         </View>
         {d.terms.cancellation.length > 0 && <View wrap={false} style={[s.card, { marginTop: 12 }]}><Text style={s.eyebrow}>Cancellation policy</Text>{d.terms.cancellation.map((t, i) => <View key={i} style={{ flexDirection: "row", marginTop: 5 }}><Text style={{ color: C.gold700, marginRight: 5 }}>•</Text><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.45 }}>{t}</Text></View>)}</View>}

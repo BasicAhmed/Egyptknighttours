@@ -104,6 +104,10 @@ export const bookings = sqliteTable("bookings", {
   occasion: text("occasion"), emergencyContact: text("emergency_contact"), visaStatus: text("visa_status"), guideNotes: text("guide_notes"),
   // Snapshot of the tour's cost for this booking's people count, taken at booking time so later cost changes never rewrite past profit. Null when the tour had no cost set, or for a manually-priced custom order.
   costTotal: real("cost_total"),
+  // This order's own meeting point and pickup details. Null = use the tour's text (see resolvePickup in lib/order-rules.ts).
+  meetingPoint: text("meeting_point"), pickupInfo: text("pickup_info"),
+  // What the office asks the guide to collect on the day. The only money a guide sheet ever shows, and only when filled in.
+  guideCollectAmount: real("guide_collect_amount"), guideCollectNote: text("guide_collect_note"),
   createdAt: createdAt(),
 }, (t) => [index("bookings_customer_idx").on(t.customerId), index("bookings_tour_idx").on(t.tourId), index("bookings_status_idx").on(t.status), index("bookings_travel_idx").on(t.travelDate), index("bookings_created_idx").on(t.createdAt)]);
 
@@ -139,6 +143,9 @@ export const itineraries = sqliteTable("itineraries", {
   currency: text("currency"),
   // What this itinerary was made for. Only a "tour" one can ever be published as a website tour — this is what makes that an explicit choice, not an accident.
   intent: text("intent").notNull().default("pdf"), // customer | tour | pdf
+  // Whether the customer's copy (PDF, link, email) carries the price. Null = follow the order: hidden when it was prepaid
+  // through a marketplace such as Viator, shown otherwise (see showPriceToCustomer in lib/order-rules.ts).
+  showPrice: integer("show_price", { mode: "boolean" }),
   createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (t) => [index("itineraries_template_idx").on(t.isTemplate), index("itineraries_booking_idx").on(t.bookingId)]);
 

@@ -94,8 +94,20 @@ export function TravelersPanel({ o, busy, run, refresh }: { o: Order; busy: bool
   );
 }
 
+// A text that starts as the tour's own (meeting point, pickup details) and can be replaced for this one order.
+// null = the tour's text is used, and a later change to the tour still reaches this order.
+function TourText({ id, label, value, def, onChange }: { id: string; label: string; value: string | null; def: string; onChange: (v: string | null) => void }) {
+  const own = value !== null && value.trim() !== def.trim();
+  return (
+    <div className="sm:col-span-2" data-own={own ? "1" : "0"}>
+      <div className="flex items-end justify-between gap-3"><label className="label" htmlFor={id}>{label}</label>{own && <button type="button" className="mb-1.5 shrink-0 text-[13px] font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => onChange(null)}>Reset to tour default</button>}</div>
+      <textarea id={id} className="input !py-2" rows={3} maxLength={600} value={value ?? def} onChange={(e) => onChange(e.target.value === def ? null : e.target.value)} />
+      <p className="mt-1 text-xs text-ink/65">{own ? (value!.trim() ? "Changed for this order only." : "Left empty for this order: nothing is shown.") : def ? "From the tour. Edit it here to change it for this order only." : "The tour has no text for this. Type one for this order if you need it."}</p>
+    </div>
+  );
+}
 export function OpsPanel({ o, busy, run }: { o: Order; busy: boolean; run: Run }) {
-  const init = { ...o.ops, dietary: o.dietary, accessibility: o.accessibility, hotel: o.hotel, requests: o.requests };
+  const init = { ...o.ops, dietary: o.dietary, accessibility: o.accessibility, hotel: o.hotel, requests: o.requests, pickupNotes: o.pickupNotes, meetingPoint: o.pickup.meetingPoint, pickupInfo: o.pickup.details };
   const [v, setV] = useState(init); const dirty = JSON.stringify(v) !== JSON.stringify(init);
   const guide = o.guides.find((g) => g.id === v.guideId); const langMismatch = guide && v.preferredLanguage && guide.languages && !guide.languages.toLowerCase().includes(v.preferredLanguage.toLowerCase());
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
@@ -113,16 +125,25 @@ export function OpsPanel({ o, busy, run }: { o: Order; busy: boolean; run: Run }
           <F k="driver" label="Driver" /><F k="vehicle" label="Vehicle" ph="Car / van / plate" />
         </div>
         {langMismatch && <p className="mt-2 rounded-lg bg-[#FFF3D6] px-3 py-2 text-sm font-semibold text-[#7A4B00]">⚠ {guide!.name} doesn't list {v.preferredLanguage}. Check the language or pick another guide.</p>}
-        {savedGuide && <div className="mt-3 rounded-xl bg-ink/[.04] p-3"><p className="text-sm font-semibold">Full trip sheet for {savedGuide.name.split(" ")[0]}</p><p className="mt-0.5 text-xs text-ink/65">A private link with everything: guests, contacts, plan of the day, special care and payment status. It updates when you change the order, and expires a few days after the trip. Passport details are never shown.{dirty ? " Save your changes first so the guide sees them." : ""}</p>
+        {savedGuide && <div className="mt-3 rounded-xl bg-ink/[.04] p-3"><p className="text-sm font-semibold">Full trip sheet for {savedGuide.name.split(" ")[0]}</p><p className="mt-0.5 text-xs text-ink/65">A private link with everything for the day: guests, contacts, pickup, plan of the day and special care. It shows no prices or payments. It updates when you change the order, and expires a few days after the trip. Passport details are never shown.{dirty ? " Save your changes first so the guide sees them." : ""}</p>
           <div className="mt-2 flex flex-wrap gap-2">{savedGuide.phone && <a className="btn btn-wa !min-h-[40px] !py-2 !text-[14px]" target="_blank" rel="noopener noreferrer" href={waUrl(savedGuide.phone, guideMsg)}>Send all details to {savedGuide.name.split(" ")[0]} on WhatsApp</a>}<a className={Btn} target="_blank" rel="noopener noreferrer" href={o.guideUrl}>Open guide sheet</a><button type="button" className={Btn} onClick={() => { void navigator.clipboard?.writeText(o.guideUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}>{copied ? "Link copied" : "Copy link"}</button></div></div>}
       </section>
-      <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Arrival and pickup</h2>
+      <section className="rounded-2xl border border-ink/10 p-4" id="ops-pickup"><h2 className="font-display text-base font-extrabold">Pickup and meeting point</h2>
+        <p className="mb-3 mt-0.5 text-xs text-ink/65">What the guide sheet, the message to the guide, the customer&apos;s tracking page and new invoices show for this order.</p>
+        <div className="grid gap-2 sm:grid-cols-2"><F k="hotel" label="Pickup place / hotel" /><F k="pickupTime" label="Pickup time" ph="08:00 or 08:00-08:30" /><F k="pickupNotes" label="Pickup notes" ph="Gate 2, call on arrival" cls="sm:col-span-2" />
+          <TourText id="omeet" label="Meeting point" value={v.meetingPoint} def={o.pickup.defaults.meetingPoint} onChange={(x) => setV({ ...v, meetingPoint: x })} />
+          <TourText id="opinfo" label="Pickup details" value={v.pickupInfo} def={o.pickup.defaults.details} onChange={(x) => setV({ ...v, pickupInfo: x })} /></div></section>
+      <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Arrival and stay</h2>
         <div className="grid gap-2 sm:grid-cols-2"><F k="flightArrival" label="Arrival flight" ph="MS 777, 30 Oct 14:20" /><F k="flightDeparture" label="Departure flight" ph="MS 778, 2 Nov 09:10" />
-          <F k="hotel" label="Hotel / pickup place" /><F k="pickupTime" label="Pickup time" ph="08:00" /><F k="roomType" label="Room type" ph="Double, twin, family" /><F k="occasion" label="Occasion" list="occ" /></div></section>
+          <F k="roomType" label="Room type" ph="Double, twin, family" /><F k="occasion" label="Occasion" list="occ" /></div></section>
+      <section className="rounded-2xl border border-ink/10 p-4" id="ops-collect"><h2 className="font-display text-base font-extrabold">Guide collects on the day</h2>
+        <p className="mb-3 mt-0.5 text-xs text-ink/65">The guide sheet shows no prices or payments. Fill this in only when the guide should collect money from the guest on the day. Leave it empty and the guide sees no amount at all.</p>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"><div><label className="label" htmlFor="ocollectAmount">Amount ({o.currency})</label><input id="ocollectAmount" className="input !py-2" type="number" inputMode="decimal" min={0} step="any" value={v.collectAmount} onChange={set("collectAmount")} /></div>
+          <div><label className="label" htmlFor="ocollectNote">Note for the guide</label><input id="ocollectNote" className="input !py-2" maxLength={200} placeholder="Cash, for the sound and light tickets" value={v.collectNote} onChange={set("collectNote")} /></div></div></section>
       <section className="rounded-2xl border border-ink/10 p-4"><h2 className="mb-3 font-display text-base font-extrabold">Care and paperwork</h2>
         <div className="grid gap-2 sm:grid-cols-2"><div><label className="label" htmlFor="ovisa">Visa status</label><select id="ovisa" className="input !py-2" value={v.visaStatus} onChange={set("visaStatus")}><option value="">Not set</option>{VISA_STATUS.map((x) => <option key={x}>{x}</option>)}</select></div>
           <F k="emergencyContact" label="Emergency contact (name and phone)" /><F k="dietary" label="Dietary requirements" /><F k="accessibility" label="Accessibility needs" />
-          <div className="sm:col-span-2"><label className="label" htmlFor="ogn">Notes for the guide (private instructions only the guide sees, for example: collect the balance in cash, VIP guest, pickup gate)</label><textarea id="ogn" className="input !py-2" rows={3} value={v.guideNotes} onChange={set("guideNotes")} /></div>
+          <div className="sm:col-span-2"><label className="label" htmlFor="ogn">Notes for the guide (private instructions only the guide sees, for example: VIP guest, surprise birthday cake, which gate to use)</label><textarea id="ogn" className="input !py-2" rows={3} value={v.guideNotes} onChange={set("guideNotes")} /></div>
           <div className="sm:col-span-2"><label className="label" htmlFor="oreq">Special requests</label><textarea id="oreq" className="input !py-2" rows={3} value={v.requests} onChange={set("requests")} /></div></div></section>
       <div className="flex items-center gap-3"><button disabled={busy || !dirty} className="btn btn-primary !min-h-[46px] disabled:opacity-50">{dirty ? "Save operations details" : "Saved"}</button></div>
     </form>
