@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index, blob } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex, blob } from "drizzle-orm/sqlite-core";
 import { relations, sql } from "drizzle-orm";
 
 const id = () => text("id").primaryKey().$defaultFn(() => crypto.randomUUID());
@@ -325,7 +325,7 @@ export const corporateRequests = sqliteTable("corporate_requests", {
   // PERCENTAGE (each service just has a cost; one service-fee percentage is applied to the total cost to get the price).
   pricingMode: text("pricing_mode").notNull().default("ITEMIZED"), servicePercent: real("service_percent"),
   createdById: text("created_by_id").references(() => users.id), createdAt: createdAt(),
-}, (t) => [index("corporate_requests_status_idx").on(t.status)]);
+}, (t) => [index("corporate_requests_status_idx").on(t.status), index("corporate_requests_date_idx").on(t.serviceDate)]);
 
 export const corporateServices = sqliteTable("corporate_services", {
   id: id(), requestId: text("request_id").notNull().references(() => corporateRequests.id, { onDelete: "cascade" }),
@@ -335,7 +335,7 @@ export const corporateServices = sqliteTable("corporate_services", {
   supplier: text("supplier").notNull().default(""), cost: real("cost").notNull().default(0), price: real("price").notNull().default(0),
   status: text("status").notNull().default("PENDING"), // PENDING CONFIRMED DONE CANCELLED
   notes: text("notes").notNull().default(""), createdAt: createdAt(),
-}, (t) => [index("corporate_services_request_idx").on(t.requestId)]);
+}, (t) => [index("corporate_services_request_idx").on(t.requestId), index("corporate_services_date_idx").on(t.date)]);
 
 // One row per payment received against a corporate request — mirrors the bookings payments table, kept separate on purpose.
 export const corporatePayments = sqliteTable("corporate_payments", {
@@ -351,3 +351,28 @@ export const notificationLog = sqliteTable("notification_log", {
   bookingId: text("booking_id"), corporateRequestId: text("corporate_request_id"),
   success: integer("success", { mode: "boolean" }).notNull(), error: text("error"), createdAt: createdAt(),
 }, (t) => [index("notification_log_created_idx").on(t.createdAt)]);
+
+// ---------- Calendar ----------
+// Staff's own calendar entries (a meeting, a reminder, a task, a closed day). Orders, corporate requests and payment
+// deadlines are NOT copied here: the calendar reads those from their own tables (see src/lib/calendar.ts).
+export const calendarEvents = sqliteTable("calendar_events", {
+  id: id(), title: text("title").notNull(),
+  type: text("type").notNull().default("OTHER"), // MEETING REMINDER TASK HOLIDAY OTHER
+  startDate: text("start_date").notNull(), endDate: text("end_date").notNull(), // YYYY-MM-DD, both days included; end is never before start
+  time: text("time"), // HH:MM on the start day. Null = all day
+  notes: text("notes").notNull().default(""),
+  // An optional link to an order or a customer. The label is what the link said when it was made.
+  linkKind: text("link_kind"), linkId: text("link_id"), linkLabel: text("link_label").notNull().default(""),
+  assigneeId: text("assignee_id"), // a staff member (users.id). No foreign key: removing an account never blocks on its events
+  done: integer("done", { mode: "boolean" }).notNull().default(false), doneAt: integer("done_at", { mode: "timestamp" }), // tasks and reminders
+  createdById: text("created_by_id"),
+  clientKey: text("client_key"), // made by the form that created the event: the same form sent twice makes one event
+  createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => [index("calendar_events_start_idx").on(t.startDate), index("calendar_events_end_idx").on(t.endDate), uniqueIndex("calendar_events_key_uq").on(t.clientKey)]);
+
+// One private subscription link per staff member ("Subscribe in Google / Apple / Outlook calendar"). Only a hash of the
+// link's secret is stored: the link itself is shown once, when it is made, and can be replaced or switched off at any time.
+export const calendarFeeds = sqliteTable("calendar_feeds", {
+  id: id(), userId: text("user_id").notNull(), tokenHash: text("token_hash").notNull(),
+  createdAt: createdAt(), lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+}, (t) => [uniqueIndex("calendar_feeds_user_uq").on(t.userId), uniqueIndex("calendar_feeds_token_uq").on(t.tokenHash)]);

@@ -6,6 +6,7 @@ import { seedItineraryTemplates } from "./seed-templates";
 import { syncAdminFromEnv } from "./admin-sync";
 import { applyContentV2 } from "./content-v2";
 import { applyContentV3, CONTENT_VERSION } from "./content-v3";
+import { CALENDAR_INDEXES } from "./calendar-indexes";
 
 // Columns added after the first release: add them to existing databases once.
 const COLUMNS = [
@@ -31,7 +32,7 @@ const COLUMNS = [
   { table: "itineraries", name: "show_price", ddl: "integer" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
-export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;
+export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS, CALENDAR_INDEXES])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;
 
 let started: Promise<void> | null = null;
 export function ensureDatabase() {
@@ -56,6 +57,9 @@ async function migrate() {
     if (!cols.includes(c.name)) { try { await client.execute(`ALTER TABLE ${c.table} ADD COLUMN ${c.name} ${c.ddl}`); } catch (e) { if (!/duplicate column/i.test(String(e))) throw e; } }
   }
   await relaxCustomerEmail();
+  // The calendar's index on the payment deadline kept inside an invoice's JSON (see calendar-indexes.ts). An index is only a
+  // faster way to read: if it cannot be built, the calendar still works, so it is reported and the start carries on.
+  for (const stmt of CALENDAR_INDEXES) { try { await client.execute(stmt); } catch (e) { console.error("Calendar index not created:", e instanceof Error ? e.message : e); } }
   const n = await client.execute("select count(*) as n from tours");
   if (Number(n.rows[0].n) === 0) await seedDatabase();
   await seedItineraryTemplates(); await applyContentV2(); await applyContentV3();

@@ -98,6 +98,39 @@ CREATE INDEX `bookings_tour_idx` ON `bookings` (`tour_id`);--> statement-breakpo
 CREATE INDEX `bookings_status_idx` ON `bookings` (`status`);--> statement-breakpoint
 CREATE INDEX `bookings_travel_idx` ON `bookings` (`travel_date`);--> statement-breakpoint
 CREATE INDEX `bookings_created_idx` ON `bookings` (`created_at`);--> statement-breakpoint
+CREATE TABLE `calendar_events` (
+	`id` text PRIMARY KEY NOT NULL,
+	`title` text NOT NULL,
+	`type` text DEFAULT 'OTHER' NOT NULL,
+	`start_date` text NOT NULL,
+	`end_date` text NOT NULL,
+	`time` text,
+	`notes` text DEFAULT '' NOT NULL,
+	`link_kind` text,
+	`link_id` text,
+	`link_label` text DEFAULT '' NOT NULL,
+	`assignee_id` text,
+	`done` integer DEFAULT false NOT NULL,
+	`done_at` integer,
+	`created_by_id` text,
+	`client_key` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `calendar_events_start_idx` ON `calendar_events` (`start_date`);--> statement-breakpoint
+CREATE INDEX `calendar_events_end_idx` ON `calendar_events` (`end_date`);--> statement-breakpoint
+CREATE UNIQUE INDEX `calendar_events_key_uq` ON `calendar_events` (`client_key`);--> statement-breakpoint
+CREATE TABLE `calendar_feeds` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`token_hash` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`last_used_at` integer
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `calendar_feeds_user_uq` ON `calendar_feeds` (`user_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `calendar_feeds_token_uq` ON `calendar_feeds` (`token_hash`);--> statement-breakpoint
 CREATE TABLE `corporate_payments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`request_id` text NOT NULL,
@@ -135,6 +168,7 @@ CREATE TABLE `corporate_requests` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `corporate_requests_ref_unique` ON `corporate_requests` (`ref`);--> statement-breakpoint
 CREATE INDEX `corporate_requests_status_idx` ON `corporate_requests` (`status`);--> statement-breakpoint
+CREATE INDEX `corporate_requests_date_idx` ON `corporate_requests` (`service_date`);--> statement-breakpoint
 CREATE TABLE `corporate_services` (
 	`id` text PRIMARY KEY NOT NULL,
 	`request_id` text NOT NULL,
@@ -154,6 +188,7 @@ CREATE TABLE `corporate_services` (
 );
 --> statement-breakpoint
 CREATE INDEX `corporate_services_request_idx` ON `corporate_services` (`request_id`);--> statement-breakpoint
+CREATE INDEX `corporate_services_date_idx` ON `corporate_services` (`date`);--> statement-breakpoint
 CREATE TABLE `coupons` (
 	`id` text PRIMARY KEY NOT NULL,
 	`code` text NOT NULL,

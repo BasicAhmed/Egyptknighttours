@@ -92,8 +92,9 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
   );
 }
 
-function NewOrder({ tours, onClose, onCreated }: { tours: { id: string; title: string }[]; onClose: () => void; onCreated: (o: Order) => void }) {
-  const [v, setV] = useState({ source: "WHATSAPP", viatorTotal: "", name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: "", adults: "2", children: "0", currency: "USD", hotel: "", notes: "", nationality: "" });
+// date: the day the order was started from on the Calendar. It only fills in the travel date field; staff can change it.
+export function NewOrder({ tours, date, onClose, onCreated }: { tours: { id: string; title: string }[]; date?: string; onClose: () => void; onCreated: (o: Order) => void }) {
+  const [v, setV] = useState({ source: "WHATSAPP", viatorTotal: "", name: "", email: "", whatsapp: "", country: "", tourId: "custom", customTitle: "", travelDate: date ?? "", adults: "2", children: "0", currency: "USD", hotel: "", notes: "", nationality: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV({ ...v, [k]: e.target.value });
   async function submit(e: React.FormEvent) {
