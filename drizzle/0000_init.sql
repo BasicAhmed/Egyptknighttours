@@ -131,6 +131,18 @@ CREATE TABLE `calendar_feeds` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `calendar_feeds_user_uq` ON `calendar_feeds` (`user_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `calendar_feeds_token_uq` ON `calendar_feeds` (`token_hash`);--> statement-breakpoint
+CREATE TABLE `corporate_events` (
+	`id` text PRIMARY KEY NOT NULL,
+	`request_id` text NOT NULL,
+	`type` text NOT NULL,
+	`note` text DEFAULT '' NOT NULL,
+	`user_id` text,
+	`user_name` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`request_id`) REFERENCES `corporate_requests`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `corporate_events_request_idx` ON `corporate_events` (`request_id`);--> statement-breakpoint
 CREATE TABLE `corporate_payments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`request_id` text NOT NULL,

@@ -8,7 +8,9 @@ export type CorporateInvoiceData = {
   serviceDate: string; location: string; notes: string; requirements: string; // notes = the request's invoice notes
   services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[]; // price = selling price, in both pricing modes
   total: number; methods: PayMethod[];
-  payments: { date: string; method: string; amount: number }[]; paid: number; balance: number;
+  payments: { date: string; method: string; amount: number }[]; paid: number; balance: number; // balance is never below 0
+  credit: number; // paid more than the current total: owed back to the partner
+  cancelled: boolean;
 };
 export type InvoiceData = {
   number: string; issuedAt: string; currency: string; ref: string;

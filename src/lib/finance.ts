@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { r2 } from "./pricing";
 import { getSettings, usdAmount } from "./settings";
 
@@ -49,19 +49,18 @@ export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
 
   // Corporate requests are a second revenue channel, folded into the same totals above using the same cash-basis, proportional-cost
   // logic: each payment's share of the cost is whatever fraction of the request's total price that payment covers.
-  // In PERCENTAGE pricing mode the per-service "price" column is never set (only cost is), so the total price has to be
-  // worked out the same way corporate.ts's totals() does — cost × (1 + service percent) — never by summing "price".
+  // The request's cost and price come from moneyFor() in corporate.ts, the same rules the request page and the invoice use
+  // (percentage pricing, cancelled services not charged), so Finance can never work out a different total.
   const crows0 = await db.select({
     amount: s.corporatePayments.amount, currency: s.corporateRequests.currency, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
     pricingMode: s.corporateRequests.pricingMode, servicePercent: s.corporateRequests.servicePercent,
-    totalCost: sql<number>`(select coalesce(sum(cost), 0) from corporate_services where request_id = corporate_requests.id)`,
-    itemizedPrice: sql<number>`(select coalesce(sum(price), 0) from corporate_services where request_id = corporate_requests.id)`,
   }).from(s.corporatePayments).innerJoin(s.corporateRequests, eq(s.corporatePayments.requestId, s.corporateRequests.id))
     .where(and(eq(s.corporatePayments.status, "PAID"), gte(s.corporatePayments.createdAt, from), lt(s.corporatePayments.createdAt, to)));
+  const { moneyFor } = await import("./corporate");
+  const reqMoney = await moneyFor([...new Map(crows0.map((r) => [r.requestId, { id: r.requestId, pricingMode: r.pricingMode, servicePercent: r.servicePercent }])).values()]);
   const crows = crows0.map((r) => {
-    const totalCost = usdAmount(r.totalCost, r.currency, g);
-    const rawTotalPrice = r.pricingMode === "PERCENTAGE" ? r.totalCost * (1 + (r.servicePercent ?? 0) / 100) : r.itemizedPrice;
-    return { requestId: r.requestId, ref: r.ref, companyName: r.companyName, amount: usdAmount(r.amount, r.currency, g), totalCost, totalPrice: usdAmount(rawTotalPrice, r.currency, g) };
+    const m = reqMoney.get(r.requestId)!;
+    return { requestId: r.requestId, ref: r.ref, companyName: r.companyName, amount: usdAmount(r.amount, r.currency, g), totalCost: usdAmount(m.cost, r.currency, g), totalPrice: usdAmount(m.price, r.currency, g) };
   });
 
   let corporateRevenue = 0, corporateCost = 0; const seenRequests = new Set<string>();

@@ -345,6 +345,14 @@ export const corporatePayments = sqliteTable("corporate_payments", {
   status: text("status").notNull().default("PAID"), note: text("note").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("corporate_payments_request_idx").on(t.requestId)]);
 
+// What happened on a corporate request and who did it: payments recorded and removed, status, pricing and service
+// changes. The team's record, never shown to the partner. Kept when a payment is removed; deleted with the request.
+export const corporateEvents = sqliteTable("corporate_events", {
+  id: id(), requestId: text("request_id").notNull().references(() => corporateRequests.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // see EVENT_LABEL in lib/corporate-constants.ts
+  note: text("note").notNull().default(""), userId: text("user_id"), userName: text("user_name").notNull().default(""), createdAt: createdAt(),
+}, (t) => [index("corporate_events_request_idx").on(t.requestId)]);
+
 // Every notification email attempt — success or failure — so the team can actually verify one went out, not just hope it did.
 export const notificationLog = sqliteTable("notification_log", {
   id: id(), type: text("type").notNull(), // NEW_BOOKING NEW_LEAD PAYMENT_COMPLETE ORDER_CANCELLED CORPORATE_PAYMENT_COMPLETE CORPORATE_CANCELLED

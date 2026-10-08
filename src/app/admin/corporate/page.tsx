@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { requireStaff, PERMS } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { listCorporateRequests } from "@/lib/corporate";
 import CorporateBoard from "@/components/CorporateBoard";
 import Notice from "@/components/Notice";
 export const dynamic = "force-dynamic";
 
 export default async function CorporateList({ searchParams }: { searchParams: Promise<{ n?: string; e?: string }> }) {
-  const u = await requireStaff("corporate"); const sp = await searchParams;
-  const canFinance = PERMS.finance.includes(u.role);
+  await requireStaff("corporate"); const sp = await searchParams;
   const rows = await listCorporateRequests();
   return (
     <div>
@@ -16,7 +15,7 @@ export default async function CorporateList({ searchParams }: { searchParams: Pr
         <Link href="/admin/corporate/new" className="btn btn-primary !min-h-[46px]">+ New request</Link>
       </div>
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
-      <CorporateBoard rows={rows} canFinance={canFinance} />
+      <CorporateBoard rows={rows} />
     </div>
   );
 }

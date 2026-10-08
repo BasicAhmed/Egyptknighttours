@@ -1,10 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema as s } from "@/db";
 import { r2 } from "./pricing";
-// Server-only data access lives in this file; the plain labels/lists live in corporate-constants.ts so a client
-// component can import just those without accidentally pulling in server-only code (db, next/headers, next/cache).
+// Server-only data access lives in this file; the plain labels/lists and the money rules live in corporate-constants.ts so a
+// client component (and the unit tests) can import just those without pulling in server-only code (db, next/headers, next/cache).
 export * from "./corporate-constants";
-import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, servicePrices } from "./corporate-constants";
+import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, servicePrices, requestTotals, balanceOf, isCharged, businessDay } from "./corporate-constants";
 
 export async function newCorporateRef() {
   let ref = ""; let n = 1000 + Math.floor(Math.random() * 9000);
@@ -17,39 +17,52 @@ export async function newCorporateRef() {
 }
 
 export type ServiceRow = typeof s.corporateServices.$inferSelect;
-// ITEMIZED: each service has its own price, summed. PERCENTAGE: services only carry a cost — the price is the total
-// cost plus one service-fee percentage applied to it, so profit still comes out the same either way.
-export function totals(services: Pick<ServiceRow, "cost" | "price">[], pricingMode: string, servicePercent: number | null) {
-  const cost = r2(services.reduce((a, x) => a + x.cost, 0));
-  const price = pricingMode === "PERCENTAGE" ? r2(cost * (1 + (servicePercent ?? 0) / 100)) : r2(services.reduce((a, x) => a + x.price, 0));
-  return { cost, price, profit: r2(price - cost) };
+// Kept under its old name for existing callers. The rule itself (cancelled services not charged) is requestTotals().
+export const totals = requestTotals;
+
+// Money for many requests at once, from the same rules the request page uses: the services and paid payments of every
+// listed request are read in two queries and run through requestTotals(), never re-summed in SQL a different way.
+export async function moneyFor(requests: { id: string; pricingMode: string; servicePercent: number | null }[]) {
+  const ids = requests.map((r) => r.id);
+  const out = new Map<string, { cost: number; price: number; profit: number; paid: number; balance: number; serviceCount: number }>();
+  if (!ids.length) return out;
+  const [svcs, pays] = await Promise.all([
+    db.select({ requestId: s.corporateServices.requestId, cost: s.corporateServices.cost, price: s.corporateServices.price, status: s.corporateServices.status }).from(s.corporateServices).where(inArray(s.corporateServices.requestId, ids)),
+    db.select({ requestId: s.corporatePayments.requestId, amount: s.corporatePayments.amount }).from(s.corporatePayments).where(and(inArray(s.corporatePayments.requestId, ids), eq(s.corporatePayments.status, "PAID"))),
+  ]);
+  for (const r of requests) {
+    const mine = svcs.filter((x) => x.requestId === r.id);
+    const t = requestTotals(mine, r.pricingMode, r.servicePercent);
+    const paid = r2(pays.filter((p) => p.requestId === r.id).reduce((a, p) => a + p.amount, 0));
+    out.set(r.id, { ...t, paid, balance: balanceOf(t.price, paid), serviceCount: mine.filter(isCharged).length });
+  }
+  return out;
 }
 
 export async function listCorporateRequests(limit = 200) {
-  // Every correlated subquery here must qualify "corporate_requests.id" by table name explicitly — both the services and
-  // payments tables have their own "id" column, and a bare reference silently resolves to the wrong one, matching nothing.
-  const rows = await db.select({
-    r: s.corporateRequests,
-    serviceCount: sql<number>`(select count(*) from corporate_services where request_id = corporate_requests.id)`,
-    cost: sql<number>`(select coalesce(sum(cost), 0) from corporate_services where request_id = corporate_requests.id)`,
-    itemizedPrice: sql<number>`(select coalesce(sum(price), 0) from corporate_services where request_id = corporate_requests.id)`,
-    paid: sql<number>`(select coalesce(sum(amount), 0) from corporate_payments where request_id = corporate_requests.id and status = 'PAID')`,
-  }).from(s.corporateRequests).orderBy(desc(s.corporateRequests.createdAt)).limit(limit);
-  return rows.map((x) => {
-    const price = x.r.pricingMode === "PERCENTAGE" ? r2(x.cost * (1 + (x.r.servicePercent ?? 0) / 100)) : r2(x.itemizedPrice);
-    return { ...x.r, serviceCount: x.serviceCount, price, paid: r2(x.paid), balance: r2(price - x.paid) };
-  });
+  const rows = await db.select().from(s.corporateRequests).orderBy(desc(s.corporateRequests.createdAt)).limit(limit);
+  const m = await moneyFor(rows);
+  return rows.map((r) => { const x = m.get(r.id)!; return { ...r, serviceCount: x.serviceCount, price: x.price, paid: x.paid, balance: x.balance }; });
 }
 
 export async function loadCorporateRequest(id: string) {
   const [r] = await db.select().from(s.corporateRequests).where(eq(s.corporateRequests.id, id));
   if (!r) return null;
-  const services = await db.select().from(s.corporateServices).where(eq(s.corporateServices.requestId, id)).orderBy(s.corporateServices.createdAt);
-  const payments = await db.select().from(s.corporatePayments).where(eq(s.corporatePayments.requestId, id)).orderBy(desc(s.corporatePayments.createdAt));
-  const t = totals(services, r.pricingMode, r.servicePercent);
-  const paid = r2(payments.filter((p) => p.status === "PAID").reduce((a, p) => a + p.amount, 0));
-  const balance = r2(t.price - paid);
-  return { request: r, services, payments, totals: t, paid, balance };
+  const [services, allPayments, events] = await Promise.all([
+    db.select().from(s.corporateServices).where(eq(s.corporateServices.requestId, id)).orderBy(s.corporateServices.createdAt),
+    db.select().from(s.corporatePayments).where(eq(s.corporatePayments.requestId, id)).orderBy(desc(s.corporatePayments.createdAt)),
+    db.select().from(s.corporateEvents).where(eq(s.corporateEvents.requestId, id)).orderBy(desc(s.corporateEvents.createdAt)),
+  ]);
+  const t = requestTotals(services, r.pricingMode, r.servicePercent);
+  const payments = allPayments.filter((p) => p.status === "PAID"); // removed payments stay in the table as VOID, for the record
+  const paid = r2(payments.reduce((a, p) => a + p.amount, 0));
+  return { request: r, services, prices: servicePrices(services, r.pricingMode, r.servicePercent), payments, removedPayments: allPayments.filter((p) => p.status === "VOID"), events, totals: t, paid, balance: balanceOf(t.price, paid) };
+}
+
+// One line in the request's history. Never throws: a history problem must not undo the change it describes.
+export async function logCorporate(requestId: string, type: string, note: string, user: { uid: string; name?: string; email?: string }) {
+  try { await db.insert(s.corporateEvents).values({ requestId, type, note, userId: user.uid, userName: user.name || user.email || "" }); }
+  catch (e) { console.error("corporate history not written", e instanceof Error ? e.message : e); }
 }
 
 export async function buildCorporateInvoiceData(id: string) {
@@ -57,21 +70,21 @@ export async function buildCorporateInvoiceData(id: string) {
   const { activeMethods } = await import("./invoice");
   const data = await loadCorporateRequest(id);
   if (!data) return null;
-  const { request: r, services, totals: t, payments, paid, balance } = data;
+  const { request: r, services, prices, totals: t, payments, paid, balance } = data;
   const g = await getSettings();
   const [methods, company] = await Promise.all([activeMethods(r.currency), Promise.resolve(companyFrom(g))]);
-  const prices = servicePrices(services, r.pricingMode, r.servicePercent);
   return {
-    ref: r.ref, issuedAt: new Date().toISOString().slice(0, 10), currency: r.currency, status: REQUEST_STATUS_LABEL[r.status] ?? r.status,
+    ref: r.ref, issuedAt: businessDay(new Date()), currency: r.currency, status: REQUEST_STATUS_LABEL[r.status] ?? r.status, cancelled: r.status === "CANCELLED",
     company, bill: { name: r.companyName, contact: r.companyContact, email: r.companyEmail, phone: r.companyPhone },
     guest: { name: r.customerName, contact: r.customerContact, count: r.customerCount },
     // Internal request notes stay off the invoice; only the notes written for the invoice are printed.
     serviceDate: r.serviceDate ?? "", location: r.location, notes: r.invoiceNotes, requirements: r.requirements,
-    // Every line carries its selling price in both pricing modes, and never its cost.
-    services: services.map((sv, i) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price: prices[i] })),
+    // Only charged services, each with its selling price (never its cost). Cancelled services are not billed.
+    services: services.map((sv, i) => ({ sv, price: prices[i] })).filter(({ sv }) => isCharged(sv))
+      .map(({ sv, price }) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price })),
     total: t.price, methods,
     // Payments received so far (oldest first) and what is still owed. The staff-only payment note is not printed.
-    payments: payments.filter((p) => p.status === "PAID").reverse().map((p) => ({ date: new Date(p.createdAt).toISOString().slice(0, 10), method: p.method, amount: r2(p.amount) })),
-    paid, balance: Math.max(0, balance),
+    payments: [...payments].reverse().map((p) => ({ date: businessDay(p.createdAt), method: p.method, amount: r2(p.amount) })),
+    paid, balance: Math.max(0, balance), credit: Math.max(0, -balance),
   };
 }

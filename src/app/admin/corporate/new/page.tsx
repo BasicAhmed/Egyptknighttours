@@ -3,10 +3,11 @@ import { requireStaff } from "@/lib/auth";
 import { createCorporateRequest } from "../../corporate-actions";
 import Notice from "@/components/Notice";
 import FormKeeper from "@/components/FormKeeper";
+import { CORPORATE_CURRENCIES } from "@/lib/corporate-constants";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, req, type = "text", ph, cls = "" }: { name: string; label: string; req?: boolean; type?: string; ph?: string; cls?: string }) => (
-  <label className={`block ${cls}`}><span className="label">{label}</span><input name={name} type={type} required={req} placeholder={ph} className="input" /></label>
+  <label className={`block ${cls}`}><span className="label">{label}</span><input name={name} type={type} step={type === "number" ? "any" : undefined} min={type === "number" ? 0 : undefined} required={req} placeholder={ph} className="input" /></label>
 );
 
 export default async function NewCorporateRequest({ searchParams }: { searchParams: Promise<{ e?: string }> }) {
@@ -33,9 +34,9 @@ export default async function NewCorporateRequest({ searchParams }: { searchPara
         <h2 className="mt-2 font-display text-lg font-bold sm:col-span-2">Request details</h2>
         <F name="serviceDate" label="Service date (optional — services can each have their own)" type="date" />
         <F name="location" label="General location" ph="Cairo / Luxor / Aswan…" />
-        <div><label className="label" htmlFor="cr-currency">Currency</label><select id="cr-currency" name="currency" defaultValue="USD" className="input">{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
-        <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">General request notes</label><textarea id="cr-notes" name="notes" rows={3} className="input" /></div>
-        <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements</label><textarea id="cr-req" name="requirements" rows={2} className="input" /></div>
+        <div><label className="label" htmlFor="cr-currency">Currency</label><select id="cr-currency" name="currency" defaultValue="USD" className="input">{CORPORATE_CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">Internal notes <span className="font-normal text-ink/65">(team only, not on the invoice)</span></label><textarea id="cr-notes" name="notes" rows={3} maxLength={2000} className="input" /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements <span className="font-normal text-ink/65">(shown on the invoice)</span></label><textarea id="cr-req" name="requirements" rows={2} maxLength={2000} className="input" /></div>
 
         <h2 className="mt-2 font-display text-lg font-bold sm:col-span-2">Selling price</h2>
         <fieldset className="sm:col-span-2"><legend className="label">How is the price worked out?</legend>
@@ -44,7 +45,7 @@ export default async function NewCorporateRequest({ searchParams }: { searchPara
             <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 p-3"><input type="radio" name="pricingMode" value="PERCENTAGE" className="mt-1" /><span><span className="block font-semibold">Fixed percentage on the total</span><span className="text-sm text-ink/65">Just enter each service's cost — one percentage is applied to the total to get the price.</span></span></label>
           </div>
         </fieldset>
-        <F name="servicePercent" label="Service percentage (only used if 'Fixed percentage' is chosen)" type="number" ph="e.g. 15" />
+        <F name="servicePercent" label="Service percentage (for 'Fixed percentage')" type="number" ph="e.g. 15" />
 
         <div className="sm:col-span-2"><button className="btn btn-primary !min-h-[48px]">Create request</button></div>
       </form>

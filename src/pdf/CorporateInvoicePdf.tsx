@@ -23,14 +23,14 @@ function Field({ k, v }: { k: string; v: string }) {
 
 export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) {
   // Fully paid: show it, and drop the "how to pay" block since nothing is owed.
-  const settled = d.total > 0 && d.balance <= 0.005;
+  const settled = d.total > 0 && d.balance <= 0.005; // balance is already clamped at 0; any extra paid shows as credit
   return (
     <Document title={`Invoice ${d.ref}`} author={d.company.name} subject={`Corporate request ${d.ref}`}>
       <Page size="A4" style={s.page}>
         <View style={[s.row, { justifyContent: "space-between", alignItems: "center" }]}>
           <Image src={LOGO} style={{ height: 40, objectFit: "contain" }} />
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.eyebrow}>Service invoice</Text>
+            <Text style={[s.eyebrow, d.cancelled ? { color: C.red } : {}]}>{d.cancelled ? "Cancelled · service invoice" : "Service invoice"}</Text>
             <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 15, marginTop: 3 }}>{d.ref}</Text>
             <Text style={[s.muted, { fontSize: 8, marginTop: 1 }]}>Issued {dLong(d.issuedAt)}</Text>
           </View>
@@ -73,6 +73,7 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
               <Text style={{ fontWeight: 700, fontSize: 11 }}>{settled ? "Balance" : "Balance due"}</Text>
               <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13, color: settled ? C.green : C.ink }}>{settled ? "Paid in full" : money(d.balance, d.currency)}</Text>
             </View>}
+            {d.credit > 0 && <View style={s.sum}><Text style={{ fontSize: 9.5 }}>Credit in your favour</Text><Text style={{ fontSize: 9.5, fontWeight: 700, color: C.green }}>{money(d.credit, d.currency)}</Text></View>}
           </View>
         </View>
 
@@ -94,7 +95,10 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
           {d.requirements && <View style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>Additional requirements</Text><Text style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5 }}>{d.requirements}</Text></View>}
         </View> : null}
 
-        {settled ? <View wrap={false} style={[s.card, { marginTop: 16, backgroundColor: C.cream, borderColor: C.cream2 }]}>
+        {d.cancelled ? <View wrap={false} style={[s.card, { marginTop: 16, borderColor: C.red }]}>
+          <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 12, color: C.red }}>This request was cancelled</Text>
+          <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>{d.paid > 0 ? "Please contact us about the amount already paid." : "Nothing is due on this invoice."}</Text>
+        </View> : settled ? <View wrap={false} style={[s.card, { marginTop: 16, backgroundColor: C.cream, borderColor: C.cream2 }]}>
           <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 12, color: C.green }}>Paid in full — thank you</Text>
           <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>Nothing more is due on this invoice.</Text>
         </View> : <View style={{ marginTop: 16 }}>

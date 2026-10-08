@@ -362,3 +362,19 @@ A new staff page, **Calendar** (`/admin/calendar`; menu: Daily work, after Order
 - **Invoice notes.** A new "Notes on the invoice" box on the request (`corporate_requests.invoice_notes`, added on the next start). The request's internal notes are no longer printed; "Additional requirements" still are.
 - **Payments and balance.** The invoice lists the payments received, then Total, Paid so far and Balance due. Fully paid shows "Paid in full" and drops the "How to pay" block; the staff-only payment note is never printed.
 - **Fixed:** Sales and Tour operator staff could not add or save a service (the hidden cost field was still required), and a save by them would have reset the cost. Cost is now optional for them and their saves keep the stored cost. Money fields accept decimals (150.50, 12.5%).
+
+## Corporate requests: full audit, payment removal and a history (October 2026)
+One set of money rules now drives everything. `requestTotals`, `servicePrices`, `paymentProblem`, `balanceOf` and `isSettled` live in `src/lib/corporate-constants.ts` (no database code, unit tested in `corporate-pricing.test.ts`). The request page, the list, the invoice and Finance (`moneyFor` in `corporate.ts`) all read them, so no screen can work out a different total.
+- **Remove a payment.** Each payment on a request has Remove (with a confirmation). It is kept as VOID, never deleted, and listed under "Removed payments". The balance, invoice and Finance follow at once.
+- **History.** New `corporate_events` table. Every request records who did what and when: created, details, status, pricing, currency, services added/changed/removed (with the total before and after), payments recorded and removed, invoice notes. Staff only, never on the invoice.
+- **Fixed: cancelled services were still charged.** A service set to Cancelled still counted in the cost, the price, the invoice and Finance (the calendar already hid it). It is now kept for the record but charged nothing everywhere.
+- **Fixed: payments could exceed what was owed**, be recorded on a cancelled request, or on a request with nothing priced. The server refuses all three with a plain message; the form defaults to the balance due.
+- **Fixed: changing the currency after payments** silently relabelled them. The currency is locked once a payment is recorded.
+- **Fixed: switching from percentage to per-service pricing** set every service price to 0 (total dropped to nothing). Each service now keeps the price it had. Any pricing change that would take the total below what was already paid is refused.
+- **Overpaid requests** (total went down after payment, e.g. a service cancelled) now say "Overpaid by X" on the page and list, and the invoice shows a credit in the partner's favour instead of a misleading "Paid in full".
+- **Fixed: deleting.** Any role could delete a request, including one with payments, wiping its money from Finance. Delete is now owner/manager only and only for requests with no payments; others cancel.
+- **Fixed: the list showed every request in dollars** ("$30000 of $30000" for EGP). It uses each request's currency and shows what is due.
+- **Fixed: cost shown to non-finance staff.** The "cost + % service" hint under the total showed the cost to everyone. It now does only for owner/manager.
+- **Fixed: a service could be changed or removed through another request's page** (the request was not checked). Both now require the service to belong to that request.
+- Service types are stored as one code ("Transfer", "transfer", "TRANSFER" are all TRANSFER); payment and invoice dates use Cairo time; a request deleted in another tab gives a clear message instead of a false "Saved"; the invoice marks a cancelled request.
+- Database: one new table and its index, added on the next start (`npm run db:sql` files edited by hand to match, since packages could not be installed here). Checked on a fresh database and on a copy of the previous release's schema.

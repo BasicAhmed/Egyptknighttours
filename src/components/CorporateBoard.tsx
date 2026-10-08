@@ -1,15 +1,15 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { REQUEST_STATUS, REQUEST_STATUS_LABEL } from "@/lib/corporate-constants";
+import { REQUEST_STATUS, REQUEST_STATUS_LABEL, fmt } from "@/lib/corporate-constants";
 
 const STATUS_TONE: Record<string, string> = {
   NEW: "bg-gold-500/20 text-[#8A5A0A]", CONFIRMED: "bg-[#DFF3E6] text-[#17663A]", IN_PROGRESS: "bg-[#2A5C8A]/10 text-[#2A5C8A]",
   COMPLETED: "bg-ink/10 text-ink/70", CANCELLED: "bg-red-50 text-red-700",
 };
-export type CorpRow = { id: string; ref: string; companyName: string; customerName: string; serviceDate: string | null; status: string; serviceCount: number; price: number; paid: number; balance: number };
+export type CorpRow = { id: string; ref: string; companyName: string; customerName: string; serviceDate: string | null; status: string; currency: string; serviceCount: number; price: number; paid: number; balance: number };
 
-export default function CorporateBoard({ rows, canFinance }: { rows: CorpRow[]; canFinance: boolean }) {
+export default function CorporateBoard({ rows }: { rows: CorpRow[] }) {
   const [q, setQ] = useState(""); const [status, setStatus] = useState("all");
 
   const list = useMemo(() => {
@@ -42,7 +42,8 @@ export default function CorporateBoard({ rows, canFinance }: { rows: CorpRow[]; 
               </div>
               <div className="min-w-0 text-sm text-ink/70">
                 <p>{r.serviceDate ? new Date(r.serviceDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "No date set"}</p>
-                <p className="text-ink/65">{r.serviceCount} service{r.serviceCount === 1 ? "" : "s"}{canFinance || r.price > 0 ? ` · $${r.paid} of $${r.price}` : ""}</p>
+                <p className="text-ink/65">{r.serviceCount} service{r.serviceCount === 1 ? "" : "s"}{r.price > 0 ? ` · ${fmt(r.paid, r.currency)} of ${fmt(r.price, r.currency)}` : " · not priced yet"}</p>
+                {r.status !== "CANCELLED" && r.price > 0 && (r.balance > 0.005 ? <p className="font-semibold text-ink">{fmt(r.balance, r.currency)} due</p> : r.balance < -0.005 ? <p className="font-semibold text-red-700">Overpaid by {fmt(-r.balance, r.currency)}</p> : <p className="font-semibold text-[#17663A]">Paid in full</p>)}
               </div>
               <span className={`justify-self-start rounded-full px-3 py-1 text-xs font-bold sm:justify-self-end ${STATUS_TONE[r.status] ?? "bg-ink/10 text-ink/70"}`}>{REQUEST_STATUS_LABEL[r.status] ?? r.status}</span>
             </Link>
