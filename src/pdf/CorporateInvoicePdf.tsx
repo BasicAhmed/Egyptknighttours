@@ -14,6 +14,7 @@ const s = StyleSheet.create({
   footer: { position: "absolute", bottom: 22, left: 38, right: 38, borderTopWidth: 1, borderTopColor: C.line, paddingTop: 8, flexDirection: "row", justifyContent: "space-between", fontSize: 7.5, color: C.muted },
   tr: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: C.line, paddingVertical: 7, paddingHorizontal: 12 },
   th2: { flexDirection: "row", backgroundColor: C.soft, paddingVertical: 8, paddingHorizontal: 12 },
+  sum: { flexDirection: "row", justifyContent: "space-between" },
 });
 function Field({ k, v }: { k: string; v: string }) {
   if (!v) return null;
@@ -21,6 +22,8 @@ function Field({ k, v }: { k: string; v: string }) {
 }
 
 export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) {
+  // Fully paid: show it, and drop the "how to pay" block since nothing is owed.
+  const settled = d.total > 0 && d.balance <= 0.005;
   return (
     <Document title={`Invoice ${d.ref}`} author={d.company.name} subject={`Corporate request ${d.ref}`}>
       <Page size="A4" style={s.page}>
@@ -49,51 +52,53 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
           </View>}
         </View>
 
-        <View wrap={false} style={[s.card, { marginTop: 14, padding: 0, overflow: "hidden" }]}>
-          {d.pricingMode === "PERCENTAGE" ? <>
-            <View style={s.th2}><Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text></View>
-            {d.services.map((sv, i) => (
-              <View key={i} style={s.tr}>
-                <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
-                <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
-                <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
-                <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
-              </View>
-            ))}
-            {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
-            <View style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream, gap: 4 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ fontSize: 9.5 }}>Subtotal</Text><Text style={{ fontSize: 9.5, fontWeight: 700 }}>{money(d.subtotal, d.currency)}</Text></View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between" }}><Text style={{ fontSize: 9.5 }}>Service ({d.servicePercent}%)</Text><Text style={{ fontSize: 9.5, fontWeight: 700 }}>{money(d.total - d.subtotal, d.currency)}</Text></View>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: C.line }}><Text style={{ fontWeight: 700, fontSize: 11 }}>Total</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text></View>
+        <View style={[s.card, { marginTop: 14, padding: 0, overflow: "hidden" }]}>
+          <View style={s.th2}>
+            <Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text><Text style={[s.th, { flex: 0.9, textAlign: "right" }]}>Price</Text>
+          </View>
+          {d.services.map((sv, i) => (
+            <View key={i} style={s.tr} wrap={false}>
+              <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
+              <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
+              <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
+              <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
+              <Text style={{ flex: 0.9, textAlign: "right" }}>{money(sv.price, d.currency)}</Text>
             </View>
-          </> : <>
-            <View style={s.th2}>
-              <Text style={[s.th, { flex: 2.2 }]}>Service</Text><Text style={[s.th, { flex: 1 }]}>Date</Text><Text style={[s.th, { flex: 1.3 }]}>Location</Text><Text style={[s.th, { flex: 0.6, textAlign: "right" }]}>Qty</Text><Text style={[s.th, { flex: 0.9, textAlign: "right" }]}>Price</Text>
-            </View>
-            {d.services.map((sv, i) => (
-              <View key={i} style={s.tr}>
-                <Text style={{ flex: 2.2, fontWeight: 700 }}>{sv.type}{sv.label ? ` — ${sv.label}` : ""}</Text>
-                <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
-                <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
-                <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
-                <Text style={{ flex: 0.9, textAlign: "right" }}>{money(sv.price, d.currency)}</Text>
-              </View>
-            ))}
-            {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
-            <View style={{ flexDirection: "row", paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream }}>
-              <Text style={{ flex: 1, fontWeight: 700, fontSize: 11 }}>Total</Text>
-              <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text>
-            </View>
-          </>}
+          ))}
+          {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}
+          <View wrap={false} style={{ paddingVertical: 10, paddingHorizontal: 12, backgroundColor: C.cream, gap: 4 }}>
+            <View style={s.sum}><Text style={{ fontWeight: 700, fontSize: 11 }}>Total</Text><Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13 }}>{money(d.total, d.currency)}</Text></View>
+            {d.paid > 0 && <View style={s.sum}><Text style={{ fontSize: 9.5 }}>Paid so far</Text><Text style={{ fontSize: 9.5, fontWeight: 700, color: C.green }}>− {money(d.paid, d.currency)}</Text></View>}
+            {d.paid > 0 && <View style={[s.sum, { marginTop: 4, paddingTop: 6, borderTopWidth: 1, borderTopColor: C.line }]}>
+              <Text style={{ fontWeight: 700, fontSize: 11 }}>{settled ? "Balance" : "Balance due"}</Text>
+              <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 13, color: settled ? C.green : C.ink }}>{settled ? "Paid in full" : money(d.balance, d.currency)}</Text>
+            </View>}
+          </View>
         </View>
 
-        {(d.notes || d.requirements) ? <View style={[s.row, { marginTop: 12, gap: 12 }]}>
+        {d.payments.length > 0 && <View wrap={false} style={[s.card, { marginTop: 12 }]}>
+          <Text style={s.eyebrow}>Payments received</Text>
+          <View style={{ marginTop: 6 }}>
+            {d.payments.map((p, i) => (
+              <View key={i} style={{ flexDirection: "row", paddingVertical: 4, borderBottomWidth: i === d.payments.length - 1 ? 0 : 1, borderBottomColor: C.line }}>
+                <Text style={{ width: 90 }}>{dLong(p.date)}</Text>
+                <Text style={{ flex: 1, color: C.muted }}>{p.method === "MANUAL" ? "Payment" : p.method}</Text>
+                <Text style={{ fontWeight: 700 }}>{money(p.amount, d.currency)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>}
+
+        {(d.notes || d.requirements) ? <View wrap={false} style={[s.row, { marginTop: 12, gap: 12 }]}>
           {d.notes && <View style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>Notes</Text><Text style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5 }}>{d.notes}</Text></View>}
           {d.requirements && <View style={[s.card, { flex: 1 }]}><Text style={s.eyebrow}>Additional requirements</Text><Text style={{ marginTop: 4, fontSize: 9, lineHeight: 1.5 }}>{d.requirements}</Text></View>}
         </View> : null}
 
-        <View style={{ marginTop: 16 }}>
-          <Text style={s.eyebrow}>Payment</Text>
+        {settled ? <View wrap={false} style={[s.card, { marginTop: 16, backgroundColor: C.cream, borderColor: C.cream2 }]}>
+          <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 12, color: C.green }}>Paid in full — thank you</Text>
+          <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>Nothing more is due on this invoice.</Text>
+        </View> : <View style={{ marginTop: 16 }}>
+          <Text style={s.eyebrow}>How to pay{d.paid > 0 ? ` the balance of ${money(d.balance, d.currency)}` : ""}</Text>
           {d.methods.length ? d.methods.map((m) => (
             <View key={m.id} wrap={false} style={[s.card, { marginTop: 8 }]}>
               <Text style={{ fontFamily: F.head, fontWeight: 700, fontSize: 11 }}>{m.label}{m.currency ? `  ·  ${m.currency}` : ""}</Text>
@@ -104,7 +109,7 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
               {m.instructions ? <Text style={{ marginTop: 6, fontSize: 8.5, color: C.muted, lineHeight: 1.5 }}>{m.instructions}</Text> : null}
             </View>
           )) : <View style={[s.card, { marginTop: 8, backgroundColor: C.cream }]}><Text style={{ color: C.muted }}>Contact us directly for payment details.</Text></View>}
-        </View>
+        </View>}
 
         <View wrap={false} style={{ marginTop: 16, backgroundColor: C.ink, borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flex: 1, paddingRight: 12 }}>

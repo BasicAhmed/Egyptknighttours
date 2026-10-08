@@ -4,7 +4,7 @@ import { r2 } from "./pricing";
 // Server-only data access lives in this file; the plain labels/lists live in corporate-constants.ts so a client
 // component can import just those without accidentally pulling in server-only code (db, next/headers, next/cache).
 export * from "./corporate-constants";
-import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL } from "./corporate-constants";
+import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, servicePrices } from "./corporate-constants";
 
 export async function newCorporateRef() {
   let ref = ""; let n = 1000 + Math.floor(Math.random() * 9000);
@@ -57,16 +57,21 @@ export async function buildCorporateInvoiceData(id: string) {
   const { activeMethods } = await import("./invoice");
   const data = await loadCorporateRequest(id);
   if (!data) return null;
-  const { request: r, services, totals: t } = data;
+  const { request: r, services, totals: t, payments, paid, balance } = data;
   const g = await getSettings();
   const [methods, company] = await Promise.all([activeMethods(r.currency), Promise.resolve(companyFrom(g))]);
+  const prices = servicePrices(services, r.pricingMode, r.servicePercent);
   return {
     ref: r.ref, issuedAt: new Date().toISOString().slice(0, 10), currency: r.currency, status: REQUEST_STATUS_LABEL[r.status] ?? r.status,
     company, bill: { name: r.companyName, contact: r.companyContact, email: r.companyEmail, phone: r.companyPhone },
     guest: { name: r.customerName, contact: r.customerContact, count: r.customerCount },
-    serviceDate: r.serviceDate ?? "", location: r.location, notes: r.notes, requirements: r.requirements,
-    pricingMode: r.pricingMode, servicePercent: r.servicePercent, subtotal: t.cost,
-    services: services.map((sv) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price: sv.price })),
+    // Internal request notes stay off the invoice; only the notes written for the invoice are printed.
+    serviceDate: r.serviceDate ?? "", location: r.location, notes: r.invoiceNotes, requirements: r.requirements,
+    // Every line carries its selling price in both pricing modes, and never its cost.
+    services: services.map((sv, i) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price: prices[i] })),
     total: t.price, methods,
+    // Payments received so far (oldest first) and what is still owed. The staff-only payment note is not printed.
+    payments: payments.filter((p) => p.status === "PAID").reverse().map((p) => ({ date: new Date(p.createdAt).toISOString().slice(0, 10), method: p.method, amount: r2(p.amount) })),
+    paid, balance: Math.max(0, balance),
   };
 }

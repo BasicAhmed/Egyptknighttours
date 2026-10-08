@@ -1116,6 +1116,14 @@
           "autoincrement": false,
           "default": "''"
         },
+        "invoice_notes": {
+          "name": "invoice_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
         "status": {
           "name": "status",
           "type": "text",

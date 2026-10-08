@@ -30,6 +30,8 @@ const COLUMNS = [
   { table: "bookings", name: "meeting_point", ddl: "text" }, { table: "bookings", name: "pickup_info", ddl: "text" },
   { table: "bookings", name: "guide_collect_amount", ddl: "real" }, { table: "bookings", name: "guide_collect_note", ddl: "text" },
   { table: "itineraries", name: "show_price", ddl: "integer" },
+  // Partner (corporate) invoice notes, printed on the invoice. Optional.
+  { table: "corporate_requests", name: "invoice_notes", ddl: "text NOT NULL DEFAULT ''" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
 export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS, CALENDAR_INDEXES])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;

@@ -5,10 +5,10 @@ export type CorporateInvoiceData = {
   company: Company; // Egypt Knight Tours's own details, for the header/footer
   bill: { name: string; contact: string; email: string; phone: string }; // the requesting company being billed
   guest: { name: string; contact: string; count: number | null }; // the end customer, if known
-  serviceDate: string; location: string; notes: string; requirements: string;
-  pricingMode: string; servicePercent: number | null; subtotal: number; // ITEMIZED ignores these; PERCENTAGE shows subtotal + service% = total
-  services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[];
+  serviceDate: string; location: string; notes: string; requirements: string; // notes = the request's invoice notes
+  services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[]; // price = selling price, in both pricing modes
   total: number; methods: PayMethod[];
+  payments: { date: string; method: string; amount: number }[]; paid: number; balance: number;
 };
 export type InvoiceData = {
   number: string; issuedAt: string; currency: string; ref: string;

@@ -157,6 +157,7 @@ CREATE TABLE `corporate_requests` (
 	`location` text DEFAULT '' NOT NULL,
 	`notes` text DEFAULT '' NOT NULL,
 	`requirements` text DEFAULT '' NOT NULL,
+	`invoice_notes` text DEFAULT '' NOT NULL,
 	`status` text DEFAULT 'NEW' NOT NULL,
 	`currency` text DEFAULT 'USD' NOT NULL,
 	`pricing_mode` text DEFAULT 'ITEMIZED' NOT NULL,

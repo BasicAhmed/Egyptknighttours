@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff, PERMS } from "@/lib/auth";
-import { loadCorporateRequest, SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL, PRICING_MODE_LABEL } from "@/lib/corporate";
-import { updateCorporateRequest, setCorporateStatus, addCorporateService, updateCorporateService, deleteCorporateService, deleteCorporateRequest, addCorporatePayment } from "../../corporate-actions";
+import { loadCorporateRequest, SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL, PRICING_MODE_LABEL, servicePrices } from "@/lib/corporate";
+import { updateCorporateRequest, setCorporateStatus, addCorporateService, updateCorporateService, deleteCorporateService, deleteCorporateRequest, addCorporatePayment, saveCorporateInvoiceNotes } from "../../corporate-actions";
 import { waUrl } from "@/components/order-ui";
 import Notice from "@/components/Notice";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -11,7 +11,7 @@ import FormKeeper from "@/components/FormKeeper";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, def, req, type = "text", cls = "" }: { name: string; label: string; def?: string | number | null; req?: boolean; type?: string; cls?: string }) => (
-  <label className={`block ${cls}`}><span className="label">{label}</span><input name={name} type={type} required={req} defaultValue={def ?? ""} className="input !py-2" /></label>
+  <label className={`block ${cls}`}><span className="label">{label}</span><input name={name} type={type} step={type === "number" ? "any" : undefined} required={req} defaultValue={def ?? ""} className="input !py-2" /></label>
 );
 // A single field that works both ways: pick one of the common service types, or just type your own — no separate "Other" step needed.
 const ServiceTypeField = ({ id, def }: { id: string; def?: string }) => (
@@ -27,6 +27,8 @@ export default async function CorporateDetail({ params, searchParams }: { params
   const data = await loadCorporateRequest(id); if (!data) notFound();
   const { request: r, services, totals: t, payments, paid, balance } = data;
   const pct = t.price > 0 ? Math.min(100, Math.round((paid / t.price) * 100)) : 0;
+  const prices = servicePrices(services, r.pricingMode, r.servicePercent); // each service's selling price, in both pricing modes
+  const pctMode = r.pricingMode === "PERCENTAGE";
 
   return (
     <div>
@@ -34,7 +36,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="font-display text-2xl font-extrabold sm:text-3xl">{r.ref}</h1><p className="text-sm text-ink/65">{r.companyName}{r.customerName ? ` · for ${r.customerName}` : ""}</p></div>
         <div className="flex flex-wrap gap-2">
-          <a className="btn btn-outline !min-h-[44px]" href={`/api/admin/preview/corporate-invoice/${r.id}`} target="_blank" rel="noopener noreferrer">Generate invoice</a>
+          <a className="btn btn-outline !min-h-[44px]" href="#invoice">Invoice</a>
           <form action={setCorporateStatus.bind(null, r.id)} className="flex gap-2"><label className="sr-only" htmlFor="cr-status">Status</label><select id="cr-status" name="status" defaultValue={r.status} className="input !w-auto !py-2">{REQUEST_STATUS.map((v) => <option key={v} value={v}>{REQUEST_STATUS_LABEL[v]}</option>)}</select><button className="btn btn-dark !min-h-[44px]">Save</button></form>
         </div>
       </div>
@@ -70,6 +72,20 @@ export default async function CorporateDetail({ params, searchParams }: { params
         </form>}
       </div>
 
+      <div id="invoice" className="card mt-5 scroll-mt-20 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-display text-lg font-bold">Invoice</h2>
+          <a className="btn btn-primary !min-h-[44px]" href={`/api/admin/preview/corporate-invoice/${r.id}`} target="_blank" rel="noopener noreferrer">Generate invoice</a>
+        </div>
+        <p className="mt-1 text-sm text-ink/65">Shows every service with its price, the total{paid > 0 ? `, the ${money(paid, r.currency)} already paid and ${balance > 0 ? `the ${money(balance, r.currency)} still due` : "that it is paid in full"}` : ", payments received and the balance due"}. Cost and profit are never on it.</p>
+        <form action={saveCorporateInvoiceNotes.bind(null, r.id)} className="mt-3"><FormKeeper />
+          <label className="label" htmlFor="cr-inv-notes">Notes on the invoice</label>
+          <textarea id="cr-inv-notes" name="invoiceNotes" rows={3} maxLength={2000} defaultValue={r.invoiceNotes} placeholder="e.g. Please pay the balance by 15 November. Prices include entrance fees and VAT." className="input !py-2" />
+          <p className="mt-1 text-xs text-ink/65">The partner sees these. Notes for the team go in the request details below.</p>
+          <button className="btn btn-dark mt-2 !min-h-[42px] !py-2">Save invoice notes</button>
+        </form>
+      </div>
+
       <details className="card mt-5 p-5"><summary className="cursor-pointer font-display text-lg font-bold">Company, customer &amp; request details</summary>
         <form action={updateCorporateRequest.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-2"><FormKeeper />
           <h3 className="font-display text-base font-bold sm:col-span-2">Company</h3>
@@ -85,8 +101,8 @@ export default async function CorporateDetail({ params, searchParams }: { params
           <F name="serviceDate" label="Service date" type="date" def={r.serviceDate} />
           <F name="location" label="General location" def={r.location} />
           <div><label className="label" htmlFor="cr-currency">Currency</label><select id="cr-currency" name="currency" defaultValue={r.currency} className="input !py-2">{["USD", "EUR", "GBP", "EGP", "AED", "SAR"].map((c) => <option key={c}>{c}</option>)}</select></div>
-          <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">General request notes</label><textarea id="cr-notes" name="notes" rows={3} defaultValue={r.notes} className="input !py-2" /></div>
-          <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements</label><textarea id="cr-req" name="requirements" rows={2} defaultValue={r.requirements} className="input !py-2" /></div>
+          <div className="sm:col-span-2"><label className="label" htmlFor="cr-notes">Internal notes <span className="font-normal text-ink/65">(team only, not on the invoice)</span></label><textarea id="cr-notes" name="notes" rows={3} defaultValue={r.notes} className="input !py-2" /></div>
+          <div className="sm:col-span-2"><label className="label" htmlFor="cr-req">Additional requirements <span className="font-normal text-ink/65">(shown on the invoice)</span></label><textarea id="cr-req" name="requirements" rows={2} defaultValue={r.requirements} className="input !py-2" /></div>
           <h3 className="mt-2 font-display text-base font-bold sm:col-span-2">Selling price</h3>
           <fieldset className="sm:col-span-2"><legend className="label">How is the price worked out?</legend>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -101,11 +117,11 @@ export default async function CorporateDetail({ params, searchParams }: { params
 
       <h2 className="mt-8 font-display text-xl font-extrabold">Services <span className="text-base font-normal text-ink/65">({services.length})</span></h2>
       <div className="mt-3 space-y-3">
-        {services.map((sv) => (
+        {services.map((sv, i) => (
           <details key={sv.id} className="card p-4">
             <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
               <span><b className="font-display text-base font-bold">{SERVICE_TYPE_LABEL[sv.type] ?? sv.type}</b>{sv.label ? ` — ${sv.label}` : ""} <span className="text-sm text-ink/65">{sv.date ? new Date(sv.date + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "No date"}{sv.location ? ` · ${sv.location}` : ""}</span></span>
-              <span className="text-sm font-semibold">{r.pricingMode === "ITEMIZED" ? money(sv.price, r.currency) : (canFinance ? `Cost ${money(sv.cost, r.currency)}` : "")}</span>
+              <span className="text-right text-sm"><b>{money(prices[i], r.currency)}</b>{pctMode && canFinance && <span className="block text-xs text-ink/65">cost {money(sv.cost, r.currency)} + {r.servicePercent ?? 0}%</span>}</span>
             </summary>
             <form action={updateCorporateService.bind(null, sv.id, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
               <ServiceTypeField id={`sv-type-${sv.id}`} def={sv.type} />
@@ -118,6 +134,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
               <div><label className="label" htmlFor={`sv-status-${sv.id}`}>Status</label><select id={`sv-status-${sv.id}`} name="status" defaultValue={sv.status} className="input !py-2">{SERVICE_STATUS.map((v) => <option key={v} value={v}>{SERVICE_STATUS_LABEL[v]}</option>)}</select></div>
               {canFinance && <F name="cost" label={`Supplier cost (${r.currency})`} type="number" def={sv.cost} />}
               {r.pricingMode === "ITEMIZED" && <F name="price" label={`Selling price (${r.currency})`} type="number" def={sv.price} req />}
+              {pctMode && <div><span className="label">Selling price</span><p className="input !py-2 bg-ink/5">{money(prices[i], r.currency)}</p><p className="mt-1 text-xs text-ink/65">Cost + {r.servicePercent ?? 0}%, worked out for you</p></div>}
               <div className="sm:col-span-3"><label className="label" htmlFor={`sv-notes-${sv.id}`}>Notes</label><textarea id={`sv-notes-${sv.id}`} name="notes" rows={2} defaultValue={sv.notes} className="input !py-2" /></div>
               <button className="btn btn-dark !min-h-[42px] !py-2 sm:col-span-3 sm:w-fit">Save service</button>
             </form>
