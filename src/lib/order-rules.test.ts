@@ -81,3 +81,32 @@ test("collect on the day: empty unless staff fill it in", () => {
   assert.equal(collectLine(null, "", "USD"), ""); assert.equal(collectLine(0, null, "USD"), ""); assert.equal(collectLine(50, "", "USD"), "$50.00");
   assert.equal(collectLine(50, "cash", "EUR"), "€50.00 (cash)"); assert.equal(collectLine(null, "tips are welcome", "USD"), "tips are welcome");
 });
+
+import { statusAfterItinerarySent, statusFromProgress, isDeciding } from "./order-rules";
+test("sending a priced itinerary to a new order moves it to waiting for decision", () => {
+  const o = { status: "PENDING", showsPrice: true, invoices: 0, paid: 0, source: "WHATSAPP" };
+  assert.equal(statusAfterItinerarySent(o), "ITINERARY_SENT");
+  assert.equal(statusAfterItinerarySent({ ...o, status: "INQUIRY" }), "ITINERARY_SENT");
+  assert.equal(statusAfterItinerarySent({ ...o, status: "CONFIRMED" }), "ITINERARY_SENT");
+});
+test("an itinerary that is not an offer leaves the order as it is", () => {
+  const o = { status: "PENDING", showsPrice: true, invoices: 0, paid: 0, source: "WEBSITE" };
+  assert.equal(statusAfterItinerarySent({ ...o, showsPrice: false }), null, "no price on it");
+  assert.equal(statusAfterItinerarySent({ ...o, source: "VIATOR" }), null, "prepaid through a marketplace");
+  assert.equal(statusAfterItinerarySent({ ...o, invoices: 1 }), null, "already invoiced");
+  assert.equal(statusAfterItinerarySent({ ...o, paid: 50 }), null, "already paid something");
+  for (const status of ["INVOICED", "PAID", "COMPLETED", "CANCELLED", "QUOTE_SENT", "ITINERARY_SENT"]) assert.equal(statusAfterItinerarySent({ ...o, status }), null, status);
+});
+test("status from progress after a payment change never goes backwards past a step done", () => {
+  const b = { total: 400, paid: 0, hasInvoice: false, itinerarySent: false };
+  assert.equal(statusFromProgress(b), "PENDING");
+  assert.equal(statusFromProgress({ ...b, itinerarySent: true }), "ITINERARY_SENT");
+  assert.equal(statusFromProgress({ ...b, itinerarySent: true, hasInvoice: true }), "INVOICED");
+  assert.equal(statusFromProgress({ ...b, paid: 100, hasInvoice: true }), "PARTIALLY_PAID");
+  assert.equal(statusFromProgress({ ...b, paid: 100, depositOnly: true }), "DEPOSIT_PAID");
+  assert.equal(statusFromProgress({ ...b, paid: 400 }), "PAID");
+  assert.equal(statusFromProgress({ ...b, total: 0 }), "PENDING", "an unpriced order is not paid");
+});
+test("both decision statuses count as waiting for the customer", () => {
+  assert.equal(isDeciding("ITINERARY_SENT"), true); assert.equal(isDeciding("QUOTE_SENT"), true); assert.equal(isDeciding("PENDING"), false);
+});

@@ -12,9 +12,10 @@ import { creditReferralRewardIfDue } from "./referrals";
 import { renderInvoice, renderItinerary } from "@/pdf/render";
 import { prepareImages } from "@/pdf/images";
 import type { InvoiceData, ItineraryContent, ItineraryPdfData } from "@/pdf/types";
-import { customerItinerary, showPriceToCustomer } from "./order-rules";
+import { customerItinerary, showPriceToCustomer, statusAfterItinerarySent, statusFromProgress, ITINERARY_SENT } from "./order-rules";
 
-const AUTO_FROM = ["INQUIRY", "QUOTE_SENT", "PENDING", "CONFIRMED"];
+// Creating an invoice moves an order on from these (the customer said yes, or the order needs no decision).
+const AUTO_FROM = ["INQUIRY", "QUOTE_SENT", "PENDING", "CONFIRMED", ITINERARY_SENT];
 export const docUrl = (id: string, origin: string = SITE) => `${origin}/api/documents/${id}/pdf?t=${signDoc(id)}`;
 
 export async function setBookingStatus(bookingId: string, status: string) {
@@ -122,7 +123,20 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
   await db.update(s.documents).set({ status: "SENT", sentAt: new Date(), sentTo: to, sentVia: "EMAIL" }).where(eq(s.documents.id, doc.id));
   await db.insert(s.documentEvents).values({ documentId: doc.id, type: "EMAILED", note: to, userId });
   if (doc.itineraryId) await db.update(s.itineraries).set({ status: "SENT" }).where(eq(s.itineraries.id, doc.itineraryId));
+  await afterItinerarySent(doc);
   return { ok: true as const, message: `Sent to ${to}` };
+}
+
+// A priced itinerary sent to a customer whose order has not been invoiced or paid is an offer: the order now waits for their
+// decision (statusAfterItinerarySent in order-rules.ts decides). Runs whether it went by email or was marked sent by WhatsApp.
+async function afterItinerarySent(doc: typeof s.documents.$inferSelect) {
+  if (doc.kind !== "ITINERARY" || !doc.bookingId) return;
+  const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, doc.bookingId)); if (!b) return;
+  const [{ inv }] = await db.select({ inv: sql<number>`count(*)` }).from(s.documents).where(and(eq(s.documents.bookingId, b.id), eq(s.documents.kind, "INVOICE")));
+  const [{ paid }] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PAID")));
+  const showsPrice = parseJson<{ showPrice?: boolean }>(doc.data, {}).showPrice !== false;
+  const next = statusAfterItinerarySent({ status: b.status, showsPrice, invoices: Number(inv), paid: Number(paid), source: b.source });
+  if (next) await setBookingStatus(b.id, next);
 }
 
 export async function markDocumentSent(docId: string, userId: string, via: string) {
@@ -130,6 +144,7 @@ export async function markDocumentSent(docId: string, userId: string, via: strin
   await db.insert(s.documentEvents).values({ documentId: docId, type: "MARKED_SENT", note: via, userId });
   const [d] = await db.select().from(s.documents).where(eq(s.documents.id, docId));
   if (d?.itineraryId) await db.update(s.itineraries).set({ status: "SENT" }).where(eq(s.itineraries.id, d.itineraryId));
+  if (d) await afterItinerarySent(d);
 }
 
 export async function recordPayment(bookingId: string, userId: string, o: { amount: number; method: string; note?: string }) {
@@ -148,6 +163,12 @@ export async function recordPayment(bookingId: string, userId: string, o: { amou
   return { paid, next };
 }
 
+// Whether an order has an invoice, and whether an itinerary was sent: the documents part of statusFromProgress.
+export async function docProgress(bookingId: string) {
+  const docs = await db.select({ kind: s.documents.kind, sentAt: s.documents.sentAt }).from(s.documents).where(eq(s.documents.bookingId, bookingId));
+  return { hasInvoice: docs.some((d) => d.kind === "INVOICE"), itinerarySent: docs.some((d) => d.kind === "ITINERARY" && d.sentAt != null) };
+}
+
 // Undo a payment entered by mistake (wrong amount, wrong order). The row is kept as VOID for the record — never deleted — and
 // the order's status is worked out again from what is really paid, exactly as recordPayment does going forward.
 export async function voidPayment(bookingId: string, paymentId: string, userName: string) {
@@ -159,9 +180,8 @@ export async function voidPayment(bookingId: string, paymentId: string, userName
   const paid = rows.reduce((a, r) => a + r.amount, 0);
   const money = new Intl.NumberFormat("en-US", { style: "currency", currency: b.currency }).format(p.amount);
   await db.insert(s.bookingEvents).values({ bookingId, type: "PAYMENT_REMOVED", note: `Payment removed: ${money} (${p.provider}${p.providerRef ? ` · ${p.providerRef}` : ""}) by ${userName}` });
-  if (["PAID", "PARTIALLY_PAID"].includes(b.status)) {
-    const hasInvoice = (await db.select({ id: s.documents.id }).from(s.documents).where(and(eq(s.documents.bookingId, bookingId), eq(s.documents.kind, "INVOICE")))).length > 0;
-    const next = b.total > 0 && paid >= b.total - 0.005 ? "PAID" : paid > 0 ? "PARTIALLY_PAID" : hasInvoice ? "INVOICED" : "PENDING";
+  if (["PAID", "PARTIALLY_PAID", "DEPOSIT_PAID"].includes(b.status)) {
+    const next = statusFromProgress({ total: b.total, paid, depositOnly: b.status === "DEPOSIT_PAID", ...(await docProgress(bookingId)) });
     if (next !== b.status) await setBookingStatus(bookingId, next);
   }
   if (rows.length === 0) { const { reverseRewardForBooking } = await import("./referrals"); await reverseRewardForBooking(bookingId); } // no money left on a referred booking: no reward either

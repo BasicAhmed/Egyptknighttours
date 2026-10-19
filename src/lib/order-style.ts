@@ -1,8 +1,8 @@
 import { db, schema as s } from "@/db";
 import { and, eq, isNotNull } from "drizzle-orm";
 import { money, parseJson } from "./format";
-import { isPrepaid, planStyleChange, styleLabel, type StyleBasis, type StylePlan } from "./order-rules";
-import { setBookingStatus } from "./documents";
+import { isPrepaid, planStyleChange, styleLabel, statusFromProgress, type StyleBasis, type StylePlan } from "./order-rules";
+import { setBookingStatus, docProgress } from "./documents";
 
 type Booking = typeof s.bookings.$inferSelect; type Tour = typeof s.tours.$inferSelect;
 
@@ -52,9 +52,8 @@ export async function changeOrderStyle(id: string, toPrivate: boolean, by: { nam
   await db.update(s.payments).set({ amount: p.reprice.deposit }).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PENDING")));
   const rows = await db.select({ amount: s.payments.amount }).from(s.payments).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PAID")));
   const paid = Math.round(rows.reduce((a, x) => a + x.amount, 0) * 100) / 100; const total = p.reprice.total;
-  const hasInvoice = (await db.select({ id: s.documents.id }).from(s.documents).where(and(eq(s.documents.bookingId, b.id), eq(s.documents.kind, "INVOICE"))).limit(1)).length > 0;
   if (["PAID", "PARTIALLY_PAID", "DEPOSIT_PAID"].includes(b.status)) {
-    const next = paid >= total - 0.005 ? "PAID" : paid > 0.005 ? (b.status === "DEPOSIT_PAID" ? "DEPOSIT_PAID" : "PARTIALLY_PAID") : hasInvoice ? "INVOICED" : "PENDING";
+    const next = statusFromProgress({ total, paid, depositOnly: b.status === "DEPOSIT_PAID", ...(await docProgress(b.id)) });
     if (next !== b.status) await setBookingStatus(b.id, next);
   }
   const over = paid > total + 0.005;

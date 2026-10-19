@@ -300,9 +300,14 @@ function Flow({ o, busy, onStep }: { o: Order; busy: boolean; onStep: (s: Step) 
   const steps = [["Price", priced], ["Invoice", invSent], ["Payment", paid], ["Itinerary", itinSent], ["Trip done", done]] as const;
   const current = steps.findIndex(([, ok]) => !ok);
   const c = completeness(o); const past = daysUntil(o.travelDate) < 0;
+  const sentAt = Math.max(0, ...itinDocs.filter((d) => d.sentAt).map((d) => d.sentAt as number)) || null;
+  // While the customer decides: a ready-made, friendly follow-up on WhatsApp, next to the step itself.
+  const phone = o.customer.whatsapp || o.customer.phone;
+  const followUp = st === "DECIDING" && !invoiced && phone ? waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, it's Egypt Knight Tours. Did you get a chance to look at your itinerary for ${o.title}? Happy to change anything, or to book it for you whenever you're ready.`) : "";
   let next: Step | null = null;
   if (st === "CANCELLED") next = null;
   else if (!priced) next = o.itineraries.length ? { label: "Open itinerary to set the price", why: "The price comes from the itinerary: enter its cost and profit margin.", href: `/admin/itineraries/${o.itineraries[0].id}` } : { label: "Create the itinerary", why: "The itinerary sets this order's price, so it comes first.", tab: "money", focus: "itinerary" };
+  else if (st === "DECIDING" && !invoiced) next = { label: "They said yes: create invoice", why: `${sentAt ? `Itinerary sent ${ago(sentAt)}. ` : ""}Waiting for ${o.customer.name.split(" ")[0]}'s decision.${sentAt && Date.now() - sentAt >= 3 * 86400000 ? " Time to follow up." : ""} If they say no, set the status to Cancelled.`, tab: "money", focus: "invoice" };
   else if (!invoiced) next = { label: "Create invoice", why: "The order has a price. Send the customer an invoice to collect it.", tab: "money", focus: "invoice" };
   else if (!invSent) next = { label: "Send the invoice", why: "The invoice is ready but hasn't been sent yet.", tab: "money", focus: "invoice" };
   else if (!paid) next = { label: "Record a payment", why: `${money(o.balance, o.currency)} is still to be paid.`, tab: "money", focus: "payment" };
@@ -318,7 +323,7 @@ function Flow({ o, busy, onStep }: { o: Order; busy: boolean; onStep: (s: Step) 
             <span className={`relative flex h-7 w-7 items-center justify-center rounded-full text-[12.5px] font-bold ${ok ? "bg-[#1F8A4C] text-white" : i === current ? "bg-gold-500 text-ink ring-4 ring-gold-500/25" : "bg-[#EFEDE7] text-ink/50"}`}>{ok ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> : i + 1}<span className="sr-only">{ok ? " done" : i === current ? " current" : ""}</span></span>
             <span className={`mt-1.5 text-[11.5px] font-semibold leading-tight ${ok || i === current ? "text-ink" : "text-ink/50"}`}>{l}</span>
           </li>))}</ol>
-        {next ? <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-[#6B4A0C]">Next step</p><p className="text-[14px] text-ink/80">{next.why}</p></div><button type="button" disabled={busy} onClick={() => onStep(next!)} className="btn btn-dark !min-h-[42px] w-full !py-2 sm:w-auto">{next.label}</button></div>
+        {next ? <div className="mt-3.5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gold-500/15 p-3"><div className="min-w-0"><p className="text-[12.5px] font-semibold text-[#6B4A0C]">Next step</p><p className="text-[14px] text-ink/80">{next.why}</p></div><div className="flex w-full flex-wrap gap-2 sm:w-auto">{followUp && <a href={followUp} target="_blank" rel="noopener noreferrer" className="btn btn-wa !min-h-[42px] flex-1 !py-2 sm:flex-none">Follow up on WhatsApp</a>}<button type="button" disabled={busy} onClick={() => onStep(next!)} className="btn btn-dark !min-h-[42px] flex-1 !py-2 sm:flex-none">{next.label}</button></div></div>
           : <p className="mt-3.5 rounded-xl bg-[#E9F6EE] px-3 py-2.5 text-sm font-semibold text-[#17663A]">{done ? "Trip completed. Nothing left to do." : "Everything is in place for this trip."}</p>}
       </>}
     </div>

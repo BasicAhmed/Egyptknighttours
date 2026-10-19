@@ -2,8 +2,8 @@ import { z } from "zod";
 import { COUNTRIES } from "./countries";
 export const TOUR_STATUS = ["DRAFT", "PUBLISHED", "ARCHIVED"] as const;
 export const LEAD_STATUS = ["NEW","CONTACTED","QUALIFIED","QUOTE_SENT","FOLLOW_UP","BOOKED","TRAVELING","COMPLETED","REPEAT_CUSTOMER","LOST","ABANDONED"] as const;
-export const BOOKING_STATUS = ["INQUIRY","QUOTE_SENT","PENDING","CONFIRMED","INVOICED","PARTIALLY_PAID","DEPOSIT_PAID","PAID","COMPLETED","CANCELLED"] as const;
-export const BOOKING_STATUS_LABEL: Record<string, string> = { INQUIRY: "Inquiry", QUOTE_SENT: "Quote sent", PENDING: "Pending", CONFIRMED: "Confirmed", INVOICED: "Invoiced, awaiting payment", PARTIALLY_PAID: "Partially paid", DEPOSIT_PAID: "Deposit paid", PAID: "Paid / confirmed", COMPLETED: "Completed", CANCELLED: "Cancelled" };
+export const BOOKING_STATUS = ["INQUIRY","QUOTE_SENT","PENDING","CONFIRMED","ITINERARY_SENT","INVOICED","PARTIALLY_PAID","DEPOSIT_PAID","PAID","COMPLETED","CANCELLED"] as const;
+export const BOOKING_STATUS_LABEL: Record<string, string> = { INQUIRY: "Inquiry", QUOTE_SENT: "Quote sent", ITINERARY_SENT: "Itinerary sent, waiting for decision", PENDING: "Pending", CONFIRMED: "Confirmed", INVOICED: "Invoiced, awaiting payment", PARTIALLY_PAID: "Partially paid", DEPOSIT_PAID: "Deposit paid", PAID: "Paid / confirmed", COMPLETED: "Completed", CANCELLED: "Cancelled" };
 export const ROLES = ["SUPER_ADMIN","MANAGER","SALES","CONTENT_EDITOR","TOUR_OPERATOR"] as const;
 
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

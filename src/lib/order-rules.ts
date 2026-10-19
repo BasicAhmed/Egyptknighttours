@@ -133,3 +133,29 @@ export function collectLine(amount: number | null | undefined, note: string | nu
   const n = t(note); const a = amount != null && amount > 0 ? fmt(amount, currency) : "";
   return a && n ? `${a} (${n})` : a || n;
 }
+
+// ---------- 5. Waiting for the customer's decision ----------
+// An order whose priced itinerary has been sent, and that the customer has not said yes to yet (no invoice, no payment).
+// Staff are waiting on the customer, so it leaves "To do" and sits in its own "Waiting for decision" list until they
+// invoice it (yes), cancel it (no), or set another status by hand. "Quote sent", the older manual status, means the same.
+export const ITINERARY_SENT = "ITINERARY_SENT";
+export const DECIDING_STATUSES = [ITINERARY_SENT, "QUOTE_SENT"] as const;
+// Statuses an order can be moved on from automatically: nothing has been asked for or paid yet.
+export const EARLY_STATUSES = ["INQUIRY", "PENDING", "CONFIRMED"] as const;
+export const isDeciding = (status: string) => (DECIDING_STATUSES as readonly string[]).includes(status);
+
+// Sending an itinerary moves the order to "waiting for decision" only when it is an offer: it shows a price, the order is
+// still at the start (no invoice, nothing paid) and it was not prepaid through a marketplace. Otherwise it stays as it is.
+export function statusAfterItinerarySent(o: { status: string; showsPrice: boolean; invoices: number; paid: number; source?: string | null }): string | null {
+  if (!o.showsPrice || isPrepaid(o.source) || o.invoices > 0 || o.paid > 0.005) return null;
+  return (EARLY_STATUSES as readonly string[]).includes(o.status) ? ITINERARY_SENT : null;
+}
+
+// Where an order stands once its payments change (one removed, or the price changed): worked out from what is really
+// there, so it never points backwards to a step already done.
+export function statusFromProgress(o: { total: number; paid: number; hasInvoice: boolean; itinerarySent: boolean; depositOnly?: boolean }): string {
+  if (o.total > 0 && o.paid >= o.total - 0.005) return "PAID";
+  if (o.paid > 0.005) return o.depositOnly ? "DEPOSIT_PAID" : "PARTIALLY_PAID";
+  if (o.hasInvoice) return "INVOICED";
+  return o.itinerarySent ? ITINERARY_SENT : "PENDING";
+}

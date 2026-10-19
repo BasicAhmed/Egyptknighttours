@@ -14,6 +14,7 @@ const NEXT: Record<string, string> = {
   INVOICED: "We've sent your invoice. Complete your payment by the deadline to lock in your trip.",
   PARTIALLY_PAID: "We've received part of your payment. The remaining balance is shown below.",
   QUOTE_SENT: "We've sent you a quote. Reply to us whenever you're ready to go ahead.",
+  ITINERARY_SENT: "We've sent you your itinerary. Have a look, tell us what you'd like to change, or reply when you're ready to go ahead.",
   INQUIRY: "We've received your inquiry and will be in touch shortly.",
   CONFIRMED: "Your booking is confirmed. We'll send a secure payment link if a payment is still due.",
   DEPOSIT_PAID: "Your deposit is in. The balance is due before your trip and we'll remind you.",

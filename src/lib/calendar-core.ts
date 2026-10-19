@@ -146,10 +146,10 @@ export function orderEvents(o: OrderFacts): CalEvent[] {
 export const passportConcern = (expiry: string, travelDate: string) => isISO(expiry) && isISO(travelDate) && expiry < addMonths(travelDate, 6);
 
 // ---------- filters (kept in the address, so a reload, Back and a shared link show the same thing) ----------
-export const STAGES = ["todo", "pay", "paid", "done"] as const;
+export const STAGES = ["todo", "deciding", "pay", "paid", "done"] as const;
 export type StageKey = (typeof STAGES)[number];
-export const STAGE_LABEL: Record<StageKey, string> = { todo: "To do", pay: "Awaiting payment", paid: "Confirmed", done: "Completed" };
-const STAGE_OF: Record<string, StageKey> = { INQUIRY: "todo", PENDING: "todo", CONFIRMED: "todo", QUOTE_SENT: "todo", INVOICED: "pay", PARTIALLY_PAID: "pay", DEPOSIT_PAID: "pay", PAID: "paid", COMPLETED: "done" };
+export const STAGE_LABEL: Record<StageKey, string> = { todo: "To do", deciding: "Waiting for decision", pay: "Awaiting payment", paid: "Confirmed", done: "Completed" };
+const STAGE_OF: Record<string, StageKey> = { INQUIRY: "todo", PENDING: "todo", CONFIRMED: "todo", QUOTE_SENT: "deciding", ITINERARY_SENT: "deciding", INVOICED: "pay", PARTIALLY_PAID: "pay", DEPOSIT_PAID: "pay", PAID: "paid", COMPLETED: "done" };
 export type Filters = { kinds: Kind[]; stage: "" | StageKey; cancelled: boolean; guide: string; assignee: string; q: string };
 export const NO_FILTERS: Filters = { kinds: [], stage: "", cancelled: false, guide: "", assignee: "", q: "" };
 type Params = { get(k: string): string | null };

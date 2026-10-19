@@ -10,8 +10,10 @@ import { COUNTRIES } from "@/lib/countries";
 import { F, FieldCtx, fieldApi } from "./FormField";
 import type { Order, OrderRow } from "@/lib/orders";
 
+// An order waiting for the customer's decision this many days after the itinerary went out is flagged for a follow-up.
+const FOLLOW_UP_DAYS = 3;
 const TABS: { key: string; label: string; stages: Stage[] | null }[] = [
-  { key: "todo", label: "To do", stages: ["NEW", "QUOTE"] }, { key: "pay", label: "Awaiting payment", stages: ["AWAITING", "PARTIAL"] },
+  { key: "todo", label: "To do", stages: ["NEW"] }, { key: "deciding", label: "Waiting for decision", stages: ["DECIDING"] }, { key: "pay", label: "Awaiting payment", stages: ["AWAITING", "PARTIAL"] },
   { key: "paid", label: "Confirmed", stages: ["PAID"] }, { key: "done", label: "Completed", stages: ["DONE"] }, { key: "all", label: "All", stages: null }, { key: "cancelled", label: "Cancelled", stages: ["CANCELLED"] },
 ];
 
@@ -25,7 +27,7 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
   useEffect(() => { if (openId) setOpen({ id: openId, focus: null }); }, [openId]);
 
   const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.key, rows.filter((r) => !t.stages || t.stages.includes(stageOf(r.status))).length])), [rows]);
-  const travelSoon = useMemo(() => rows.filter((r) => ["PAID", "PARTIAL", "AWAITING", "NEW"].includes(stageOf(r.status)) && daysUntil(r.travelDate) >= 0 && daysUntil(r.travelDate) <= 7).length, [rows]);
+  const travelSoon = useMemo(() => rows.filter((r) => ["PAID", "PARTIAL", "AWAITING", "NEW", "DECIDING"].includes(stageOf(r.status)) && daysUntil(r.travelDate) >= 0 && daysUntil(r.travelDate) <= 7).length, [rows]);
   const list = useMemo(() => {
     const t = TABS.find((x) => x.key === tab)!; const needle = q.trim().toLowerCase();
     let out = rows.filter((r) => (!t.stages || t.stages.includes(stageOf(r.status))) && (!soon || (daysUntil(r.travelDate) >= 0 && daysUntil(r.travelDate) <= 7)));
@@ -37,13 +39,13 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
   const update = (o: Order) => setRows((rs) => rs.map((r) => (r.id === o.id ? rowFromOrder(o) : r)));
 
   const pick = (k: string) => { setTab(k); setSoon(false); };
-  const DOT: Record<string, string> = { todo: STAGE_COLOR.NEW, pay: STAGE_COLOR.AWAITING, paid: STAGE_COLOR.PAID, done: STAGE_COLOR.DONE, all: "#141010", cancelled: STAGE_COLOR.CANCELLED };
+  const DOT: Record<string, string> = { todo: STAGE_COLOR.NEW, deciding: STAGE_COLOR.DECIDING, pay: STAGE_COLOR.AWAITING, paid: STAGE_COLOR.PAID, done: STAGE_COLOR.DONE, all: "#141010", cancelled: STAGE_COLOR.CANCELLED };
   return (
     <div>
-      <div className="flex items-center justify-between gap-3"><div className="min-w-0"><h1 className="font-display text-[26px] font-extrabold leading-tight sm:text-[32px]">Orders</h1><p className="text-sm text-ink/60">{counts.todo ? `${counts.todo} waiting for you` : "Nothing waiting. You're all caught up."}{travelSoon ? `, ${travelSoon} travelling this week` : ""}</p></div><button className="btn btn-primary shrink-0" onClick={() => setCreating(true)}><span aria-hidden="true" className="-ml-0.5 text-lg leading-none">+</span>New order</button></div>
+      <div className="flex items-center justify-between gap-3"><div className="min-w-0"><h1 className="font-display text-[26px] font-extrabold leading-tight sm:text-[32px]">Orders</h1><p className="text-sm text-ink/60">{counts.todo ? `${counts.todo} waiting for you` : "Nothing waiting. You're all caught up."}{counts.deciding ? `, ${counts.deciding} waiting for the customer` : ""}{travelSoon ? `, ${travelSoon} travelling this week` : ""}</p></div><button className="btn btn-primary shrink-0" onClick={() => setCreating(true)}><span aria-hidden="true" className="-ml-0.5 text-lg leading-none">+</span>New order</button></div>
 
       {/* One strip does two jobs: it shows how many orders sit at each stage and it filters the list. */}
-      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-7 md:overflow-visible md:px-0" role="tablist" aria-label="Order stages">
+      <div className="no-scrollbar -mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-8 md:overflow-visible md:px-0" role="tablist" aria-label="Order stages">
         {TABS.map((t) => { const sel = tab === t.key && !soon; return <button key={t.key} role="tab" aria-selected={sel} onClick={() => pick(t.key)} className={`min-w-[104px] shrink-0 rounded-[14px] px-3.5 py-3 text-left transition md:min-w-0 ${sel ? "bg-ink text-white shadow-[0_10px_24px_-12px_rgba(20,16,16,.6)]" : "bg-white text-ink hover:bg-white/70"}`}><span className="flex items-center gap-1.5 text-[12.5px] font-semibold"><span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: sel && t.key === "all" ? "#fff" : DOT[t.key] }} /><span className={sel ? "text-white/80" : "text-ink/65"}>{t.label}</span></span><span className="mt-1.5 block font-display text-[26px] font-extrabold leading-none">{counts[t.key]}</span></button>; })}
         <button role="tab" aria-selected={soon} onClick={() => { setTab("all"); setSoon(!soon); }} className={`min-w-[120px] shrink-0 rounded-[14px] px-3.5 py-3 text-left transition md:min-w-0 ${soon ? "bg-ink text-white shadow-[0_10px_24px_-12px_rgba(20,16,16,.6)]" : "bg-white text-ink hover:bg-white/70"}`}><span className="flex items-center gap-1.5 text-[12.5px] font-semibold"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={soon ? "text-gold-500" : "text-gold-700"}><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" /></svg><span className={soon ? "text-white/80" : "text-ink/65"}>This week</span></span><span className="mt-1.5 block font-display text-[26px] font-extrabold leading-none">{travelSoon}</span></button>
       </div>
@@ -72,6 +74,8 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
                   </div>
                   <div className="min-w-0">{r.total > 0 ? <><p className="text-[14.5px]"><b>{money(r.paid, r.currency)}</b> <span className="text-ink/55">of {money(r.total, r.currency)}</span></p><div className="mt-1.5 h-1.5 w-full max-w-[180px] overflow-hidden rounded-full bg-ink/10"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STAGE_COLOR.PAID : "#F0B050" }} /></div></> : <p className="text-[14.5px] font-semibold text-[#8A4B0A]">Not priced yet</p>}
                     <p className="mt-1 truncate text-[12.5px] text-ink/55">{r.invoices ? `Invoice ${r.invoiceSent ? "sent" : "made"}` : "No invoice"}{r.itineraries ? `, itinerary ${r.itinerarySent ? "sent" : "made"}` : ""}</p>
+                    {st === "DECIDING" && (() => { const days = r.itinerarySentAt ? Math.floor((Date.now() - r.itinerarySentAt) / 86400000) : null; const late = days != null && days >= FOLLOW_UP_DAYS; return (
+                      <p className={`mt-0.5 truncate text-[12.5px] font-semibold ${late ? "text-[#8A4B0A]" : "text-[#14545B]"}`}>{r.itinerarySentAt ? `Sent ${ago(r.itinerarySentAt)}` : "Waiting for their reply"}{late ? ", time to follow up" : ""}</p>); })()}
                     {["AWAITING", "PARTIAL", "PAID"].includes(st) && <p className="mt-0.5 truncate text-[12.5px] font-semibold"><span className={r.guideName ? "text-ink/60" : "text-[#8A4B0A]"}>{r.guideName ? `Guide: ${r.guideName}` : "No guide yet"}</span><span className={r.passports >= r.pax ? "text-[#17663A]" : "text-[#8A4B0A]"}>, passports {r.passports}/{r.pax}</span></p>}</div>
                   <div className="flex items-center gap-2 md:flex-col md:items-end"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${PILL[st]}`}>{STATUS_LABEL[r.status] ?? r.status}</span>
                     {next && (next.href

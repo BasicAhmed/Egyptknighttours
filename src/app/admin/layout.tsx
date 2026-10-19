@@ -21,7 +21,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       db.select({ status: sch.bookings.status, n: sql<number>`count(*)` }).from(sch.bookings).groupBy(sch.bookings.status),
       db.select({ n: sql<number>`count(*)` }).from(sch.leads).where(eq(sch.leads.status, "NEW")),
     ]);
-    const todo = byStatus.filter((r) => ["NEW", "QUOTE"].includes(stageOf(r.status))).reduce((a, r) => a + Number(r.n), 0);
+    // Only orders waiting for staff. Orders waiting for the customer's decision are not counted: nothing to do until they reply.
+    const todo = byStatus.filter((r) => stageOf(r.status) === "NEW").reduce((a, r) => a + Number(r.n), 0);
     if (todo) badges["/admin"] = todo; if (Number(newLeads[0]?.n)) badges["/admin/leads"] = Number(newLeads[0].n);
   } catch { /* the counts are a convenience only */ }
   // The big "New order" alert, for the people who handle orders. Loaded with the page so it shows the moment the panel opens.

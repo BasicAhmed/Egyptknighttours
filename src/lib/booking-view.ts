@@ -29,5 +29,5 @@ export const MILESTONES = [
 ] as const;
 // index of the current milestone for a booking status
 export function currentMilestone(status: string) {
-  return ({ INQUIRY: 0, QUOTE_SENT: 0, PENDING: 0, CONFIRMED: 1, INVOICED: 1, PARTIALLY_PAID: 2, DEPOSIT_PAID: 2, PAID: 2, COMPLETED: 4, CANCELLED: -1 } as Record<string, number>)[status] ?? 0;
+  return ({ INQUIRY: 0, QUOTE_SENT: 0, ITINERARY_SENT: 0, PENDING: 0, CONFIRMED: 1, INVOICED: 1, PARTIALLY_PAID: 2, DEPOSIT_PAID: 2, PAID: 2, COMPLETED: 4, CANCELLED: -1 } as Record<string, number>)[status] ?? 0;
 }
