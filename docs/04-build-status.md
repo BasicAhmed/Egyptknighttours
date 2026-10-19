@@ -401,3 +401,10 @@ Asked for by the tour operator: for a customer who wants to pay online, staff pa
 - **On the invoice PDF:** it becomes the big "Complete your payment" button at the top, and a dark "Pay online" card heads the How to pay page, before the bank details. The link from Settings (payment methods) is still used when no link is given for that invoice. Not shown once the invoice is fully paid.
 - **Email and WhatsApp:** the invoice email's button becomes "Pay online now", and "Send on WhatsApp" adds "Pay online by card: <link>". Preview shows the link too.
 - Stored inside the invoice snapshot (`documents.data.payLink`): no database change. Invoices made before keep what they said.
+
+## Partner services: price per person (October 2026)
+Asked for by the tour operator: a Nile cruise at USD 1,340 per person for 28 people should charge 28 × 1,340, not 1,340.
+- Each service on a partner request now says **The price is: Per person** (cost and price typed for one person, multiplied by its number of people) or **For the whole service** (one amount: a car, a boat, a guide). New services start as Per person; every service made before stays "For the whole service", so no existing total changes.
+- Per person needs a number of people (refused without one; a red note flags any old one missing it). The service list shows "28 people × $1,340" under the line total, and the invoice shows the same under each per-person price. Works with both pricing models: with "fixed percentage", the cost per person × people, plus the percentage.
+- One rule for all of it: `quantityOf`, `serviceLines` and `requestTotals` in `corporate-constants.ts` (unit tested), read by the request page, the list, the invoice and Finance. Switching a request from percentage to per-service pricing keeps each per-person service's price for one person. Changes are written to the request's history.
+- Database: one column, `corporate_services.price_unit` (default `TOTAL`), added on the next start. Checked on a copy of the previous schema with an existing service.

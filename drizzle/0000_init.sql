@@ -194,6 +194,7 @@ CREATE TABLE `corporate_services` (
 	`supplier` text DEFAULT '' NOT NULL,
 	`cost` real DEFAULT 0 NOT NULL,
 	`price` real DEFAULT 0 NOT NULL,
+	`price_unit` text DEFAULT 'TOTAL' NOT NULL,
 	`status` text DEFAULT 'PENDING' NOT NULL,
 	`notes` text DEFAULT '' NOT NULL,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,

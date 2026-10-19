@@ -62,7 +62,10 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
               <Text style={{ flex: 1 }}>{sv.date ? dLong(sv.date) : "—"}{sv.time ? ` ${sv.time}` : ""}</Text>
               <Text style={{ flex: 1.3 }}>{sv.location || "—"}</Text>
               <Text style={{ flex: 0.6, textAlign: "right" }}>{sv.people ?? "—"}</Text>
-              <Text style={{ flex: 0.9, textAlign: "right" }}>{money(sv.price, d.currency)}</Text>
+              <View style={{ flex: 0.9, alignItems: "flex-end" }}>
+                <Text>{money(sv.price, d.currency)}</Text>
+                {sv.perPerson && sv.qty ? <Text style={{ fontSize: 7.5, color: C.muted, marginTop: 1 }}>{sv.qty} × {money(sv.unit ?? 0, d.currency)}</Text> : null}
+              </View>
             </View>
           ))}
           {!d.services.length && <View style={s.tr}><Text style={{ flex: 1, color: C.muted }}>No services added yet.</Text></View>}

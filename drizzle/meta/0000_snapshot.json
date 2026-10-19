@@ -1382,6 +1382,14 @@
           "autoincrement": false,
           "default": 0
         },
+        "price_unit": {
+          "name": "price_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'TOTAL'"
+        },
         "status": {
           "name": "status",
           "type": "text",

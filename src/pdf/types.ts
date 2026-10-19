@@ -6,7 +6,8 @@ export type CorporateInvoiceData = {
   bill: { name: string; contact: string; email: string; phone: string }; // the requesting company being billed
   guest: { name: string; contact: string; count: number | null }; // the end customer, if known
   serviceDate: string; location: string; notes: string; requirements: string; // notes = the request's invoice notes
-  services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number }[]; // price = selling price, in both pricing modes
+  // price = the line total the partner pays, in both pricing modes. Per person: qty people × unit (the price for one).
+  services: { type: string; label: string; date: string; time: string; location: string; people: number | null; price: number; perPerson?: boolean; qty?: number; unit?: number }[];
   total: number; methods: PayMethod[];
   payments: { date: string; method: string; amount: number }[]; paid: number; balance: number; // balance is never below 0
   credit: number; // paid more than the current total: owed back to the partner

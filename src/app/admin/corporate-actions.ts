@@ -7,7 +7,7 @@ import { db, schema as s } from "@/db";
 import { requireStaff, PERMS, type Session } from "@/lib/auth";
 import {
   newCorporateRef, loadCorporateRequest, logCorporate, normalizeServiceType, businessDay, servicePrices, requestTotals, paymentProblem, fmt,
-  REQUEST_STATUS, REQUEST_STATUS_LABEL, SERVICE_STATUS, PRICING_MODES, PRICING_MODE_LABEL, CORPORATE_CURRENCIES, SERVICE_TYPE_LABEL,
+  REQUEST_STATUS, REQUEST_STATUS_LABEL, SERVICE_STATUS, PRICING_MODES, PRICING_MODE_LABEL, CORPORATE_CURRENCIES, SERVICE_TYPE_LABEL, PRICE_UNITS, PRICE_UNIT_LABEL, isPerPerson,
 } from "@/lib/corporate";
 
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
@@ -63,14 +63,16 @@ export async function updateCorporateRequest(id: string, fd: FormData) {
   const pricingChanged = d.pricingMode !== r0.pricingMode || (d.pricingMode === "PERCENTAGE" && d.servicePercent !== r0.servicePercent);
   // Moving from percentage to per-service pricing keeps what the partner was quoted: each service takes the price it had.
   const carry = r0.pricingMode === "PERCENTAGE" && d.pricingMode === "ITEMIZED";
-  const nextServices = carry ? before.services.map((sv, i) => ({ ...sv, price: before.prices[i] || sv.price })) : before.services;
+  // Per person services keep their price for one person; services for the whole service keep their line total.
+  const carried = before.services.map((sv, i) => (isPerPerson(sv) ? before.lines[i].unit : before.prices[i]) || sv.price);
+  const nextServices = carry ? before.services.map((sv, i) => ({ ...sv, price: carried[i] })) : before.services;
   const nextTotal = requestTotals(nextServices, d.pricingMode, d.servicePercent).price;
   if (pricingChanged && before.paid > 0 && nextTotal < before.paid - 0.005)
     return go(page(id), `That would make the total ${fmt(nextTotal, d.currency)}, less than the ${fmt(before.paid, d.currency)} already paid. Remove or correct a payment first.`, true);
 
   await db.transaction(async (tx) => {
     await tx.update(s.corporateRequests).set({ ...d, serviceDate: d.serviceDate || null }).where(eq(s.corporateRequests.id, id));
-    if (carry) for (const [i, sv] of before.services.entries()) if (before.prices[i] && before.prices[i] !== sv.price) await tx.update(s.corporateServices).set({ price: before.prices[i] }).where(eq(s.corporateServices.id, sv.id));
+    if (carry) for (const [i, sv] of before.services.entries()) if (carried[i] !== sv.price) await tx.update(s.corporateServices).set({ price: carried[i] }).where(eq(s.corporateServices.id, sv.id));
   });
   await audit(u.uid, "UPDATE", "corporate_request", id);
   if (pricingChanged) {
@@ -120,7 +122,9 @@ const serviceSchema = z.object({
   // Cost is only on the form for owner/manager. For anyone else it is absent and the stored cost is kept.
   supplier: str(160), cost: money, price: money,
   status: z.enum(SERVICE_STATUS as unknown as [string, ...string[]]).optional().default("PENDING"), notes: str(1000),
-});
+  // Per person: the cost and price typed are for one person and are multiplied by the number of people.
+  priceUnit: z.enum(PRICE_UNITS).optional().default("TOTAL"),
+}).refine((d) => d.priceUnit !== "PER_PERSON" || (d.people ?? 0) > 0, { message: "Per person pricing needs the number of people.", path: ["people"] });
 const serviceName = (x: { type: string; label: string }) => `${SERVICE_TYPE_LABEL[x.type] ?? x.type}${x.label ? ` — ${x.label}` : ""}`;
 
 export async function addCorporateService(requestId: string, fd: FormData) {
@@ -134,7 +138,7 @@ export async function addCorporateService(requestId: string, fd: FormData) {
   const [row] = await db.insert(s.corporateServices).values({ requestId, ...p.data, cost, price, date: p.data.date || null }).returning();
   await audit(u.uid, "CREATE", "corporate_service", row.id);
   const after = await loadCorporateRequest(requestId);
-  await logCorporate(requestId, "SERVICE_ADDED", `${serviceName(row)}${row.date ? ` on ${row.date}` : ""}. Total ${fmt(data.totals.price, r.currency)} → ${fmt(after?.totals.price ?? 0, r.currency)}`, u);
+  await logCorporate(requestId, "SERVICE_ADDED", `${serviceName(row)}${row.date ? ` on ${row.date}` : ""}${isPerPerson(row) ? `, priced per person × ${row.people}` : ""}. Total ${fmt(data.totals.price, r.currency)} → ${fmt(after?.totals.price ?? 0, r.currency)}`, u);
   done(requestId);
   return go(page(requestId), r.pricingMode === "PERCENTAGE" && !isFinance(u) ? "Service added. An owner or manager needs to enter its cost to price it." : "Service added");
 }
@@ -157,7 +161,8 @@ export async function updateCorporateService(id: string, requestId: string, fd: 
   const after = await loadCorporateRequest(requestId);
   const totalNote = after && after.totals.price !== data.totals.price ? `. Total ${fmt(data.totals.price, r.currency)} → ${fmt(after.totals.price, r.currency)}` : "";
   const statusNote = rest.status !== sv.status ? ` (${sv.status.toLowerCase()} → ${rest.status.toLowerCase()})` : "";
-  await logCorporate(requestId, "SERVICE_UPDATED", `${serviceName({ type: rest.type, label: rest.label })}${statusNote}${totalNote}`, u);
+  const unitNote = rest.priceUnit !== sv.priceUnit ? ` (price ${PRICE_UNIT_LABEL[sv.priceUnit]?.toLowerCase() ?? sv.priceUnit} → ${PRICE_UNIT_LABEL[rest.priceUnit].toLowerCase()})` : "";
+  await logCorporate(requestId, "SERVICE_UPDATED", `${serviceName({ type: rest.type, label: rest.label })}${statusNote}${unitNote}${totalNote}`, u);
   done(requestId);
   return go(page(requestId), "Service updated");
 }

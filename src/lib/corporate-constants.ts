@@ -19,32 +19,49 @@ export const CORPORATE_CURRENCIES = ["USD", "EUR", "GBP", "EGP", "AED", "SAR"] a
 // Written once here (no database code) and used by the request page, the list, the invoice, Finance and the unit tests,
 // so they can never disagree. A service marked Cancelled is kept on the request for the record but is not charged:
 // it adds nothing to the cost, the price or the invoice.
-type Money = { cost: number; price: number; status?: string | null };
+// priceUnit: PER_PERSON means cost and price are for one person and are multiplied by the service's number of people;
+// TOTAL (the default, and every service made before this existed) means they are for the whole service.
+type Money = { cost: number; price: number; status?: string | null; priceUnit?: string | null; people?: number | null };
 const cent = (n: number) => Math.round(n * 100) / 100;
 export const isCharged = (sv: { status?: string | null }) => sv.status !== "CANCELLED";
+export const PRICE_UNITS = ["PER_PERSON", "TOTAL"] as const;
+export const PRICE_UNIT_LABEL: Record<string, string> = { PER_PERSON: "Per person", TOTAL: "For the whole service" };
+export const isPerPerson = (sv: { priceUnit?: string | null }) => sv.priceUnit === "PER_PERSON";
+// How many times the entered cost and price count. Per person with no number of people counts 0, never a guess.
+export const quantityOf = (sv: { priceUnit?: string | null; people?: number | null }) => (isPerPerson(sv) ? Math.max(0, Math.floor(Number(sv.people) || 0)) : 1);
+export const lineCost = (sv: Money) => cent(sv.cost * quantityOf(sv));
 
-// ITEMIZED: each service has its own price, summed. PERCENTAGE: services only carry a cost; the price is the total cost
-// plus one service-fee percentage.
+// ITEMIZED: each service's price (× its people when per person), summed. PERCENTAGE: services only carry a cost; the price
+// is the total cost plus one service-fee percentage.
 export function requestTotals(services: Money[], pricingMode: string, servicePercent: number | null) {
   const live = services.filter(isCharged);
-  const cost = cent(live.reduce((a, x) => a + x.cost, 0));
-  const price = pricingMode === "PERCENTAGE" ? cent(cost * (1 + (servicePercent ?? 0) / 100)) : cent(live.reduce((a, x) => a + x.price, 0));
+  const cost = cent(live.reduce((a, x) => a + lineCost(x), 0));
+  const price = pricingMode === "PERCENTAGE" ? cent(cost * (1 + (servicePercent ?? 0) / 100)) : cent(live.reduce((a, x) => a + cent(x.price * quantityOf(x)), 0));
   return { cost, price, profit: cent(price - cost) };
 }
 
-// Each service's selling price. ITEMIZED: the price staff typed. PERCENTAGE: the service's cost plus the percentage, so the
-// partner sees a real price on every line. Cancelled services are 0. Lines are rounded to the cent and any leftover cent
-// goes on the largest line, so the charged lines always add up to exactly requestTotals().price.
-export function servicePrices(services: Money[], pricingMode: string, servicePercent: number | null): number[] {
-  const out = services.map((x) => (!isCharged(x) ? 0 : pricingMode === "PERCENTAGE" ? cent(x.cost * (1 + (servicePercent ?? 0) / 100)) : cent(x.price)));
-  if (pricingMode !== "PERCENTAGE") return out;
-  const diff = cent(requestTotals(services, pricingMode, servicePercent).price - out.reduce((a, x) => a + x, 0));
-  if (diff !== 0) {
-    let i = -1; services.forEach((x, k) => { if (isCharged(x) && (i < 0 || out[k] > out[i])) i = k; });
-    if (i >= 0) out[i] = cent(out[i] + diff);
+// Each service as the partner sees it: how many, the price for one, and the line total. ITEMIZED: the price staff typed.
+// PERCENTAGE: the cost plus the percentage. Cancelled services are 0. Line totals are rounded to the cent and any leftover
+// cent goes on the largest line, so the charged lines always add up to exactly requestTotals().price.
+export type ServiceLine = { qty: number; perPerson: boolean; unit: number; line: number };
+export function serviceLines(services: Money[], pricingMode: string, servicePercent: number | null): ServiceLine[] {
+  const f = 1 + (servicePercent ?? 0) / 100;
+  const out = services.map((x) => {
+    const qty = quantityOf(x); const unit = pricingMode === "PERCENTAGE" ? cent(x.cost * f) : cent(x.price);
+    const line = !isCharged(x) ? 0 : pricingMode === "PERCENTAGE" ? cent(lineCost(x) * f) : cent(x.price * qty);
+    return { qty, perPerson: isPerPerson(x), unit, line };
+  });
+  if (pricingMode === "PERCENTAGE") {
+    const diff = cent(requestTotals(services, pricingMode, servicePercent).price - out.reduce((a, x) => a + x.line, 0));
+    if (diff !== 0) {
+      let i = -1; services.forEach((x, k) => { if (isCharged(x) && (i < 0 || out[k].line > out[i].line)) i = k; });
+      if (i >= 0) out[i] = { ...out[i], line: cent(out[i].line + diff) };
+    }
   }
   return out;
 }
+// Each service's line total (what it adds to the request). Kept for the callers that only need the amount.
+export const servicePrices = (services: Money[], pricingMode: string, servicePercent: number | null): number[] => serviceLines(services, pricingMode, servicePercent).map((l) => l.line);
 
 // What is still owed. Negative means the partner paid more than the current total (a refund or credit is due).
 export const balanceOf = (price: number, paid: number) => cent(price - paid);

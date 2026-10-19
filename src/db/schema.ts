@@ -334,6 +334,7 @@ export const corporateServices = sqliteTable("corporate_services", {
   label: text("label").notNull().default(""), // a short description, especially useful when type is OTHER
   date: text("date"), time: text("time"), location: text("location").notNull().default(""), people: integer("people"),
   supplier: text("supplier").notNull().default(""), cost: real("cost").notNull().default(0), price: real("price").notNull().default(0),
+  priceUnit: text("price_unit").notNull().default("TOTAL"), // PER_PERSON: cost and price × people. TOTAL: for the whole service
   status: text("status").notNull().default("PENDING"), // PENDING CONFIRMED DONE CANCELLED
   notes: text("notes").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("corporate_services_request_idx").on(t.requestId), index("corporate_services_date_idx").on(t.date)]);

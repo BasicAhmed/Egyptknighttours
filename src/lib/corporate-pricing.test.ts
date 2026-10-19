@@ -68,3 +68,25 @@ test("payment days follow Cairo time, not the server's UTC day", () => {
   assert.equal(businessDay("2026-11-14T22:30:00Z"), "2026-11-15"); // 00:30 in Cairo (UTC+2 in winter)
   assert.equal(businessDay("2026-11-14T20:00:00Z"), "2026-11-14");
 });
+
+import { serviceLines, quantityOf } from "./corporate-constants";
+test("per person: cost and price are multiplied by the number of people", () => {
+  const s = [{ cost: 1000, price: 1340, status: "PENDING", priceUnit: "PER_PERSON", people: 28 }, { cost: 900, price: 1240, status: "PENDING", priceUnit: "PER_PERSON", people: 2 }];
+  assert.deepEqual(requestTotals(s, "ITEMIZED", null), { cost: 29800, price: 40000, profit: 10200 }); // 28×1340 + 2×1240
+  assert.deepEqual(serviceLines(s, "ITEMIZED", null), [{ qty: 28, perPerson: true, unit: 1340, line: 37520 }, { qty: 2, perPerson: true, unit: 1240, line: 2480 }]);
+});
+test("for the whole service (and every older service): not multiplied", () => {
+  const s = [{ cost: 80, price: 120, status: "PENDING", priceUnit: "TOTAL", people: 28 }, { cost: 50, price: 70, status: "PENDING", people: 4 }];
+  assert.deepEqual(requestTotals(s, "ITEMIZED", null), { cost: 130, price: 190, profit: 60 });
+  assert.equal(quantityOf({ people: 4 }), 1); assert.equal(quantityOf({ priceUnit: "TOTAL", people: 9 }), 1);
+});
+test("per person with no number of people counts nothing, never a guess", () => {
+  assert.equal(quantityOf({ priceUnit: "PER_PERSON", people: null }), 0);
+  assert.equal(requestTotals([{ cost: 10, price: 20, priceUnit: "PER_PERSON", people: null }], "ITEMIZED", null).price, 0);
+});
+test("percentage pricing works per person too, and lines still add up", () => {
+  const s = [{ cost: 33.33, price: 0, priceUnit: "PER_PERSON", people: 3 }, { cost: 19.99, price: 0, priceUnit: "TOTAL", people: 7 }, { cost: 50, price: 0, priceUnit: "PER_PERSON", people: 2, status: "CANCELLED" }];
+  const t = requestTotals(s, "PERCENTAGE", 12.5); const lines = serviceLines(s, "PERCENTAGE", 12.5);
+  assert.equal(t.cost, 119.98); assert.equal(sum(lines.map((l) => l.line)), t.price);
+  assert.equal(lines[0].unit, 37.5); assert.equal(lines[2].line, 0);
+});

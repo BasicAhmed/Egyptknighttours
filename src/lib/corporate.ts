@@ -4,7 +4,7 @@ import { r2 } from "./pricing";
 // Server-only data access lives in this file; the plain labels/lists and the money rules live in corporate-constants.ts so a
 // client component (and the unit tests) can import just those without pulling in server-only code (db, next/headers, next/cache).
 export * from "./corporate-constants";
-import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, servicePrices, requestTotals, balanceOf, isCharged, businessDay } from "./corporate-constants";
+import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, serviceLines, requestTotals, balanceOf, isCharged, businessDay } from "./corporate-constants";
 
 export async function newCorporateRef() {
   let ref = ""; let n = 1000 + Math.floor(Math.random() * 9000);
@@ -27,7 +27,7 @@ export async function moneyFor(requests: { id: string; pricingMode: string; serv
   const out = new Map<string, { cost: number; price: number; profit: number; paid: number; balance: number; serviceCount: number }>();
   if (!ids.length) return out;
   const [svcs, pays] = await Promise.all([
-    db.select({ requestId: s.corporateServices.requestId, cost: s.corporateServices.cost, price: s.corporateServices.price, status: s.corporateServices.status }).from(s.corporateServices).where(inArray(s.corporateServices.requestId, ids)),
+    db.select({ requestId: s.corporateServices.requestId, cost: s.corporateServices.cost, price: s.corporateServices.price, status: s.corporateServices.status, priceUnit: s.corporateServices.priceUnit, people: s.corporateServices.people }).from(s.corporateServices).where(inArray(s.corporateServices.requestId, ids)),
     db.select({ requestId: s.corporatePayments.requestId, amount: s.corporatePayments.amount }).from(s.corporatePayments).where(and(inArray(s.corporatePayments.requestId, ids), eq(s.corporatePayments.status, "PAID"))),
   ]);
   for (const r of requests) {
@@ -56,7 +56,8 @@ export async function loadCorporateRequest(id: string) {
   const t = requestTotals(services, r.pricingMode, r.servicePercent);
   const payments = allPayments.filter((p) => p.status === "PAID"); // removed payments stay in the table as VOID, for the record
   const paid = r2(payments.reduce((a, p) => a + p.amount, 0));
-  return { request: r, services, prices: servicePrices(services, r.pricingMode, r.servicePercent), payments, removedPayments: allPayments.filter((p) => p.status === "VOID"), events, totals: t, paid, balance: balanceOf(t.price, paid) };
+  const lines = serviceLines(services, r.pricingMode, r.servicePercent); // per service: how many, price for one, line total
+  return { request: r, services, lines, prices: lines.map((l) => l.line), payments, removedPayments: allPayments.filter((p) => p.status === "VOID"), events, totals: t, paid, balance: balanceOf(t.price, paid) };
 }
 
 // One line in the request's history. Never throws: a history problem must not undo the change it describes.
@@ -70,7 +71,7 @@ export async function buildCorporateInvoiceData(id: string) {
   const { activeMethods } = await import("./invoice");
   const data = await loadCorporateRequest(id);
   if (!data) return null;
-  const { request: r, services, prices, totals: t, payments, paid, balance } = data;
+  const { request: r, services, lines, totals: t, payments, paid, balance } = data;
   const g = await getSettings();
   const [methods, company] = await Promise.all([activeMethods(r.currency), Promise.resolve(companyFrom(g))]);
   return {
@@ -80,8 +81,8 @@ export async function buildCorporateInvoiceData(id: string) {
     // Internal request notes stay off the invoice; only the notes written for the invoice are printed.
     serviceDate: r.serviceDate ?? "", location: r.location, notes: r.invoiceNotes, requirements: r.requirements,
     // Only charged services, each with its selling price (never its cost). Cancelled services are not billed.
-    services: services.map((sv, i) => ({ sv, price: prices[i] })).filter(({ sv }) => isCharged(sv))
-      .map(({ sv, price }) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price })),
+    services: services.map((sv, i) => ({ sv, l: lines[i] })).filter(({ sv }) => isCharged(sv))
+      .map(({ sv, l }) => ({ type: SERVICE_TYPE_LABEL[sv.type] ?? sv.type, label: sv.label, date: sv.date ?? "", time: sv.time ?? "", location: sv.location, people: sv.people, price: l.line, perPerson: l.perPerson, qty: l.qty, unit: l.unit })),
     total: t.price, methods,
     // Payments received so far (oldest first) and what is still owed. The staff-only payment note is not printed.
     payments: [...payments].reverse().map((p) => ({ date: businessDay(p.createdAt), method: p.method, amount: r2(p.amount) })),

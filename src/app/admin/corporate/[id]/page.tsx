@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff, PERMS } from "@/lib/auth";
 import {
-  loadCorporateRequest, isCharged, isSettled, fmt as money, BUSINESS_TZ,
+  loadCorporateRequest, isCharged, isSettled, isPerPerson, fmt as money, BUSINESS_TZ, PRICE_UNIT_LABEL,
   SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL, PRICING_MODE_LABEL, CORPORATE_CURRENCIES, EVENT_LABEL,
 } from "@/lib/corporate";
 import {
@@ -29,6 +29,19 @@ const ServiceTypeField = ({ def }: { def?: string }) => (
   </label>
 );
 // Plain days (a service date) are shown as written; moments (a payment, a history line) in Cairo time, like the business.
+// Per person: the cost and price typed are for one person and are multiplied by the service's number of people.
+// For the whole service: they are the full amount (a car, a boat, a permit), whatever the number of people.
+const PriceUnit = ({ name, def }: { name: string; def?: string | null }) => (
+  <fieldset className="sm:col-span-3"><legend className="label">The price is</legend>
+    <div className="grid gap-2 sm:grid-cols-2">
+      {(["PER_PERSON", "TOTAL"] as const).map((v) => (
+        <label key={v} className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 bg-white p-3 has-[:checked]:border-ink has-[:checked]:ring-2 has-[:checked]:ring-gold-500">
+          <input type="radio" name="priceUnit" value={v} defaultChecked={(def ?? "TOTAL") === v} className="mt-1" aria-describedby={`${name}-${v}`} />
+          <span><span className="block font-semibold">{PRICE_UNIT_LABEL[v]}</span><span id={`${name}-${v}`} className="text-sm text-ink/65">{v === "PER_PERSON" ? "Multiplied by the number of people (cruise cabins, tickets)." : "One amount for everyone (a car, a boat, a guide)."}</span></span>
+        </label>))}
+    </div>
+  </fieldset>
+);
 const plainDay = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const day = (d: Date) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: BUSINESS_TZ });
 const dayTime = (d: Date) => new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: BUSINESS_TZ });
@@ -37,13 +50,14 @@ export default async function CorporateDetail({ params, searchParams }: { params
   const u = await requireStaff("corporate"); const { id } = await params; const sp = await searchParams;
   const canFinance = PERMS.finance.includes(u.role);
   const data = await loadCorporateRequest(id); if (!data) notFound();
-  const { request: r, services, prices, totals: t, payments, removedPayments, events, paid, balance } = data;
+  const { request: r, services, lines, totals: t, payments, removedPayments, events, paid, balance } = data;
   const cur = r.currency;
   const pctMode = r.pricingMode === "PERCENTAGE";
   const cancelled = r.status === "CANCELLED";
   const settled = isSettled(t.price, paid);
   const overpaid = balance < -0.005;
   const barPct = t.price > 0 ? Math.min(100, Math.round((paid / t.price) * 100)) : 0;
+  const noPeople = services.filter((sv) => isCharged(sv) && isPerPerson(sv) && !(sv.people && sv.people > 0)).length;
   const unpricedCount = pctMode ? services.filter((sv) => isCharged(sv) && !(sv.cost > 0)).length : services.filter((sv) => isCharged(sv) && !(sv.price > 0)).length;
   // Why the payment form is not shown, in plain words (the same rules the server checks in paymentProblem). Paid in full
   // needs no extra line: the amount above already says it.
@@ -78,6 +92,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
         <div className="stat-card"><p className="stat-label">Total price charged</p><p className="stat-value">{money(t.price, cur)}</p>{pctMode && <p className="mt-0.5 text-xs text-ink/65">{canFinance ? `${money(t.cost, cur)} cost + ` : "Cost + "}{r.servicePercent ?? 0}% service</p>}</div>
         <div className="stat-card"><p className="stat-label">Profit</p><p className={`stat-value ${canFinance ? (t.profit >= 0 ? "text-[#17663A]" : "text-red-700") : ""}`}>{canFinance ? money(t.profit, cur) : "—"}</p>{canFinance && t.price > 0 && <p className="mt-0.5 text-xs text-ink/65">{Math.round((t.profit / t.price) * 1000) / 10}% of the price</p>}</div>
       </div>
+      {noPeople > 0 && <p className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">{noPeople} service{noPeople === 1 ? " is" : "s are"} priced per person but {noPeople === 1 ? "has" : "have"} no number of people, so {noPeople === 1 ? "it adds" : "they add"} nothing to the total.</p>}
       {unpricedCount > 0 && <p className="mt-3 rounded-xl bg-gold-500/15 p-3 text-sm text-[#6B4708]">{unpricedCount} service{unpricedCount === 1 ? " has" : "s have"} no {pctMode ? "cost" : "selling price"} yet{pctMode && !canFinance ? ": an owner or manager needs to enter it" : ""}, so {unpricedCount === 1 ? "it adds" : "they add"} nothing to the total.</p>}
 
       <section className="card mt-5 p-5" aria-labelledby="pay-h">
@@ -167,7 +182,7 @@ export default async function CorporateDetail({ params, searchParams }: { params
                 <span><b className="font-display text-base font-bold">{SERVICE_TYPE_LABEL[sv.type] ?? sv.type}</b>{sv.label ? ` — ${sv.label}` : ""} <span className="text-sm text-ink/65">{sv.date ? plainDay(sv.date) : "No date"}{sv.time ? ` ${sv.time}` : ""}{sv.location ? ` · ${sv.location}` : ""}</span>
                   {sv.status !== "PENDING" && <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-bold ${off ? "bg-red-50 text-red-700" : "bg-ink/10 text-ink/70"}`}>{off ? "Cancelled · not charged" : SERVICE_STATUS_LABEL[sv.status] ?? sv.status}</span>}
                 </span>
-                <span className="text-right text-sm">{off ? <s className="text-ink/65">{money(pctMode ? sv.cost * (1 + (r.servicePercent ?? 0) / 100) : sv.price, cur)}</s> : <b>{money(prices[i], cur)}</b>}{pctMode && canFinance && !off && <span className="block text-xs text-ink/65">cost {money(sv.cost, cur)} + {r.servicePercent ?? 0}%</span>}</span>
+                <span className="text-right text-sm">{off ? <s className="text-ink/65">{money(lines[i].unit * lines[i].qty, cur)}</s> : <b>{money(lines[i].line, cur)}</b>}{!off && lines[i].perPerson && <span className="block text-xs text-ink/65">{lines[i].qty} {lines[i].qty === 1 ? "person" : "people"} × {money(lines[i].unit, cur)}</span>}{pctMode && canFinance && !off && <span className="block text-xs text-ink/65">cost {money(sv.cost, cur)}{lines[i].perPerson ? " each" : ""} + {r.servicePercent ?? 0}%</span>}</span>
               </summary>
               <form action={updateCorporateService.bind(null, sv.id, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
                 <ServiceTypeField def={sv.type} />
@@ -178,9 +193,10 @@ export default async function CorporateDetail({ params, searchParams }: { params
                 <F name="people" label="Number of people" type="number" def={sv.people} />
                 <F name="supplier" label="Supplier" def={sv.supplier} />
                 <div><label className="label" htmlFor={`sv-status-${sv.id}`}>Status</label><select id={`sv-status-${sv.id}`} name="status" defaultValue={sv.status} className="input !py-2">{SERVICE_STATUS.map((v) => <option key={v} value={v}>{SERVICE_STATUS_LABEL[v]}{v === "CANCELLED" ? " (not charged)" : ""}</option>)}</select></div>
-                {canFinance && <F name="cost" label={`Supplier cost (${cur})`} type="number" def={sv.cost} req={pctMode} />}
-                {!pctMode && <F name="price" label={`Selling price (${cur})`} type="number" def={sv.price} req />}
-                {pctMode && <div><span className="label">Selling price</span><p className="input !py-2 bg-ink/5">{off ? "Not charged" : money(prices[i], cur)}</p><p className="mt-1 text-xs text-ink/65">Cost + {r.servicePercent ?? 0}%, worked out for you</p></div>}
+                <PriceUnit name={`pu-${sv.id}`} def={sv.priceUnit} />
+                {canFinance && <F name="cost" label={`Supplier cost (${cur})`} type="number" def={sv.cost} req={pctMode} hint={sv.priceUnit === "PER_PERSON" ? "For one person" : undefined} />}
+                {!pctMode && <F name="price" label={`Selling price (${cur})`} type="number" def={sv.price} req hint={sv.priceUnit === "PER_PERSON" ? `For one person. Total: ${money(lines[i].line, cur)}` : undefined} />}
+                {pctMode && <div><span className="label">Selling price</span><p className="input !py-2 bg-ink/5">{off ? "Not charged" : lines[i].perPerson ? `${lines[i].qty} × ${money(lines[i].unit, cur)} = ${money(lines[i].line, cur)}` : money(lines[i].line, cur)}</p><p className="mt-1 text-xs text-ink/65">Cost + {r.servicePercent ?? 0}%, worked out for you</p></div>}
                 <div className="sm:col-span-3"><label className="label" htmlFor={`sv-notes-${sv.id}`}>Notes (team only)</label><textarea id={`sv-notes-${sv.id}`} name="notes" rows={2} maxLength={1000} defaultValue={sv.notes} className="input !py-2" /></div>
                 <button className="btn btn-dark !min-h-[42px] !py-2 sm:col-span-3 sm:w-fit">Save service</button>
               </form>
@@ -197,8 +213,9 @@ export default async function CorporateDetail({ params, searchParams }: { params
           <F name="label" label="Description" cls="sm:col-span-2" />
           <F name="date" label="Date" type="date" def={r.serviceDate} /><F name="time" label="Time (optional)" /><F name="location" label="Location" def={r.location} />
           <F name="people" label="Number of people" type="number" def={r.customerCount} /><F name="supplier" label="Supplier" />
-          {canFinance && <F name="cost" label={`Supplier cost (${cur})`} type="number" req={pctMode} />}
-          {!pctMode && <F name="price" label={`Selling price (${cur})`} type="number" req />}
+          <PriceUnit name="pu-new" def="PER_PERSON" />
+          {canFinance && <F name="cost" label={`Supplier cost (${cur})`} type="number" req={pctMode} hint="For one person if priced per person" />}
+          {!pctMode && <F name="price" label={`Selling price (${cur})`} type="number" req hint="For one person if priced per person" />}
           {pctMode && !canFinance && <p className="self-end text-xs text-ink/65 sm:col-span-2">This request is priced as cost + {r.servicePercent ?? 0}%. An owner or manager enters the cost, which sets the price.</p>}
           <div className="sm:col-span-3"><button className="btn btn-primary !min-h-[44px]">Add service</button></div>
         </form>
