@@ -57,7 +57,7 @@ export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
   }).from(s.corporatePayments).innerJoin(s.corporateRequests, eq(s.corporatePayments.requestId, s.corporateRequests.id))
     .where(and(eq(s.corporatePayments.status, "PAID"), gte(s.corporatePayments.createdAt, from), lt(s.corporatePayments.createdAt, to)));
   const { moneyFor } = await import("./corporate");
-  const reqMoney = await moneyFor([...new Map(crows0.map((r) => [r.requestId, { id: r.requestId, pricingMode: r.pricingMode, servicePercent: r.servicePercent }])).values()]);
+  const reqMoney = await moneyFor([...new Map<string, { id: string; pricingMode: string; servicePercent: number | null }>(crows0.map((r) => [r.requestId, { id: r.requestId, pricingMode: r.pricingMode, servicePercent: r.servicePercent }] as const)).values()]);
   const crows = crows0.map((r) => {
     const m = reqMoney.get(r.requestId)!;
     return { requestId: r.requestId, ref: r.ref, companyName: r.companyName, amount: usdAmount(r.amount, r.currency, g), totalCost: usdAmount(m.cost, r.currency, g), totalPrice: usdAmount(m.price, r.currency, g) };

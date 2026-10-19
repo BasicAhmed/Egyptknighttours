@@ -52,8 +52,9 @@ export async function changeOrderStyle(id: string, toPrivate: boolean, by: { nam
   await db.update(s.payments).set({ amount: p.reprice.deposit }).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PENDING")));
   const rows = await db.select({ amount: s.payments.amount }).from(s.payments).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PAID")));
   const paid = Math.round(rows.reduce((a, x) => a + x.amount, 0) * 100) / 100; const total = p.reprice.total;
+  const docs = await docProgress(b.id); const hasInvoice = docs.hasInvoice;
   if (["PAID", "PARTIALLY_PAID", "DEPOSIT_PAID"].includes(b.status)) {
-    const next = statusFromProgress({ total, paid, depositOnly: b.status === "DEPOSIT_PAID", ...(await docProgress(b.id)) });
+    const next = statusFromProgress({ total, paid, depositOnly: b.status === "DEPOSIT_PAID", ...docs });
     if (next !== b.status) await setBookingStatus(b.id, next);
   }
   const over = paid > total + 0.005;

@@ -20,7 +20,7 @@ const done = (id: string) => { revalidatePath(page(id)); revalidatePath("/admin/
 
 // Every action on a request first loads it: an id that no longer exists (deleted in another tab) gets a clear message
 // instead of a silent "Saved" that changed nothing.
-async function mustLoad(id: string) {
+async function mustLoad(id: string): Promise<NonNullable<Awaited<ReturnType<typeof loadCorporateRequest>>>> {
   const data = await loadCorporateRequest(id);
   if (!data) redirect("/admin/corporate?e=" + encodeURIComponent("That request no longer exists."));
   return data;
