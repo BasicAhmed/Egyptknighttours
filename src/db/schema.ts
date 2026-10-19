@@ -353,6 +353,12 @@ export const corporateEvents = sqliteTable("corporate_events", {
   note: text("note").notNull().default(""), userId: text("user_id"), userName: text("user_name").notNull().default(""), createdAt: createdAt(),
 }, (t) => [index("corporate_events_request_idx").on(t.requestId)]);
 
+// Which new orders each staff member has already seen, so the "New order" alert in the staff panel shows each order to
+// each person once, until they open it or press "Got it". One row per person per order. Old rows are pruned nightly.
+export const orderAlertsSeen = sqliteTable("order_alerts_seen", {
+  id: id(), userId: text("user_id").notNull(), bookingId: text("booking_id").notNull(), createdAt: createdAt(),
+}, (t) => [uniqueIndex("order_alerts_seen_uq").on(t.userId, t.bookingId), index("order_alerts_seen_created_idx").on(t.createdAt)]);
+
 // Every notification email attempt — success or failure — so the team can actually verify one went out, not just hope it did.
 export const notificationLog = sqliteTable("notification_log", {
   id: id(), type: text("type").notNull(), // NEW_BOOKING NEW_LEAD PAYMENT_COMPLETE ORDER_CANCELLED CORPORATE_PAYMENT_COMPLETE CORPORATE_CANCELLED

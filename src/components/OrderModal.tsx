@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CopyButton from "./CopyButton";
 import Modal from "./Modal";
+import { ordersSeen } from "@/app/admin/alert-actions";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
 import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
@@ -25,6 +26,9 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
   const [o, setO] = useState<Order | null>(cache.get(row.id) ?? null);
   const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ t: string; ok: boolean; warn?: boolean } | null>(null);
+  // Opening an order (from the Orders list, the calendar or the new-order alert) means this person has seen it:
+  // the new-order alert stops showing it for them.
+  useEffect(() => { window.dispatchEvent(new CustomEvent("ek:orders-seen", { detail: [row.id] })); void ordersSeen([row.id]); }, [row.id]);
   const [invOpen, setInvOpen] = useState(focus === "invoice"); const [editOpen, setEditOpen] = useState(false); const [custOpen, setCustOpen] = useState(false);
   const [tab, setTab] = useState<"overview" | "travelers" | "ops" | "money" | "notes">(focus ? "money" : "overview");
   const [dirty, setDirty] = useState(false);

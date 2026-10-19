@@ -21,6 +21,8 @@ export default function OrdersBoard({ initial, tours, openId, canFinance = false
   const [tab, setTab] = useState("todo"); const [q, setQ] = useState(""); const [sort, setSort] = useState<"new" | "trip">("new"); const [soon, setSoon] = useState(false); const [src, setSrc] = useState("all");
   const [open, setOpen] = useState<{ id: string; focus: Focus | null } | null>(openId ? { id: openId, focus: null } : null);
   const [creating, setCreating] = useState(false);
+  // "Open order" on the new-order alert links here with ?open=<id>; follow it even when this page is already on screen.
+  useEffect(() => { if (openId) setOpen({ id: openId, focus: null }); }, [openId]);
 
   const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.key, rows.filter((r) => !t.stages || t.stages.includes(stageOf(r.status))).length])), [rows]);
   const travelSoon = useMemo(() => rows.filter((r) => ["PAID", "PARTIAL", "AWAITING", "NEW"].includes(stageOf(r.status)) && daysUntil(r.travelDate) >= 0 && daysUntil(r.travelDate) <= 7).length, [rows]);

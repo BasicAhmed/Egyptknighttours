@@ -12,6 +12,8 @@ export async function GET(req: Request) {
   const now = Date.now();
   out.rateLimitsPruned = Number((await client.execute({ sql: "delete from rate_limits where window_start < ?", args: [now - 24 * 3600_000] })).rowsAffected);
   out.analyticsPruned = Number((await client.execute({ sql: "delete from analytics_events where created_at < ?", args: [Math.floor((now - 400 * 86400_000) / 1000)] })).rowsAffected);
+  // "New order" alerts only look back 7 days, so who-saw-what older than 30 days is never read again.
+  out.orderAlertsPruned = Number((await client.execute({ sql: "delete from order_alerts_seen where created_at < ?", args: [Math.floor((now - 30 * 86400_000) / 1000)] })).rowsAffected);
   const days = Number((await getSettings())["privacy.passportRetentionDays"]) || 0;
   if (days > 0) {
     const cutoff = new Date(now - days * 86400_000).toISOString().slice(0, 10);

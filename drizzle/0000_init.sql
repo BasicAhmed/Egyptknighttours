@@ -418,6 +418,15 @@ CREATE TABLE `notification_log` (
 );
 --> statement-breakpoint
 CREATE INDEX `notification_log_created_idx` ON `notification_log` (`created_at`);--> statement-breakpoint
+CREATE TABLE `order_alerts_seen` (
+	`id` text PRIMARY KEY NOT NULL,
+	`user_id` text NOT NULL,
+	`booking_id` text NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `order_alerts_seen_uq` ON `order_alerts_seen` (`user_id`,`booking_id`);--> statement-breakpoint
+CREATE INDEX `order_alerts_seen_created_idx` ON `order_alerts_seen` (`created_at`);--> statement-breakpoint
 CREATE TABLE `payment_methods` (
 	`id` text PRIMARY KEY NOT NULL,
 	`kind` text DEFAULT 'BANK' NOT NULL,

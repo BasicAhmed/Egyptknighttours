@@ -2948,6 +2948,61 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "order_alerts_seen": {
+      "name": "order_alerts_seen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "booking_id": {
+          "name": "booking_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(unixepoch())"
+        }
+      },
+      "indexes": {
+        "order_alerts_seen_uq": {
+          "name": "order_alerts_seen_uq",
+          "columns": [
+            "user_id",
+            "booking_id"
+          ],
+          "isUnique": true
+        },
+        "order_alerts_seen_created_idx": {
+          "name": "order_alerts_seen_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "payment_methods": {
       "name": "payment_methods",
       "columns": {
