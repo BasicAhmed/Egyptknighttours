@@ -4020,6 +4020,14 @@
           "autoincrement": false,
           "default": 0
         },
+        "fixed_dates": {
+          "name": "fixed_dates",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'[]'"
+        },
         "price_mode": {
           "name": "price_mode",
           "type": "text",

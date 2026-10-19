@@ -2,14 +2,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Calendar, { prettyDate } from "./Calendar";
+import DateChoices from "./DateChoices";
+import { upcomingDates } from "@/lib/tour-dates";
 import Stepper from "./Stepper";
 import { money } from "@/lib/format";
 import { track } from "./Tracker";
 
-type P = { slug: string; pricingModel: string; maxTravelers: number; isPrivateAvailable: boolean; isGroupAvailable: boolean; minDate: string };
+// fixedDates: the days this tour runs on, when it only runs on set dates (empty = any future day).
+type P = { slug: string; pricingModel: string; maxTravelers: number; isPrivateAvailable: boolean; isGroupAvailable: boolean; minDate: string; fixedDates?: string[]; whatsapp?: string };
 export default function AvailabilityCard(p: P) {
   const router = useRouter();
-  const [date, setDate] = useState(""); const [open, setOpen] = useState(false);
+  const fixed = !!p.fixedDates?.length; const choices = upcomingDates(p.fixedDates ?? [], p.minDate);
+  // One date only: it is the date. Several: the list opens straight away so the choice is visible.
+  const [date, setDate] = useState(choices.length === 1 ? choices[0] : ""); const [open, setOpen] = useState(fixed && choices.length !== 1);
   const [adults, setAdults] = useState(2); const [children, setChildren] = useState(0); const [infants, setInfants] = useState(0);
   const [isPrivate, setIsPrivate] = useState(!p.isGroupAvailable);
   const [total, setTotal] = useState<number | null>(null); const [err, setErr] = useState<string | null>(null);
@@ -23,6 +28,7 @@ export default function AvailabilityCard(p: P) {
   }, [p.slug, adults, children, infants, isPrivate]);
 
   function go() {
+    if (fixed && !choices.length) return;
     if (!date) { setOpen(true); setErr("Choose a date to continue"); return; }
     if (err && err !== "Choose a date to continue") return;
     track("start_booking", { tourSlug: p.slug });
@@ -33,7 +39,9 @@ export default function AvailabilityCard(p: P) {
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center justify-between rounded-xl border border-ink/20 px-4 py-3 text-left hover:border-ink">
         <span><span className="block text-[11px] font-semibold uppercase tracking-wide text-ink/65">Date</span><span className="font-semibold">{date ? prettyDate(date) : "Select a date"}</span></span><span aria-hidden>▾</span>
       </button>
-      {open && <div className="mt-3 rounded-xl border border-ink/10 p-3"><Calendar value={date} min={p.minDate} onChange={(d) => { setDate(d); setOpen(false); setErr(null); }} /></div>}
+      {open && <div className="mt-3 rounded-xl border border-ink/10 p-3">{fixed
+        ? <DateChoices dates={choices} value={date} whatsapp={p.whatsapp} onChange={(d) => { setDate(d); setOpen(false); setErr(null); }} />
+        : <Calendar value={date} min={p.minDate} onChange={(d) => { setDate(d); setOpen(false); setErr(null); }} />}</div>}
       <div className="mt-2 divide-y divide-ink/10">
         <Stepper label="Adults" sub="Age 12+" value={adults} min={1} max={p.maxTravelers} onChange={(n) => { setAdults(n); track("add_traveler", { tourSlug: p.slug }); }} />
         <Stepper label="Children" sub="Age 3–11" value={children} min={0} max={p.maxTravelers} onChange={setChildren} />
@@ -45,7 +53,7 @@ export default function AvailabilityCard(p: P) {
         </div>)}
       {err && <p role="alert" className="mt-3 text-sm text-red-700">{err}</p>}
       <div className="mt-4 flex items-end justify-between"><span className="text-sm text-ink/65">Total</span><span className="font-display text-2xl font-extrabold">{total != null ? money(total) : "–"}</span></div>
-      <button type="button" onClick={go} className="btn btn-primary mt-3 w-full">Check availability</button>
+      <button type="button" onClick={go} disabled={fixed && !choices.length} className="btn btn-primary mt-3 w-full disabled:opacity-50">{fixed ? "Book this date" : "Check availability"}</button>
       <p className="mt-2 text-center text-xs text-ink/65">You won't be charged yet. Pay a deposit or reserve now.</p>
     </div>
   );

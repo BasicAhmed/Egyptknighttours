@@ -44,6 +44,8 @@ export const tours = sqliteTable("tours", {
   seoTitle: text("seo_title").notNull().default(""), seoDescription: text("seo_description").notNull().default(""),
   status: text("status").notNull().default("DRAFT"), // DRAFT PUBLISHED ARCHIVED
   popularity: integer("popularity").notNull().default(0),
+  // Set departure days (JSON list of YYYY-MM-DD). Empty = bookable any future day. See lib/tour-dates.ts.
+  fixedDates: text("fixed_dates").notNull().default("[]"),
   // Cost-based pricing (owner/manager only). priceMode MARGIN means `price` above is calculated as costPrice * (1 + marginPercent/100) and kept in sync on every save.
   priceMode: text("price_mode").notNull().default("MANUAL"), // MANUAL | MARGIN
   costPrice: real("cost_price"), marginPercent: real("margin_percent"),

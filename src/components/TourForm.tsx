@@ -4,6 +4,7 @@ import { parseJson } from "../lib/format";
 import ImageField from "./ImageField";
 import FormKeeper from "./FormKeeper";
 import TourPricingFields from "./TourPricingFields";
+import FixedDatesField from "./FixedDatesField";
 
 type T = typeof s.tours.$inferSelect;
 export default async function TourForm({ tour, error, canFinance = false }: { tour?: T; error?: string; canFinance?: boolean }) {
@@ -31,6 +32,7 @@ export default async function TourForm({ tour, error, canFinance = false }: { to
       : <div className="sm:col-span-2 rounded-xl bg-ink/5 p-3 text-sm text-ink/65">Price: <b className="text-ink">{tour?.price != null ? `$${tour.price}` : "not set"}</b>. Only a manager can set the cost and profit margin that decide this price.</div>}
     {inp("childPercent", "Child price % of adult", tour?.childPercent ?? 50, "number")}{inp("privateSurcharge", "Private upgrade (flat, USD)", tour?.privateSurcharge ?? 0, "number")}
     {inp("maxTravelers", "Max travelers", tour?.maxTravelers ?? 12, "number")}
+    <FixedDatesField value={tour?.fixedDates} />
     <div className="flex items-center gap-6 pt-6 text-sm"><label className="flex items-center gap-2"><input type="checkbox" name="isPrivateAvailable" defaultChecked={tour?.isPrivateAvailable ?? true} className="h-5 w-5 accent-black" />Private</label><label className="flex items-center gap-2"><input type="checkbox" name="isGroupAvailable" defaultChecked={tour?.isGroupAvailable ?? true} className="h-5 w-5 accent-black" />Shared</label></div>
     {ta("highlights", "Highlights", j<string[]>(tour?.highlights, []).join("\n"), 4, "one per line")}{ta("itinerary", "Itinerary", it, 5, "Title | description, one per line")}
     {ta("included", "Included", j<string[]>(tour?.included, []).join("\n"), 4, "one per line")}{ta("excluded", "Excluded", j<string[]>(tour?.excluded, []).join("\n"), 4, "one per line")}

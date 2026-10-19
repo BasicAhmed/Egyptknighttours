@@ -6,6 +6,7 @@ import { legacyOrNotFound } from "@/lib/legacy-server";
 import { getTourBySlug, listTours } from "@/lib/queries";
 import { money, parseJson, waLink, SITE, duration, CATEGORY_LABEL, toDateInput } from "@/lib/format";
 import AvailabilityCard from "@/components/AvailabilityCard";
+import { readFixedDates } from "@/lib/tour-dates";
 import TourCard from "@/components/TourCard";
 import Tracker from "@/components/Tracker";
 import WhatsAppButton from "@/components/WhatsAppButton";
@@ -66,7 +67,7 @@ export default async function TourPage({ params }: P) {
         </div>
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <div className="mb-3 flex items-end justify-between"><p className="text-sm text-ink/65">From <span className="text-2xl font-extrabold text-ink">{money(price)}</span> {t.pricingModel === "PER_GROUP" ? "/ group" : "/ person"}{t.discountPrice != null && <s className="ml-1 text-ink/65">{money(t.price)}</s>}</p></div>
-          <AvailabilityCard slug={t.slug} pricingModel={t.pricingModel} maxTravelers={t.maxTravelers} isPrivateAvailable={t.isPrivateAvailable} isGroupAvailable={t.isGroupAvailable} minDate={minDate} />
+          <AvailabilityCard slug={t.slug} pricingModel={t.pricingModel} maxTravelers={t.maxTravelers} isPrivateAvailable={t.isPrivateAvailable} isGroupAvailable={t.isGroupAvailable} minDate={minDate} fixedDates={readFixedDates(t.fixedDates)} whatsapp={wa} />
           <div className="card mt-4 p-4 text-sm"><p className="font-semibold">Not sure this fits?</p><p className="text-ink/70">Ask us on WhatsApp and we'll help you choose.</p><WhatsAppButton href={wa} label="Ask on WhatsApp" className="btn btn-wa mt-3 w-full" tourSlug={t.slug} /></div>
         </aside>
       </div>

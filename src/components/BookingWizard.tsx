@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Calendar, { prettyDate, tomorrowISO, fromISO } from "./Calendar";
+import DateChoices from "./DateChoices";
+import { upcomingDates } from "@/lib/tour-dates";
 import Stepper from "./Stepper";
 import SiteImage from "./SiteImage";
 import { track } from "./Tracker";
@@ -11,7 +13,7 @@ import { COUNTRIES } from "@/lib/countries";
 import { DEPOSIT_PERCENT, type Quote } from "@/lib/pricing";
 
 type Addon = { id: string; name: string; description: string; price: number; unit: string };
-type Tour = { slug: string; title: string; imageUrl: string | null; destinationSlug: string; destinationName: string; pricingModel: string; maxTravelers: number; isPrivateAvailable: boolean; isGroupAvailable: boolean; pickupInfo: string; cancellationPolicy: string; durationLabel: string };
+type Tour = { slug: string; title: string; imageUrl: string | null; destinationSlug: string; destinationName: string; pricingModel: string; maxTravelers: number; isPrivateAvailable: boolean; isGroupAvailable: boolean; pickupInfo: string; cancellationPolicy: string; durationLabel: string; fixedDates?: string[] };
 type PayMode = "DEPOSIT" | "FULL" | "PAY_LATER";
 const STEPS = ["Trip", "Extras", "Your details", "Review"];
 const emailOk = (s: string) => /^\S+@\S+\.\S+$/.test(s.trim());
@@ -20,7 +22,10 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
   const router = useRouter();
   const minDate = useMemo(() => tomorrowISO(), []);
   const [step, setStep] = useState(1);
-  const [date, setDate] = useState(initial.date >= minDate ? initial.date : "");
+  // A tour on fixed dates offers those dates only; a single date is chosen for the customer.
+  const fixed = !!tour.fixedDates?.length; const choices = useMemo(() => upcomingDates(tour.fixedDates ?? [], minDate), [tour.fixedDates, minDate]);
+  const initialOk = initial.date >= minDate && (!fixed || choices.includes(initial.date));
+  const [date, setDate] = useState(initialOk ? initial.date : choices.length === 1 ? choices[0] : "");
   const [adults, setAdults] = useState(initial.adults); const [children, setChildren] = useState(initial.children); const [infants, setInfants] = useState(initial.infants);
   const [isPrivate, setIsPrivate] = useState(initial.isPrivate);
   const [addonIds, setAddonIds] = useState<string[]>([]);
@@ -54,7 +59,7 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
   }, [body]);
 
   const validStep = (n: number) => {
-    if (n === 1) return date ? null : "Choose a travel date to continue";
+    if (n === 1) return fixed && !choices.length ? "This tour has no upcoming dates right now. Message us and we'll help." : date ? null : "Choose a travel date to continue";
     if (n === 3) {
       if (c.name.trim().length < 2) return "Please enter your full name";
       if (!emailOk(c.email)) return "Please enter a valid email";
@@ -133,7 +138,9 @@ export default function BookingWizard({ tour, addons, initial }: { tour: Tour; a
         <div key={step} className="step-in">
           {step === 1 && <section aria-labelledby="s1">
             <h2 id="s1" className="font-display text-2xl font-bold">When are you traveling?</h2>
-            <div className="mt-4 rounded-2xl border border-ink/15 p-4 sm:p-5"><Calendar value={date} min={minDate} onChange={(d) => { setDate(d); setError(null); }} /></div>
+            <div className="mt-4 rounded-2xl border border-ink/15 p-4 sm:p-5">{fixed
+              ? <DateChoices dates={choices} value={date} onChange={(d) => { setDate(d); setError(null); }} />
+              : <Calendar value={date} min={minDate} onChange={(d) => { setDate(d); setError(null); }} />}</div>
             {date && <p className="mt-3 text-sm font-medium">Selected: {prettyDate(date)}</p>}
             <h2 className="mt-8 font-display text-2xl font-bold">Who's coming?</h2>
             <div className="mt-2 divide-y divide-ink/10 rounded-2xl border border-ink/15 px-4">

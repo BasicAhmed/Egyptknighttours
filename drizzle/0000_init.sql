@@ -572,6 +572,7 @@ CREATE TABLE `tours` (
 	`seo_description` text DEFAULT '' NOT NULL,
 	`status` text DEFAULT 'DRAFT' NOT NULL,
 	`popularity` integer DEFAULT 0 NOT NULL,
+	`fixed_dates` text DEFAULT '[]' NOT NULL,
 	`price_mode` text DEFAULT 'MANUAL' NOT NULL,
 	`cost_price` real,
 	`margin_percent` real,

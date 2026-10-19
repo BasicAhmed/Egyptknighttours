@@ -408,3 +408,10 @@ Asked for by the tour operator: a Nile cruise at USD 1,340 per person for 28 peo
 - Per person needs a number of people (refused without one; a red note flags any old one missing it). The service list shows "28 people × $1,340" under the line total, and the invoice shows the same under each per-person price. Works with both pricing models: with "fixed percentage", the cost per person × people, plus the percentage.
 - One rule for all of it: `quantityOf`, `serviceLines` and `requestTotals` in `corporate-constants.ts` (unit tested), read by the request page, the list, the invoice and Finance. Switching a request from percentage to per-service pricing keeps each per-person service's price for one person. Changes are written to the request's history.
 - Database: one column, `corporate_services.price_unit` (default `TOTAL`), added on the next start. Checked on a copy of the previous schema with an existing service.
+
+## Tours on fixed dates (October 2026)
+Asked for by the tour operator: a tour that runs on one set date (or a few) should be bookable on those dates only.
+- **Staff:** Tours, edit a tour, **Fixed dates (optional)**: add dates with the date picker, remove any with ×, "Remove past dates" clears old ones. No dates = bookable any future day, exactly as before (every existing tour).
+- **Website:** on the tour page and in the booking steps, a tour with fixed dates shows its upcoming dates as large buttons instead of the calendar. With a single date it is chosen automatically ("This tour runs on one date"). The button reads "Book this date". If every date has passed, the page says there are no upcoming dates, links to WhatsApp, and booking is switched off.
+- **Server:** the booking API refuses any other date for such a tour, whatever the page sends ("This tour runs on set dates only"). Staff "+ New order" is not limited, so the office can still arrange a private date.
+- Rules in `src/lib/tour-dates.ts` (unit tested). Database: `tours.fixed_dates` (JSON list, default `[]`), added on the next start.

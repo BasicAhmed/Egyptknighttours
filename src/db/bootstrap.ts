@@ -34,6 +34,8 @@ const COLUMNS = [
   { table: "corporate_requests", name: "invoice_notes", ddl: "text NOT NULL DEFAULT ''" },
   // Partner services priced per person (× people) or for the whole service. Existing services stay "whole service".
   { table: "corporate_services", name: "price_unit", ddl: "text NOT NULL DEFAULT 'TOTAL'" },
+  // Tours that run on set dates only. Existing tours: none, so they stay bookable any day.
+  { table: "tours", name: "fixed_dates", ddl: "text NOT NULL DEFAULT '[]'" },
 ];
 // Changes whenever the schema or content version changes. When it matches what is stored, a start does two tiny reads and nothing else.
 export const BOOT_STATE = createHash("sha256").update(JSON.stringify([MIGRATION, COLUMNS, CALENDAR_INDEXES])).digest("hex").slice(0, 12) + `:c${CONTENT_VERSION}`;

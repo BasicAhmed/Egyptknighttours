@@ -5,6 +5,7 @@ import { z } from "zod";
 import { quoteSchema, bookingSchema } from "./validation";
 import { signRef } from "./booking-token";
 import { findCustomer } from "./customers";
+import { readFixedDates, dateAllowed } from "./tour-dates";
 
 export class BookingError extends Error {}
 type QuoteIn = z.infer<typeof quoteSchema>;
@@ -23,6 +24,8 @@ export async function buildQuote(input: QuoteIn, opts: { travelDate?: string; cu
     if (Number.isNaN(days) || opts.travelDate < todayUTC) throw new BookingError("Please choose a future date");
     if (days > 730) throw new BookingError("Date is too far ahead");
     if (input.payMode === "PAY_LATER" && days < 7) throw new BookingError("Pay-later is only available 7+ days before travel");
+    // A tour on fixed dates can be booked on those dates only, whatever the page sent.
+    if (!dateAllowed(readFixedDates(tour.fixedDates), opts.travelDate)) throw new BookingError("This tour runs on set dates only. Please choose one of the dates shown.");
   }
   const allAddons = await db.select().from(s.addons).where(and(eq(s.addons.tourId, tour.id), eq(s.addons.active, true)));
   const chosen = allAddons.filter((a) => input.addonIds.includes(a.id));

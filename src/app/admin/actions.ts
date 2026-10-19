@@ -9,6 +9,7 @@ import { invalidate } from "../../lib/cache";
 import { tourSchema, LEAD_STATUS } from "../../lib/validation";
 import { calcSellPrice } from "../../lib/pricing";
 import { PERMS } from "../../lib/auth";
+import { parseFixedDates } from "../../lib/tour-dates";
 
 const lines = (v: FormDataEntryValue | null) => String(v ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 const pairs = (v: FormDataEntryValue | null, a: string, b: string) => lines(v).map((l) => { const [x, ...y] = l.split("|"); return { [a]: x.trim(), [b]: y.join("|").trim() }; }).filter((o) => o[a]);
@@ -34,6 +35,7 @@ function tourFromForm(fd: FormData, canFinance: boolean, existing?: { price: num
   if (!(hrs >= 1)) raw.durationHours = (days > 1 ? "24" : "8") as never;
   const parsed = tourSchema.safeParse({ ...raw, price, discountPrice, priceMode: "MARGIN", costPrice, marginPercent, status });
   if (!parsed.success) return { error: parsed.error.issues.map((i) => `${FIELD[String(i.path[0])] ?? i.path.join(".")}: ${i.message}`).join(" · ") };
+  const fixed = parseFixedDates(fd.get("fixedDates")); if (!fixed.ok) return { error: fixed.message };
   return { data: {
     ...parsed.data, discountPrice: parsed.data.discountPrice ?? null, imageUrl: parsed.data.imageUrl || null,
     priceMode: "MARGIN" as const, costPrice, marginPercent,
@@ -41,6 +43,7 @@ function tourFromForm(fd: FormData, canFinance: boolean, existing?: { price: num
     highlights: JSON.stringify(lines(fd.get("highlights"))), included: JSON.stringify(lines(fd.get("included"))), excluded: JSON.stringify(lines(fd.get("excluded"))),
     itinerary: JSON.stringify(pairs(fd.get("itinerary"), "title", "text")), faqs: JSON.stringify(pairs(fd.get("faqs"), "q", "a")),
     pickupInfo: String(fd.get("pickupInfo") ?? ""), meetingPoint: String(fd.get("meetingPoint") ?? ""), whatToBring: String(fd.get("whatToBring") ?? ""), cancellationPolicy: String(fd.get("cancellationPolicy") ?? ""),
+    fixedDates: JSON.stringify(fixed.dates),
     updatedAt: new Date(),
   } };
 }
