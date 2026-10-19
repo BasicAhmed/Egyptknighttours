@@ -415,3 +415,10 @@ Asked for by the tour operator: a tour that runs on one set date (or a few) shou
 - **Website:** on the tour page and in the booking steps, a tour with fixed dates shows its upcoming dates as large buttons instead of the calendar. With a single date it is chosen automatically ("This tour runs on one date"). The button reads "Book this date". If every date has passed, the page says there are no upcoming dates, links to WhatsApp, and booking is switched off.
 - **Server:** the booking API refuses any other date for such a tour, whatever the page sends ("This tour runs on set dates only"). Staff "+ New order" is not limited, so the office can still arrange a private date.
 - Rules in `src/lib/tour-dates.ts` (unit tested). Database: `tours.fixed_dates` (JSON list, default `[]`), added on the next start.
+
+## Reports: "Booked" counts only orders the customer said yes to (October 2026)
+Reported by the owner: "Booked this month" included orders still waiting for the customer's decision. It counted every order that was not cancelled: inquiries, orders still being priced and orders waiting for a decision too.
+- **Booked** now means the customer said yes: the order was confirmed, invoiced or paid (any stage after), or the customer booked it on the website. One rule, `isBooked` in `order-rules.ts` (unit tested). Booked this month, Bookings this month, Booked all time, Average booking, Top tours, Revenue by destination and Inquiry → booking all use it.
+- **Counted in the month they said yes:** the first time the order reached a booked status (from its history), not the day it was first created. An order created in September and invoiced in October counts in October. Website and Viator orders count from the day they were made.
+- **Waiting for decision** is its own figure next to them (how many, and their value), never added to what was booked.
+- Finance is unchanged: it was already based on payments actually received.

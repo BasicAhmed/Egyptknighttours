@@ -174,3 +174,13 @@ export function cleanPaymentLink(raw: unknown): { ok: true; url: string } | { ok
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(u.hostname)) return { ok: false, message: "That doesn't look like a payment link. Check the address and paste it again." };
   return { ok: true, url: u.toString() };
 }
+
+// ---------- 7. What counts as booked (Reports) ----------
+// An order is booked once the customer has said yes: it was invoiced, paid or confirmed, or they completed the booking on
+// the website themselves. Not booked: an inquiry, an order still being priced, or one waiting for the customer's decision.
+// Cancelled orders are never booked.
+export const BOOKED_STATUSES = ["CONFIRMED", "INVOICED", "PARTIALLY_PAID", "DEPOSIT_PAID", "PAID", "COMPLETED"] as const;
+export function isBooked(status: string, source?: string | null): boolean {
+  if ((BOOKED_STATUSES as readonly string[]).includes(status)) return true;
+  return status === "PENDING" && (source ?? "WEBSITE") === "WEBSITE"; // a website checkout is the customer booking it
+}

@@ -120,3 +120,12 @@ test("payment link on an invoice: optional, https only, cleaned", () => {
   assert.deepEqual(cleanPaymentLink("buy.stripe.com/test_123"), { ok: true, url: "https://buy.stripe.com/test_123" }, "missing https:// is added");
   for (const bad of ["http://pay.example.com/x", "javascript:alert(1)", "ftp://x.com/a", "not a link", "https://localhost/x", "https://", "x".repeat(501)]) assert.equal(cleanPaymentLink(bad).ok, false, bad);
 });
+
+import { isBooked } from "./order-rules";
+test("booked means the customer said yes", () => {
+  for (const s of ["CONFIRMED", "INVOICED", "PARTIALLY_PAID", "DEPOSIT_PAID", "PAID", "COMPLETED"]) assert.equal(isBooked(s, "WHATSAPP"), true, s);
+  assert.equal(isBooked("PENDING", "WEBSITE"), true, "website checkout");
+  assert.equal(isBooked("PENDING", null), true, "older website orders have no source");
+  assert.equal(isBooked("PENDING", "WHATSAPP"), false, "staff order still being priced");
+  for (const s of ["ITINERARY_SENT", "QUOTE_SENT", "INQUIRY", "CANCELLED"]) assert.equal(isBooked(s, "WEBSITE"), false, s);
+});
