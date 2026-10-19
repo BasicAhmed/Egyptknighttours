@@ -19,6 +19,8 @@ export type InvoiceData = {
   lines: { label: string; amount: number }[]; subtotal: number; discount: number; extras: { label: string; amount: number }[];
   total: number; paid: number; balance: number; dueNow: number; deadline: string; deadlineNote: string;
   methods: PayMethod[]; ctaUrl: string; trackUrl: string;
+  // A payment link made for this invoice (the customer asked to pay online). Empty when none; old invoices do not have it.
+  payLink?: string;
   terms: { payment: string[]; documents: string[]; cancellation: string[]; note: string };
   company: Company; notes: string;
   // The marketplace that collected the money ("Viator"), when there is one. A settled invoice then says so and carries no "How to pay".

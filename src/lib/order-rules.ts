@@ -159,3 +159,18 @@ export function statusFromProgress(o: { total: number; paid: number; hasInvoice:
   if (o.hasInvoice) return "INVOICED";
   return o.itinerarySent ? ITINERARY_SENT : "PENDING";
 }
+
+// ---------- 6. A payment link on one invoice ----------
+// Optional, for a customer who asked to pay online (a card link from the bank or a payment provider). When given, it
+// becomes the invoice's "Complete your payment" button, the first way to pay listed, and the email's button. Only secure
+// https web addresses are accepted, so a typo can never send a customer somewhere unexpected.
+export function cleanPaymentLink(raw: unknown): { ok: true; url: string } | { ok: false; message: string } {
+  const v = String(raw ?? "").trim();
+  if (!v) return { ok: true, url: "" };
+  if (v.length > 500) return { ok: false, message: "That payment link is too long. Paste the short link your payment provider gives you." };
+  let u: URL;
+  try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v}`); } catch { return { ok: false, message: "That doesn't look like a payment link. Paste the full link, starting with https://" }; }
+  if (u.protocol !== "https:") return { ok: false, message: "The payment link must start with https:// (a secure link)." };
+  if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(u.hostname)) return { ok: false, message: "That doesn't look like a payment link. Check the address and paste it again." };
+  return { ok: true, url: u.toString() };
+}

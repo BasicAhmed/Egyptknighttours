@@ -394,3 +394,10 @@ For customers who have their itinerary (with its price) but have not said yes ye
 - **Customer's tracking page** says: "We've sent you your itinerary. Have a look, tell us what you'd like to change, or reply when you're ready to go ahead."
 - **Fixed along the way:** removing a payment from an order marked Deposit paid did not update its status; and when an order's payments are all removed, it now goes back to the step it really reached (Invoiced, Waiting for decision or New) through one rule, `statusFromProgress`, used by both payment removal and the private/shared switch.
 - Existing orders keep their status; ones already sent an itinerary can be moved by hand from the status menu.
+
+## Optional payment link on an invoice (October 2026)
+Asked for by the tour operator: for a customer who wants to pay online, staff paste a payment link (from the bank or a payment provider) into the invoice form. Most invoices leave it empty and are unchanged.
+- **Where:** order window, Payment & documents, Create invoice: a "Payment link (optional)" field under Amount and Pay by (not hidden under More options). Checked as you type and again on the server (`cleanPaymentLink` in `order-rules.ts`, unit tested): https only, so a typo can't send a customer somewhere unexpected; "https://" is added if left out.
+- **On the invoice PDF:** it becomes the big "Complete your payment" button at the top, and a dark "Pay online" card heads the How to pay page, before the bank details. The link from Settings (payment methods) is still used when no link is given for that invoice. Not shown once the invoice is fully paid.
+- **Email and WhatsApp:** the invoice email's button becomes "Pay online now", and "Send on WhatsApp" adds "Pay online by card: <link>". Preview shows the link too.
+- Stored inside the invoice snapshot (`documents.data.payLink`): no database change. Invoices made before keep what they said.

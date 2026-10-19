@@ -105,13 +105,22 @@ export default function InvoicePdf({ d }: { d: InvoiceData }) {
           <Text style={s.eyebrow}>Next step</Text>
           <Text style={[s.h2, { marginTop: 3 }]}>How to pay</Text>
           <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
-            {[["1", "Choose a method", "Pick the option below that suits you."], ["2", `Pay ${money(d.dueNow, d.currency)}`, `Use ${d.ref} as the payment reference.`], ["3", "Send us the receipt", "Reply by WhatsApp or email and we confirm right away."]].map(([n, h, p]) => (
+            {[["1", "Choose a method", d.payLink ? "Pay online with the link below, or pick another option." : "Pick the option below that suits you."], ["2", `Pay ${money(d.dueNow, d.currency)}`, `Use ${d.ref} as the payment reference.`], ["3", "Send us the receipt", "Reply by WhatsApp or email and we confirm right away."]].map(([n, h, p]) => (
               <View key={n} style={{ flex: 1, backgroundColor: C.cream, borderRadius: 12, padding: 12 }}>
                 <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.ink, alignItems: "center", justifyContent: "center" }}><Text style={{ color: C.gold, fontWeight: 700, fontSize: 10 }}>{n}</Text></View>
                 <Text style={{ fontFamily: F.head, fontWeight: 700, fontSize: 11, marginTop: 7 }}>{h}</Text><Text style={{ fontSize: 8.5, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{p}</Text>
               </View>))}
           </View>
           <View style={{ marginTop: 14 }}>
+            {d.payLink ? <Link src={d.payLink} style={{ textDecoration: "none" }}>
+              <View wrap={false} style={[s.card, { backgroundColor: C.ink, borderColor: C.ink, marginBottom: 10 }]}>
+                <Text style={{ fontSize: 7.5, fontWeight: 700, letterSpacing: 1.6, color: C.gold, textTransform: "uppercase" }}>Fastest way</Text>
+                <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 14, color: C.white, marginTop: 4 }}>Pay {money(d.dueNow, d.currency)} online</Text>
+                <Text style={{ fontSize: 9, color: "#CFC8BC", marginTop: 3, lineHeight: 1.45 }}>Tap here to pay securely by card. No receipt needed: we see your payment and confirm right away.</Text>
+                <Text style={{ fontSize: 8.5, color: C.gold, marginTop: 6 }}>{d.payLink}</Text>
+              </View>
+            </Link> : null}
+            {d.payLink && d.methods.length ? <Text style={{ fontSize: 8.5, color: C.muted, marginBottom: 8 }}>Or pay by one of these:</Text> : null}
             {d.methods.length ? d.methods.map((m) => <Method key={m.id} m={m} />) : <View style={[s.card, { backgroundColor: C.cream }]}><Text style={{ fontWeight: 700 }}>Payment details</Text><Text style={{ marginTop: 3, color: C.muted }}>Message us on WhatsApp{d.company.whatsapp ? ` (${d.company.whatsapp})` : ""} and we'll send your payment details right away.</Text></View>}
           </View>
           {d.terms.note ? <View style={{ flexDirection: "row", backgroundColor: C.cream, borderRadius: 10, padding: 10, marginTop: 2 }}><View style={{ marginRight: 7, marginTop: 1 }}><Icon name="info" size={12} color={C.gold700} /></View><Text style={{ flex: 1, fontSize: 8.8, lineHeight: 1.5, fontWeight: 600 }}>{d.terms.note}</Text></View> : null}

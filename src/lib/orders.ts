@@ -12,7 +12,7 @@ import { styleSwitchFor, type StyleSwitch } from "./order-style";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; itinerarySentAt: number | null; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
-export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string };
+export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string; payLink: string };
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
 export type Traveler = { id: string; name: string; type: string; age: number | null; nationality: string; dob: string; passportNumber: string; passportExpiry: string; notes: string; files: TravelerFile[] };
 export type Guide = { id: string; name: string; phone: string; languages: string; active: boolean };
@@ -120,7 +120,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "", costTotal: b.costTotal,
     prepaidVia: prepaidVia(b.source), pickup: { meetingPoint: b.meetingPoint, details: b.pickupInfo, defaults: { meetingPoint: tour.meetingPoint ?? "", details: tour.pickupInfo ?? "" } }, styleSwitch: await styleSwitchFor(b, tour),
     payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
-    documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` })),
+    documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}`, payLink: d.kind === "INVOICE" ? parseJson<{ payLink?: string }>(d.data, {}).payLink || "" : "" })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
     defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,

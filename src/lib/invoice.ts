@@ -7,7 +7,8 @@ import { signRef } from "./booking-token";
 import type { InvoiceData, PayMethod } from "@/pdf/types";
 import { prepaidVia, resolvePickup, styleLabel } from "./order-rules";
 
-export type InvoiceOptions = { currency?: string; dueNow?: number; deadline?: string; extras?: { label: string; amount: number }[]; notes?: string };
+// paymentLink: an online payment link for this one invoice (already checked with cleanPaymentLink). Empty = none.
+export type InvoiceOptions = { currency?: string; dueNow?: number; deadline?: string; extras?: { label: string; amount: number }[]; notes?: string; paymentLink?: string };
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const addDays = (iso: string, n: number) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 export const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -56,7 +57,7 @@ export async function buildInvoiceData(bookingId: string, opts: InvoiceOptions =
     customer: { name: b.guestName || c.name, email: c.email ?? "", phone: c.whatsapp || c.phone || "", country: c.country || "" },
     trip: { title: b.titleOverride || tour.title, destination: tour.slug === "custom-experience" ? "" : dest.name, date: b.travelDate, travelers, style: styleLabel(b.isPrivate), pickup: resolvePickup(b, tour).summary, includes: parseJson<string[]>(tour.included, []) },
     lines: [{ label: `${b.titleOverride || tour.title} (${travelers})`, amount: tourAmount }, ...addonLines], subtotal: r2(b.subtotal), discount: r2(b.discount), extras,
-    total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: linkMethod?.paymentUrl ?? "", trackUrl: `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`,
+    total, paid, balance, dueNow, deadline, deadlineNote, methods, ctaUrl: opts.paymentLink || linkMethod?.paymentUrl || "", payLink: balance > 0 ? opts.paymentLink || "" : "", trackUrl: `${await linkOrigin()}/track/${b.ref}?t=${signRef(b.ref)}`,
     terms: { payment: list("invoice.paymentTerms"), documents: list("invoice.documents"), cancellation: list("invoice.cancellation"), note: g["invoice.note"] },
     company: companyFrom(g), notes: opts.notes ?? "", ...(prepaidVia(b.source) ? { prepaidVia: prepaidVia(b.source) } : {}),
   };

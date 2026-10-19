@@ -110,3 +110,13 @@ test("status from progress after a payment change never goes backwards past a st
 test("both decision statuses count as waiting for the customer", () => {
   assert.equal(isDeciding("ITINERARY_SENT"), true); assert.equal(isDeciding("QUOTE_SENT"), true); assert.equal(isDeciding("PENDING"), false);
 });
+
+import { cleanPaymentLink } from "./order-rules";
+test("payment link on an invoice: optional, https only, cleaned", () => {
+  assert.deepEqual(cleanPaymentLink(""), { ok: true, url: "" });
+  assert.deepEqual(cleanPaymentLink("   "), { ok: true, url: "" });
+  assert.deepEqual(cleanPaymentLink(null), { ok: true, url: "" });
+  assert.deepEqual(cleanPaymentLink(" https://pay.example.com/abc?x=1 "), { ok: true, url: "https://pay.example.com/abc?x=1" });
+  assert.deepEqual(cleanPaymentLink("buy.stripe.com/test_123"), { ok: true, url: "https://buy.stripe.com/test_123" }, "missing https:// is added");
+  for (const bad of ["http://pay.example.com/x", "javascript:alert(1)", "ftp://x.com/a", "not a link", "https://localhost/x", "https://", "x".repeat(501)]) assert.equal(cleanPaymentLink(bad).ok, false, bad);
+});

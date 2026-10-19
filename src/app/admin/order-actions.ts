@@ -13,7 +13,7 @@ import { syncTravelers } from "@/lib/travelers";
 import { encryptText } from "@/lib/crypto";
 import { BOOKING_STATUS } from "@/lib/validation";
 import { changeOrderStyle } from "@/lib/order-style";
-import { parsePickupTime, PICKUP_TIME_HELP, pickupOverride, parseCollect, collectLine } from "@/lib/order-rules";
+import { parsePickupTime, PICKUP_TIME_HELP, pickupOverride, parseCollect, collectLine, cleanPaymentLink } from "@/lib/order-rules";
 
 type R = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
 const audit = (userId: string, action: string, entity: string, entityId?: string) => db.insert(s.auditLogs).values({ userId, action, entity, entityId });
@@ -46,12 +46,13 @@ export async function orderAddNote(id: string, text: string): Promise<R> {
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${t}` });
   return done(id, "Note added");
 }
-export async function orderCreateInvoice(id: string, o: { dueNow?: number; deadline?: string; currency?: string; extras?: string; notes?: string; status?: string; sendNow?: boolean }): Promise<R> {
+export async function orderCreateInvoice(id: string, o: { dueNow?: number; deadline?: string; currency?: string; extras?: string; notes?: string; status?: string; sendNow?: boolean; paymentLink?: string }): Promise<R> {
   const u = await requireStaff("documents");
+  const link = cleanPaymentLink(o.paymentLink); if (!link.ok) return { ok: false, message: link.message };
   const extras = String(o.extras ?? "").split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const [label, amt] = l.split("|"); return { label: (label ?? "").trim(), amount: Number((amt ?? "").replace(/[^0-9.\-]/g, "")) }; }).filter((e) => e.label && Number.isFinite(e.amount));
   const status = o.status && o.status !== "AUTO" && o.status !== "KEEP" && !(BOOKING_STATUS as readonly string[]).includes(o.status) ? "AUTO" : (o.status ?? "AUTO");
   const dueNow = num(o.dueNow);
-  const doc = await createInvoiceDocument(id, u.uid, { currency: o.currency?.trim() || undefined, dueNow: Number.isFinite(dueNow) && dueNow >= 0 ? dueNow : undefined, deadline: /^\d{4}-\d{2}-\d{2}$/.test(o.deadline ?? "") ? o.deadline : undefined, extras, notes: String(o.notes ?? "").slice(0, 600), status });
+  const doc = await createInvoiceDocument(id, u.uid, { currency: o.currency?.trim() || undefined, dueNow: Number.isFinite(dueNow) && dueNow >= 0 ? dueNow : undefined, deadline: /^\d{4}-\d{2}-\d{2}$/.test(o.deadline ?? "") ? o.deadline : undefined, extras, notes: String(o.notes ?? "").slice(0, 600), paymentLink: link.url, status });
   await audit(u.uid, "CREATE", "invoice", doc.id);
   if (o.sendNow) { const r = await emailDocument(doc.id, u.uid); return done(id, r.ok ? `Invoice ${doc.number} created and emailed. ${r.message}` : `Invoice ${doc.number} created, but the email wasn't sent: ${r.message} Use Send on WhatsApp or Download instead.`, true, !r.ok); }
   return done(id, `Invoice ${doc.number} created`);

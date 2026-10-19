@@ -10,7 +10,7 @@ import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, short
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
 import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
-import { orderPickup, styleLabel } from "@/lib/order-rules";
+import { orderPickup, styleLabel, cleanPaymentLink } from "@/lib/order-rules";
 
 const cache = new Map<string, Order>();
 async function fetchOrder(id: string): Promise<Order> { const r = await fetch(`/api/admin/orders/${id}`, { cache: "no-store" }); if (!r.ok) throw new Error("load"); const o = (await r.json()) as Order; cache.set(id, o); return o; }
@@ -174,13 +174,17 @@ function PayForm({ o, busy, onPay }: { o: Order; busy: boolean; onPay: (v: { amo
     </form>
   );
 }
-function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate: (v: { dueNow: number; deadline: string; currency: string; extras: string; notes: string; status: string; sendNow: boolean }) => void }) {
-  const [v, setV] = useState({ dueNow: String(o.defaults.dueNow), deadline: o.defaults.deadline, currency: o.defaults.currency, extras: "", notes: "", status: "AUTO", sendNow: !!o.customer.email }); const [more, setMore] = useState(false);
+function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate: (v: { dueNow: number; deadline: string; currency: string; extras: string; notes: string; status: string; sendNow: boolean; paymentLink: string }) => void }) {
+  const [v, setV] = useState({ dueNow: String(o.defaults.dueNow), deadline: o.defaults.deadline, currency: o.defaults.currency, extras: "", notes: "", status: "AUTO", sendNow: !!o.customer.email, paymentLink: "" }); const [more, setMore] = useState(false);
+  const link = cleanPaymentLink(v.paymentLink); // same check as the server, so a typo shows here before anything is made
   return (
-    <form className="mb-3 rounded-xl bg-gold-500/15 p-3" onSubmit={(e) => { e.preventDefault(); onCreate({ ...v, dueNow: Number(v.dueNow) }); }}>
+    <form className="mb-3 rounded-xl bg-gold-500/15 p-3" onSubmit={(e) => { e.preventDefault(); if (!link.ok) { document.getElementById("ipl")?.focus(); return; } onCreate({ ...v, dueNow: Number(v.dueNow), paymentLink: link.url }); }}>
       <div className="grid gap-2 sm:grid-cols-2">
         <div><label className="label" htmlFor="idn">Amount due now</label><input id="idn" className="input !py-2" type="number" step="0.01" value={v.dueNow} onChange={(e) => setV({ ...v, dueNow: e.target.value })} /></div>
         <div><label className="label" htmlFor="idl">Pay by</label><input id="idl" className="input !py-2" type="date" value={v.deadline} onChange={(e) => setV({ ...v, deadline: e.target.value })} /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="ipl">Payment link <span className="font-normal text-ink/60">(optional)</span></label>
+          <input id="ipl" className="input !py-2" type="url" inputMode="url" placeholder="https://… only if this customer wants to pay online" value={v.paymentLink} onChange={(e) => setV({ ...v, paymentLink: e.target.value })} aria-invalid={!link.ok} aria-describedby="ipl-help" />
+          <p id="ipl-help" className={`mt-1 text-[12.5px] ${link.ok ? "text-ink/60" : "font-semibold text-red-700"}`}>{link.ok ? (link.url ? "The invoice's Pay button and the email will open this link." : "Leave empty for a normal invoice.") : link.message}</p></div>
       </div>
       <button type="button" className="mt-2 text-sm font-semibold underline decoration-gold-500 decoration-2 underline-offset-4" onClick={() => setMore(!more)}>{more ? "Fewer options" : "More options"}</button>
       {more && <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -190,7 +194,7 @@ function InvoiceForm({ o, busy, onCreate }: { o: Order; busy: boolean; onCreate:
         <div className="sm:col-span-2"><label className="label" htmlFor="ino">Note to customer</label><textarea id="ino" className="input !py-2" rows={2} value={v.notes} onChange={(e) => setV({ ...v, notes: e.target.value })} /></div></div>}
       {o.customer.email ? <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" className="h-5 w-5 accent-black" checked={v.sendNow} onChange={(e) => setV({ ...v, sendNow: e.target.checked })} />Email it to {o.customer.email} now</label>
         : <p className="mt-3 text-sm text-ink/70">No email on file for this customer — after creating it, send it with the WhatsApp button below (or add an email in the Customer card).</p>}
-      <div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} className="btn btn-primary !min-h-[44px]">{busy ? "Working…" : "Create invoice PDF"}</button><a className="btn btn-outline !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`/api/admin/preview/invoice/${o.id}?dueNow=${encodeURIComponent(v.dueNow)}&deadline=${v.deadline}&currency=${encodeURIComponent(v.currency)}`}>Preview</a></div>
+      <div className="mt-3 flex flex-wrap gap-2"><button disabled={busy} className="btn btn-primary !min-h-[44px]">{busy ? "Working…" : "Create invoice PDF"}</button><a className="btn btn-outline !min-h-[44px]" target="_blank" rel="noopener noreferrer" href={`/api/admin/preview/invoice/${o.id}?dueNow=${encodeURIComponent(v.dueNow)}&deadline=${v.deadline}&currency=${encodeURIComponent(v.currency)}${link.ok && link.url ? `&paymentLink=${encodeURIComponent(link.url)}` : ""}`}>Preview</a></div>
     </form>
   );
 }
@@ -204,7 +208,7 @@ function DocList({ o, kind, run, busy }: { o: Order; kind: "INVOICE" | "ITINERAR
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${d.sentAt ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/65"}`}>{d.sentAt ? `Sent ${ago(d.sentAt)}${d.sentVia ? ` · ${d.sentVia.toLowerCase()}` : ""}` : "Not sent yet"}</span></div>
         <div className="mt-2 flex flex-wrap gap-2"><a className={Small} target="_blank" rel="noopener noreferrer" href={`/api/documents/${d.id}/pdf?inline=1`}>Preview</a><a className={Small} href={`/api/documents/${d.id}/pdf`}>Download</a>
           {o.customer.email && <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderEmailDoc(o.id, d.id))}>{d.sentAt ? "Resend email" : "Email"}</button>}
-          {phone && <a className="btn btn-wa !min-h-[38px] !py-1.5 !px-3 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, here's your ${kind === "INVOICE" ? "invoice" : "itinerary"} from Egypt Knight: ${d.shareUrl}`)} onClick={() => { if (!d.sentAt) void run(() => orderMarkSent(o.id, d.id, "WHATSAPP")); }}>Send on WhatsApp</a>}
+          {phone && <a className="btn btn-wa !min-h-[38px] !py-1.5 !px-3 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, here's your ${kind === "INVOICE" ? "invoice" : "itinerary"} from Egypt Knight: ${d.shareUrl}${d.payLink ? `\n\nPay online by card: ${d.payLink}` : ""}`)} onClick={() => { if (!d.sentAt) void run(() => orderMarkSent(o.id, d.id, "WHATSAPP")); }}>Send on WhatsApp</a>}
           {!d.sentAt && <button className={Small} disabled={busy} onClick={() => run(() => orderMarkSent(o.id, d.id, "MANUAL"))}>Mark as sent</button>}</div></li>))}</ul>
   );
 }
