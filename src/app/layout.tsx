@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 import ChromeGate from "@/components/ChromeGate";
 import ConsoleBadge from "@/components/ConsoleBadge";
+import MetaPixel from "@/components/MetaPixel";
 import { SITE } from "@/lib/format";
 
 const inter = localFont({ src: "./fonts/inter-latin-wght-normal.woff2", variable: "--font-inter", display: "swap", weight: "100 900" });
@@ -25,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${bricolage.variable}`}><body>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-ink focus:px-4 focus:py-3 focus:font-semibold focus:text-white">Skip to main content</a>
-      <ChromeGate><Header /></ChromeGate><ConsoleBadge /><main id="main" tabIndex={-1} className="outline-none">{children}</main><ChromeGate><Footer /></ChromeGate><ChromeGate><FloatingWhatsApp /></ChromeGate>
+      <ChromeGate><Header /></ChromeGate><ConsoleBadge /><main id="main" tabIndex={-1} className="outline-none">{children}</main><ChromeGate><Footer /></ChromeGate><ChromeGate><FloatingWhatsApp /></ChromeGate><MetaPixel />
       
     </body></html>
   );

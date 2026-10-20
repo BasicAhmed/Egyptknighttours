@@ -422,3 +422,11 @@ Reported by the owner: "Booked this month" included orders still waiting for the
 - **Counted in the month they said yes:** the first time the order reached a booked status (from its history), not the day it was first created. An order created in September and invoiced in October counts in October. Website and Viator orders count from the day they were made.
 - **Waiting for decision** is its own figure next to them (how many, and their value), never added to what was booked.
 - Finance is unchanged: it was already based on payments actually received.
+
+## Meta Pixel, with cookie consent (October 2026)
+Pixel ID `1667158854968793` (`src/lib/meta-pixel.ts`; can be replaced with `NEXT_PUBLIC_META_PIXEL_ID` in Vercel).
+- **Consent first.** The privacy policy promised no advertising cookies without consent, and Meta Pixel needs it for EU/UK visitors. A small banner asks on the first visit: Accept or No thanks. Nothing from Meta loads until Accept. The choice is kept in that browser; "Cookie settings" in the footer reopens it, and declining later revokes it. Privacy policy updated (Cookies, Who we share data with; "Updated October 2026").
+- **What is sent:** PageView on every public page (also when the site changes page without reloading), plus ViewContent (tour page), AddToCart (Check availability), InitiateCheckout (booking step 2), Purchase (booking made, with the amount in USD), Contact (WhatsApp click) and Lead (contact form, trip builder). Mapping in `metaEventFor`, unit tested.
+- **Never on private pages:** staff panel, guide sheets, booking confirmation, tracking, reviews, API. Those links carry a private token that must not be sent to Meta.
+- Security headers allow `connect.facebook.net` (script) and `www.facebook.com` (events) only.
+- Check in Meta Events Manager (Test events) after deploy: open the site, press Accept, then browse a tour.

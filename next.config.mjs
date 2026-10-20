@@ -3,14 +3,15 @@ import { fileURLToPath } from "node:url";
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Content Security Policy. Inline scripts are needed by Next.js and JSON-LD; everything else is locked to this site,
-// plus YouTube (video), Google Maps (map) and https images that staff paste or upload.
+// plus YouTube (video), Google Maps (map), https images that staff paste or upload, and the Meta Pixel (loaded only after
+// the visitor accepts marketing cookies).
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://www.facebook.com https://connect.facebook.net",
   "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.google.com",
   "media-src 'self' blob:",
   "object-src 'none'",
