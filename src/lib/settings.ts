@@ -15,7 +15,7 @@ export const DEFAULTS: Record<string, string> = {
   // How many US dollars one unit of each currency is worth, used to combine everything into one figure on Finance and
   // Reports. Approximate — update these from time to time; edit in Settings → Company info.
   "fx.EUR": "1.14", "fx.GBP": "1.32", "fx.EGP": "0.0194", "fx.AED": "0.2722", "fx.SAR": "0.2667",
-  "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.tripadvisorUrl": "https://www.tripadvisor.com/Attraction_Review-g294204-d15602266-Reviews-Egypt_knight_tours-Aswan_Aswan_Governorate_Nile_River_Valley.html",
+  "site.years": "10", "site.tours": "5,000", "site.reviews": "500", "site.trustpilotUrl": "https://www.trustpilot.com/review/egyptknight.com", "site.trustpilotBusinessId": "60af949a8b492300019f412b", "site.tripadvisorUrl": "https://www.tripadvisor.com/Attraction_Review-g294204-d15602266-Reviews-Egypt_knight_tours-Aswan_Aswan_Governorate_Nile_River_Valley.html",
   "site.instagram": "https://www.instagram.com/egyptknighttours/", "site.facebook": "https://www.facebook.com/p/Egypt-luxury-private-tours-100064124794425/", "site.tiktok": "", "site.youtube": "",
   "site.heroImage": "", "site.videoUrl": "https://youtu.be/uz23AE-oemU", "site.videoStart": "14",
   "site.mapQuery": "Aswan, Egypt", "site.mapLink": "", "site.hours": "Every day, 9am to 9pm Egypt time",

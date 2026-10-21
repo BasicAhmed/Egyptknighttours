@@ -3,7 +3,7 @@ import { useState } from "react";
 import { submitReview } from "@/app/review/actions";
 import CopyButton from "./CopyButton";
 
-const PLATFORM_LABEL: Record<string, string> = { google: "Google", tripadvisor: "Tripadvisor", facebook: "Facebook", instagram: "Instagram", other: "Somewhere else" };
+const PLATFORM_LABEL: Record<string, string> = { google: "Google", tripadvisor: "Tripadvisor", trustpilot: "Trustpilot", facebook: "Facebook", instagram: "Instagram", other: "Somewhere else" };
 
 export default function ReviewForm({ bookingRef, token, links, code: initialCode, friendDiscount, rewardSummary, company }: { bookingRef: string; token: string; links: { key: string; label: string; url: string }[]; code: string | null; friendDiscount: string; rewardSummary: string; company: string }) {
   const [picked, setPicked] = useState<string[]>([]);

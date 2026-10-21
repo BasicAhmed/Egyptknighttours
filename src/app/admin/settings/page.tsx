@@ -69,7 +69,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <h2 className="mt-2 font-display text-xl font-bold sm:col-span-2">What the referrer earns</h2>
           <label className="block"><span className="label">Reward type</span><select name="referral.rewardType" defaultValue={g["referral.rewardType"]} className="input"><option value="PERCENT">Percent of the friend's booking</option><option value="FIXED">Fixed amount</option></select></label>
           <F name="referral.rewardValue" label="Reward value" type="number" v={g["referral.rewardValue"]} />
-          <p className="text-xs text-ink/65 sm:col-span-2">Paid the moment the friend's booking receives its first payment. Reviews on Tripadvisor and Facebook use the links already set in the Website tab.</p>
+          <p className="text-xs text-ink/65 sm:col-span-2">Paid the moment the friend's booking receives its first payment. Reviews on Tripadvisor, Trustpilot and Facebook use the links already set in the Website tab.</p>
 </>}
         {tab === "company" && <>
           <F name="company.name" label="Company name" v={g["company.name"]} /><F name="company.email" label="Email" v={g["company.email"]} /><div className="sm:col-span-2"><F name="company.notifyEmails" label="Staff alert emails (comma separated, optional)" v={g["company.notifyEmails"]} ph="info@egyptknight.com, name@gmail.com" /><p className="mt-1 text-xs text-ink/65">New booking and new inquiry alerts go here. Leave blank to just use the Email above.</p></div>
@@ -91,6 +91,7 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <div className="sm:col-span-2"><ImageField name="site.heroImage" label="Homepage main photo" value={g["site.heroImage"]} hint="Large landscape or portrait photo shown next to the headline." /></div>
           <F name="site.years" label="Years of experience (number)" v={g["site.years"]} /><F name="site.tours" label="Tours completed (e.g. 5,000)" v={g["site.tours"]} />
           <F name="site.reviews" label="Five-star reviews (e.g. 500)" v={g["site.reviews"]} /><F name="site.tripadvisorUrl" label="Tripadvisor page link (https://…)" v={g["site.tripadvisorUrl"]} />
+          <F name="site.trustpilotUrl" label="Trustpilot page link (https://…)" v={g["site.trustpilotUrl"]} /><F name="site.trustpilotBusinessId" label="Trustpilot business ID (for the review box)" v={g["site.trustpilotBusinessId"]} />
           <F name="site.instagram" label="Instagram link" v={g["site.instagram"]} /><F name="site.facebook" label="Facebook link" v={g["site.facebook"]} />
           <F name="site.tiktok" label="TikTok link" v={g["site.tiktok"]} /><F name="site.youtube" label="YouTube link" v={g["site.youtube"]} />
           <F name="site.videoUrl" label="Homepage video (YouTube link)" v={g["site.videoUrl"]} /><F name="site.videoStart" label="Video starts at (seconds)" type="number" v={g["site.videoStart"]} />

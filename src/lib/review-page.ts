@@ -24,6 +24,7 @@ export async function loadReviewPage(ref: string, token?: string | null): Promis
   const links: ReviewLink[] = [];
   if (g["site.tripadvisorUrl"]) links.push({ key: "tripadvisor", label: "Tripadvisor", url: g["site.tripadvisorUrl"] });
   if (g["company.googleReviewUrl"]) links.push({ key: "google", label: "Google", url: g["company.googleReviewUrl"] });
+  if (g["site.trustpilotUrl"]) links.push({ key: "trustpilot", label: "Trustpilot", url: g["site.trustpilotUrl"] });
   if (g["site.facebook"]) links.push({ key: "facebook", label: "Facebook", url: g["site.facebook"] });
   if (g["site.instagram"]) links.push({ key: "instagram", label: "Instagram", url: g["site.instagram"] });
 

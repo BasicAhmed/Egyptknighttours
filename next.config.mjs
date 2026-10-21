@@ -7,12 +7,12 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 // the visitor accepts marketing cookies).
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
+  "script-src 'self' 'unsafe-inline' https://connect.facebook.net https://widget.trustpilot.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://www.facebook.com https://connect.facebook.net",
-  "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.google.com",
+  "connect-src 'self' https://www.facebook.com https://connect.facebook.net https://widget.trustpilot.com",
+  "frame-src https://www.youtube-nocookie.com https://www.youtube.com https://www.google.com https://widget.trustpilot.com",
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

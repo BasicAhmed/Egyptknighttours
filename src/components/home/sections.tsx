@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TrustpilotBox from "@/components/TrustpilotBox";
 import WhatsAppButton from "../WhatsAppButton";
 import { waLink } from "@/lib/format";
 
@@ -110,7 +111,8 @@ export function ReviewsSection({ g, reviews }: { g: SiteCfg; reviews: Review[] }
   if (!reviews.length && !ta) return null;
   return (
     <section className="container-x py-16 cv-auto"><div className="flex flex-wrap items-end justify-between gap-4"><Head eyebrow="Reviews" title="What our travellers say" sub="Real reviews from real trips." />
-      <div className="rounded-2xl border border-ink/10 bg-white px-5 py-4 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars /><p className="mt-1 font-display text-2xl font-extrabold">{plus(g["site.reviews"])} five-star reviews</p><p className="text-sm text-ink/65">on Tripadvisor</p>{ta && <a href={ta} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Read them all →</a>}</div></div>
+      <div className="rounded-2xl border border-ink/10 bg-white px-5 py-4 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars /><p className="mt-1 font-display text-2xl font-extrabold">{plus(g["site.reviews"])} five-star reviews</p><p className="text-sm text-ink/65">on Tripadvisor</p>{ta && <a href={ta} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-bold underline decoration-gold-600 decoration-2 underline-offset-4">Read them all →</a>}
+        {https(g["site.trustpilotUrl"]) && <TrustpilotBox businessId={g["site.trustpilotBusinessId"] ?? ""} url={https(g["site.trustpilotUrl"])} className="mt-3 min-w-[240px]" />}</div></div>
       {reviews.length > 0 && <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">{reviews.map((r) => (
         <figure key={r.id} className="flex flex-col rounded-3xl border border-ink/10 bg-white p-6 shadow-[0_2px_12px_rgba(20,16,16,.06)]"><Stars />{r.title && <p className="mt-3 font-display text-lg font-extrabold leading-snug">{r.title}</p>}
           <blockquote className="mt-2 line-clamp-6 flex-1 text-[15px] leading-relaxed text-ink/75">{r.body}</blockquote>

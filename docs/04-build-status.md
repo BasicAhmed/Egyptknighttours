@@ -450,3 +450,9 @@ What we ask for is now uploaded by the customer and lands in the right place onc
   - **Sent back** → the file is deleted at once; the customer sees the reason and can upload again.
 - **Requests close by themselves:** passports when every traveler has one in the Passport section; the balance when it is fully paid. Every step is in the order's history.
 - Database: new table `customer_uploads`, and `booking_requests.needs_upload`, added on the next start. Customer files of past trips are deleted by the nightly job with the same retention setting as passport scans.
+
+## Trustpilot review box (October 2026)
+- The Trustpilot "Review us" box (TrustBox Review Collector, business ID `60af949a8b492300019f412b`) shows in the homepage Reviews section, under the Tripadvisor figure. `src/components/TrustpilotBox.tsx` loads Trustpilot's script once and draws the box again when the site changes page; without the script it shows a plain "Review us on Trustpilot" link.
+- Settings → Website: **Trustpilot page link** and **Trustpilot business ID** (filled in; change them there, no code needed).
+- Post-trip review page: **Review us on Trustpilot** is one of the review buttons, and Trustpilot is a platform customers can tick to unlock their referral code.
+- Security headers allow `widget.trustpilot.com` (script, frame). Privacy policy mentions the box.
