@@ -13,6 +13,10 @@ import { syncTravelers } from "@/lib/travelers";
 import { encryptText } from "@/lib/crypto";
 import { BOOKING_STATUS } from "@/lib/validation";
 import { changeOrderStyle } from "@/lib/order-style";
+import { parseRequest, openRequests, requestText, REQUEST_KIND_LABEL, type RequestKind } from "@/lib/customer-requests";
+import { sendEmail, brandedEmail } from "@/lib/email";
+import { getSettings } from "@/lib/settings";
+import { BUILDER_NAME } from "@/lib/builder";
 import { parsePickupTime, PICKUP_TIME_HELP, pickupOverride, parseCollect, collectLine, cleanPaymentLink } from "@/lib/order-rules";
 
 type R = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
@@ -261,4 +265,53 @@ export async function orderSaveOps(id: string, input: Record<string, unknown>): 
   if (changes.length) await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Pickup updated (${changes.join(", ")})`.slice(0, 600) });
   if (collectChanged && collect?.ok) { const line = collectLine(collect.amount, collect.note, before.currency); await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${line ? `Guide collects on the day: ${line}` : "Guide no longer collects anything on the day"}` }); }
   await audit(u.uid, "UPDATE", "booking_ops", id); return done(id, "Operations details saved");
+}
+
+// ---------- What we need from the customer (lib/customer-requests.ts) ----------
+// Each change is written to the order's history. The customer sees open requests on their booking page at once.
+export async function orderAddRequest(id: string, input: { kind: string; text?: string; important?: boolean; dueDate?: string }): Promise<R> {
+  const u = await requireStaff("bookings");
+  const p = parseRequest(input); if (!p.ok) return { ok: false, message: p.message };
+  const [b] = await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "That order no longer exists." };
+  await db.insert(s.bookingRequests).values({ bookingId: id, ...p.value, createdById: u.uid });
+  await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Asked the customer for ${REQUEST_KIND_LABEL[p.value.kind].toLowerCase()}${p.value.kind === "NOTE" ? ` ("${p.value.text.split("\n")[0].slice(0, 80)}")` : ""}${p.value.important ? " (important)" : ""}` });
+  await audit(u.uid, "CREATE", "booking_request", id);
+  return done(id, "Added. The customer sees it on their booking page now.");
+}
+export async function orderSetRequestStatus(id: string, requestId: string, status: "OPEN" | "DONE"): Promise<R> {
+  const u = await requireStaff("bookings");
+  if (status !== "OPEN" && status !== "DONE") return { ok: false, message: "Not a valid choice." };
+  const [r] = await db.select().from(s.bookingRequests).where(and(eq(s.bookingRequests.id, requestId), eq(s.bookingRequests.bookingId, id)));
+  if (!r) return { ok: false, message: "That request was already removed." };
+  if (r.status === status) return done(id, status === "DONE" ? "Already marked as received." : "Already open.");
+  await db.update(s.bookingRequests).set({ status, doneAt: status === "DONE" ? new Date() : null }).where(eq(s.bookingRequests.id, requestId));
+  await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: ${REQUEST_KIND_LABEL[r.kind as RequestKind] ?? r.kind} ${status === "DONE" ? "received from the customer" : "asked for again"}` });
+  await audit(u.uid, "UPDATE", "booking_request", id);
+  return done(id, status === "DONE" ? "Marked as received. It no longer shows to the customer." : "Asked for again. The customer sees it again.");
+}
+export async function orderDeleteRequest(id: string, requestId: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const [r] = await db.select().from(s.bookingRequests).where(and(eq(s.bookingRequests.id, requestId), eq(s.bookingRequests.bookingId, id)));
+  if (!r) return { ok: false, message: "That request was already removed." };
+  await db.delete(s.bookingRequests).where(eq(s.bookingRequests.id, requestId));
+  await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Removed the request for ${(REQUEST_KIND_LABEL[r.kind as RequestKind] ?? r.kind).toLowerCase()}` });
+  await audit(u.uid, "DELETE", "booking_request", id);
+  return done(id, "Removed.");
+}
+// Emails the customer everything still open, important ones first, with a button to their booking page.
+export async function orderEmailRequests(id: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const o = await loadOrder(id); if (!o) return { ok: false, message: "That order no longer exists." };
+  if (!o.customer.email) return { ok: false, message: "This customer has no email on file. Use Send on WhatsApp, or add an email in the Customer card." };
+  const ctx = { balance: o.balance, currency: o.currency, travelDate: o.travelDate, travelers: o.adults + o.children + o.infants, ref: o.ref };
+  const list = openRequests(o.customerRequests, o.balance);
+  if (!list.length) return { ok: false, message: "Nothing is open to send. Add what you need from the customer first." };
+  const lines = list.map((r) => { const t = requestText(r, ctx); return `${r.important ? "IMPORTANT: " : ""}${t.title}. ${t.detail}`; });
+  const mail = brandedEmail({ greeting: `Hi ${o.customer.name.split(" ")[0]}, a few things we need for your trip`, lines: [`For your booking ${o.ref} (${o.title}), we still need the following from you:`, ...lines, "You can see this list any time on your booking page."], buttonLabel: "Open your booking", buttonUrl: o.trackUrl, footer: `${o.companyName}. Questions? Just reply to this email.`, builder: BUILDER_NAME });
+  const g = await getSettings();
+  const r = await sendEmail({ to: o.customer.email, subject: `${list.some((x) => x.important) ? "Action needed" : "What we need from you"}: booking ${o.ref}`, html: mail.html, text: mail.text, replyTo: g["company.email"] });
+  if (!r.ok) return { ok: false, message: `The email wasn't sent: ${r.message} Use Send on WhatsApp instead.` };
+  await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Emailed the customer what we still need (${list.length} item${list.length === 1 ? "" : "s"}) to ${o.customer.email}` });
+  await audit(u.uid, "EMAIL", "booking_request", id);
+  return done(id, `Sent to ${o.customer.email}.`);
 }

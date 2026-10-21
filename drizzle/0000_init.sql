@@ -42,6 +42,21 @@ CREATE TABLE `booking_events` (
 );
 --> statement-breakpoint
 CREATE INDEX `booking_events_booking_idx` ON `booking_events` (`booking_id`);--> statement-breakpoint
+CREATE TABLE `booking_requests` (
+	`id` text PRIMARY KEY NOT NULL,
+	`booking_id` text NOT NULL,
+	`kind` text NOT NULL,
+	`text` text DEFAULT '' NOT NULL,
+	`important` integer DEFAULT false NOT NULL,
+	`due_date` text,
+	`status` text DEFAULT 'OPEN' NOT NULL,
+	`created_by_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`done_at` integer,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `booking_requests_booking_idx` ON `booking_requests` (`booking_id`);--> statement-breakpoint
 CREATE TABLE `bookings` (
 	`id` text PRIMARY KEY NOT NULL,
 	`ref` text NOT NULL,

@@ -9,6 +9,23 @@ import { prepaidVia, resolvePickup, styleLabel } from "@/lib/order-rules";
 
 const nice = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const short = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+// The newest invoice and the newest itinerary are what the customer needs; versions sent before are kept, folded away.
+type Doc = LoadedBooking["docs"][number];
+function latestDocs(docs: Doc[]) {
+  const sorted = [...docs].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+  const latest: Doc[] = []; const older: Doc[] = [];
+  for (const d of sorted) (latest.some((x) => x.kind === d.kind) ? older : latest).push(d);
+  return { latest, older };
+}
+// One true sentence under the payment box. (It used to say "You chose a 0% deposit ($0)" on orders made by our team.)
+function paymentNote(b: LoadedBooking["b"], paid: number, due: number) {
+  if (!(b.total > 0)) return "We'll confirm your price soon.";
+  if (due <= 0) return "Paid in full. Thank you!";
+  const website = !b.source || b.source === "WEBSITE";
+  if (website && b.payMode === "DEPOSIT" && b.deposit > 0 && paid < b.deposit - 0.005) return `A ${money(b.deposit, b.currency)} deposit confirms your booking. We'll send you how to pay.`;
+  if (website && b.payMode === "PAY_LATER" && paid <= 0) return "You chose to pay later. We'll send you how to pay before your trip.";
+  return paid > 0 ? "Thank you for your payment. We'll send you how to pay the rest." : "We'll send you how to pay.";
+}
 const NEXT: Record<string, string> = {
   PENDING: "We're checking availability for your date. You'll hear from us on WhatsApp or email to confirm.",
   INVOICED: "We've sent your invoice. Complete your payment by the deadline to lock in your trip.",
@@ -48,6 +65,17 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
         <div><p className="text-xs font-semibold uppercase tracking-wide text-ink/65">Your booking ID</p><p className="font-display text-3xl font-extrabold tracking-wider">{b.ref}</p></div>
         <div className="flex flex-wrap gap-2 print:hidden"><CopyButton text={b.ref} label="Copy ID" />{mode === "confirmation" && <Link href={`/track/${b.ref}?t=${token}`} className="btn btn-dark !min-h-[40px] !py-2">Track booking</Link>}</div>
       </div>
+      {/* What we still need from the customer: first thing they see, important items marked in words and colour. */}
+      {cur !== -1 && data.requests.length > 0 && <section aria-labelledby="need-h" className="mt-6 rounded-2xl border-2 border-ink bg-white p-5 shadow-[0_10px_30px_rgba(20,16,16,.08)]">
+        <h2 id="need-h" className="font-display text-xl font-extrabold">What we need from you</h2>
+        <p className="mt-1 text-sm text-ink/70">Please take care of {data.requests.length === 1 ? "this" : "these"} so everything is ready for your trip.</p>
+        <ul className="mt-4 space-y-3">{data.requests.map((r) => (
+          <li key={r.id} className={`rounded-xl p-4 ${r.important ? "bg-red-50 ring-2 ring-red-200" : "bg-gold-500/15"}`}>
+            <p className="text-[16px] font-bold leading-snug">{r.important && <span className="mr-2 inline-block rounded bg-red-700 px-2 py-0.5 align-middle text-[11px] font-bold uppercase tracking-wide text-white">Important</span>}{r.title}</p>
+            {r.detail && <p className="mt-1 whitespace-pre-line text-[15px] text-ink/80">{r.detail}</p>}
+          </li>))}</ul>
+        <div className="mt-4 print:hidden"><WhatsAppButton href={waLink(`Hi Egypt Knight, about my booking ${b.ref}: `)} label="Send it on WhatsApp" /></div>
+      </section>}
       {mode === "confirmation" && <p className="mt-2 text-sm text-ink/65">Keep this ID. You can track your booking any time at <b>/track</b> with your ID and email.</p>}
 
       {cur === -1 ? <div className="mt-8 rounded-2xl bg-red-50 p-5 font-semibold text-red-800">This booking was cancelled.</div> : (
@@ -83,12 +111,15 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
             <div className="flex justify-between"><dt className="text-ink/65">Paid so far</dt><dd>{money(data.paid, b.currency)}</dd></div>
             <div className="flex justify-between font-semibold"><dt>Still to pay</dt><dd>{money(data.due, b.currency)}</dd></div>
           </dl>
-          <p className="mt-3 text-xs text-ink/65">{b.payMode === "PAY_LATER" ? "You chose to pay later." : b.payMode === "FULL" ? "You chose to pay in full." : `You chose a ${Math.round((b.deposit / (b.total || 1)) * 100)}% deposit (${money(b.deposit, b.currency)}).`} We'll send a secure payment link.</p>
+          <p className="mt-3 text-xs text-ink/65">{paymentNote(b, data.paid, data.due)}</p>
         </section>}
       </div>
 
       {data.docs.length > 0 && <section className="mt-6 rounded-2xl border border-ink/15 p-5 print:hidden"><h2 className="font-display text-lg font-bold">Your documents</h2>
-        <ul className="mt-3 divide-y divide-ink/10 text-sm">{data.docs.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/65">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul></section>}
+        <ul className="mt-3 divide-y divide-ink/10 text-sm">{latestDocs(data.docs).latest.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/65">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul>
+        {latestDocs(data.docs).older.length > 0 && <details className="mt-2 text-sm"><summary className="cursor-pointer text-ink/65">Earlier versions ({latestDocs(data.docs).older.length})</summary>
+          <ul className="mt-1 divide-y divide-ink/10">{latestDocs(data.docs).older.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-ink/70"><span>{d.kind === "INVOICE" ? "Invoice" : "Itinerary"} {d.number} · {short(d.sentAt)}</span><a href={d.url} className="font-semibold underline">Download</a></li>)}</ul>
+        </details>}</section>}
 
       <div className="mt-8 flex flex-wrap gap-3 print:hidden">
         <WhatsAppButton href={wa} label="Message us about this booking" />

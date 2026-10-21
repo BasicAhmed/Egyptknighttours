@@ -9,6 +9,7 @@ import { decryptText } from "./crypto";
 import { signGuide, signReview } from "./booking-token";
 import { prepaidVia } from "./order-rules";
 import { styleSwitchFor, type StyleSwitch } from "./order-style";
+import type { CustomerRequest } from "./customer-requests";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; itinerarySentAt: number | null; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
@@ -34,6 +35,8 @@ export type Order = {
   payments: { id: string; amount: number; method: string; note: string; status: string; at: number }[];
   documents: OrderDoc[]; itineraries: { id: string; name: string; status: string }[];
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
+  // What the customer still has to send or do (lib/customer-requests.ts), and the usual days-before-travel for the balance.
+  customerRequests: CustomerRequest[]; balanceDaysBefore: number;
   trackUrl: string; guideUrl: string; reviewUrl: string | null; companyName: string; welcomeMessage: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
 };
 
@@ -109,6 +112,8 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const guestName = b.guestName || c.name; const firstName = guestName.split(" ")[0];
   const signatureName = g["company.signatureName"] || "the Egypt Knight Tours team";
   const trackUrl = `${origin}/track/${b.ref}?t=${signRef(b.ref)}`;
+  const customerRequests: CustomerRequest[] = (await db.select().from(s.bookingRequests).where(eq(s.bookingRequests.bookingId, b.id)).orderBy(asc(s.bookingRequests.createdAt)))
+    .map((r): CustomerRequest => ({ id: r.id, kind: r.kind, text: r.text, important: r.important, dueDate: r.dueDate, status: r.status, createdAt: r.createdAt.getTime() }));
   const people = [b.adults && `${b.adults} adult${b.adults > 1 ? "s" : ""}`, b.children && `${b.children} child${b.children > 1 ? "ren" : ""}`, b.infants && `${b.infants} infant${b.infants > 1 ? "s" : ""}`].filter(Boolean).join(", ");
   const guidesBlock = destGuides.length ? `\n\nA couple of reads that might help before you arrive:\n${destGuides.map((x) => `• ${x.title}: ${origin}/egypt-travel-guide/${x.slug}`).join("\n")}` : "";
   const upsellBlock = upsellTours.length ? `\n\nWhile you're with us, you might also enjoy:\n${upsellTours.map((x) => `• ${x.title}: ${origin}/tours/${x.slug}`).join("\n")}` : "";
@@ -122,7 +127,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}`, payLink: d.kind === "INVOICE" ? parseJson<{ payLink?: string }>(d.data, {}).payLink || "" : "" })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
-    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
+    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, customerRequests, balanceDaysBefore: Number(g["invoice.balanceDaysBefore"]) || 21, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),

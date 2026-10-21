@@ -430,3 +430,10 @@ Pixel ID `1667158854968793` (`src/lib/meta-pixel.ts`; can be replaced with `NEXT
 - **Never on private pages:** staff panel, guide sheets, booking confirmation, tracking, reviews, API. Those links carry a private token that must not be sent to Meta.
 - Security headers allow `connect.facebook.net` (script) and `www.facebook.com` (events) only.
 - Check in Meta Events Manager (Test events) after deploy: open the site, press Accept, then browse a tour.
+
+## "What we need from you" on the customer's booking page (October 2026)
+Asked for by the tour operator: a place to tell the customer what is still needed (passport copies, the remaining balance and its date, anything else), marked important if it is, sent by email in case they miss it, and shown when they open their booking.
+- **Order window, Overview:** "What we need from the customer". Quick buttons: **+ Passport copies**, **+ Remaining balance** (date filled in as the set days before travel, 21 by default, from Settings), **+ Note or other**. Each can be **Important**, with an optional date; a preview shows exactly what the customer will read. Tick **Received ✓** when it arrives (or Remove). **Email it to the customer** sends the open list with a button to their booking page; **Send on WhatsApp** opens a ready message. Every change is written to the order's history.
+- **Customer's booking page:** a "What we need from you" box right under the booking ID, important items first in red with the word "Important". The balance item shows the live amount still to pay and disappears by itself once it is paid.
+- **Fixed on that page:** the payment line said "You chose a 0% deposit ($0)" on orders made by the team; it now says only what is true (paid in full, the deposit to pay, or that we'll send how to pay). Documents show the newest invoice and itinerary; earlier versions are folded under "Earlier versions" instead of listed as if all current.
+- Rules and wording in `src/lib/customer-requests.ts` (unit tested). Database: new table `booking_requests`, created on the next start.

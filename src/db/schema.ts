@@ -119,6 +119,17 @@ export const bookingEvents = sqliteTable("booking_events", {
   note: text("note"), createdAt: createdAt(),
 }, (t) => [index("booking_events_booking_idx").on(t.bookingId)]);
 
+// What the customer still has to send or do (passport copies, the balance by a date, a note). Shown on their booking page
+// while open; staff can email the list. See lib/customer-requests.ts.
+export const bookingRequests = sqliteTable("booking_requests", {
+  id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(), // PASSPORTS BALANCE NOTE
+  text: text("text").notNull().default(""), important: integer("important", { mode: "boolean" }).notNull().default(false),
+  dueDate: text("due_date"), // YYYY-MM-DD, optional
+  status: text("status").notNull().default("OPEN"), // OPEN DONE
+  createdById: text("created_by_id"), createdAt: createdAt(), doneAt: integer("done_at", { mode: "timestamp" }),
+}, (t) => [index("booking_requests_booking_idx").on(t.bookingId)]);
+
 export const settings = sqliteTable("settings", { key: text("key").primaryKey(), value: text("value").notNull().default("") });
 
 // Where customers send money. Bank details live here (editable in admin), never in code or templates.

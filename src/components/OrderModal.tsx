@@ -8,6 +8,7 @@ import Modal from "./Modal";
 import { ordersSeen } from "@/app/admin/alert-actions";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
+import { RequestsPanel } from "./OrderRequests";
 import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
 import { orderPickup, styleLabel, cleanPaymentLink } from "@/lib/order-rules";
@@ -104,6 +105,8 @@ export default function OrderModal({ row, focus, onClose, onChanged, canFinance 
             {o.addons.length > 0 && <Row k="Add-ons" v={o.addons.map((a) => a.name).join(", ")} />}
           </Card>
         </div>
+
+        <RequestsPanel o={o} busy={busy} run={run} />
 
         {custOpen && <CustomerForm o={o} busy={busy} onSave={(v) => run(() => orderUpdateCustomer(o.id, v)).then((r) => { if (r?.ok) setCustOpen(false); })} />}
         {editOpen && <EditForm o={o} busy={busy} onSave={(v) => run(() => orderUpdate(o.id, v)).then((r) => { if (r?.ok) setEditOpen(false); })} />}
