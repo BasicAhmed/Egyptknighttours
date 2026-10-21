@@ -17,6 +17,7 @@ import { parseRequest, openRequests, requestText, REQUEST_KIND_LABEL, type Reque
 import { sendEmail, brandedEmail } from "@/lib/email";
 import { getSettings } from "@/lib/settings";
 import { BUILDER_NAME } from "@/lib/builder";
+import { approveUpload, rejectUpload } from "@/lib/uploads";
 import { parsePickupTime, PICKUP_TIME_HELP, pickupOverride, parseCollect, collectLine, cleanPaymentLink } from "@/lib/order-rules";
 
 type R = { ok: boolean; message: string; order?: Order | null; id?: string; warn?: boolean };
@@ -269,11 +270,12 @@ export async function orderSaveOps(id: string, input: Record<string, unknown>): 
 
 // ---------- What we need from the customer (lib/customer-requests.ts) ----------
 // Each change is written to the order's history. The customer sees open requests on their booking page at once.
-export async function orderAddRequest(id: string, input: { kind: string; text?: string; important?: boolean; dueDate?: string }): Promise<R> {
+export async function orderAddRequest(id: string, input: { kind: string; text?: string; important?: boolean; dueDate?: string; needsUpload?: boolean }): Promise<R> {
   const u = await requireStaff("bookings");
   const p = parseRequest(input); if (!p.ok) return { ok: false, message: p.message };
   const [b] = await db.select({ id: s.bookings.id }).from(s.bookings).where(eq(s.bookings.id, id)); if (!b) return { ok: false, message: "That order no longer exists." };
   await db.insert(s.bookingRequests).values({ bookingId: id, ...p.value, createdById: u.uid });
+  if (p.value.kind === "PASSPORTS") await syncTravelers(id); // one upload slot per traveler on the customer's page
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Asked the customer for ${REQUEST_KIND_LABEL[p.value.kind].toLowerCase()}${p.value.kind === "NOTE" ? ` ("${p.value.text.split("\n")[0].slice(0, 80)}")` : ""}${p.value.important ? " (important)" : ""}` });
   await audit(u.uid, "CREATE", "booking_request", id);
   return done(id, "Added. The customer sees it on their booking page now.");
@@ -314,4 +316,21 @@ export async function orderEmailRequests(id: string): Promise<R> {
   await db.insert(s.bookingEvents).values({ bookingId: id, type: "NOTE", note: `${u.name}: Emailed the customer what we still need (${list.length} item${list.length === 1 ? "" : "s"}) to ${o.customer.email}` });
   await audit(u.uid, "EMAIL", "booking_request", id);
   return done(id, `Sent to ${o.customer.email}.`);
+}
+
+// Check a file the customer uploaded: confirm it (a passport is saved in Travelers; a receipt records the payment) or send
+// it back with a reason they will read on their booking page (lib/uploads.ts).
+export async function orderApproveUpload(id: string, uploadId: string, amount?: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const r = await approveUpload(id, uploadId, { uid: u.uid, name: u.name || u.email }, { amount });
+  if (!r.ok) return { ok: false, message: r.message };
+  await audit(u.uid, "APPROVE", "customer_upload", uploadId);
+  return done(id, r.message);
+}
+export async function orderRejectUpload(id: string, uploadId: string, reason: string): Promise<R> {
+  const u = await requireStaff("bookings");
+  const r = await rejectUpload(id, uploadId, { uid: u.uid, name: u.name || u.email }, reason);
+  if (!r.ok) return { ok: false, message: r.message };
+  await audit(u.uid, "REJECT", "customer_upload", uploadId);
+  return done(id, r.message);
 }

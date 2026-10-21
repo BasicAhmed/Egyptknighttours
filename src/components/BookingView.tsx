@@ -3,6 +3,7 @@ import SiteImage from "./SiteImage";
 import CopyButton from "./CopyButton";
 import PrintButton from "./PrintButton";
 import WhatsAppButton from "./WhatsAppButton";
+import RequestUpload from "./RequestUpload";
 import { money, waLink } from "@/lib/format";
 import { MILESTONES, currentMilestone, type LoadedBooking } from "@/lib/booking-view";
 import { prepaidVia, resolvePickup, styleLabel } from "@/lib/order-rules";
@@ -73,8 +74,21 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
           <li key={r.id} className={`rounded-xl p-4 ${r.important ? "bg-red-50 ring-2 ring-red-200" : "bg-gold-500/15"}`}>
             <p className="text-[16px] font-bold leading-snug">{r.important && <span className="mr-2 inline-block rounded bg-red-700 px-2 py-0.5 align-middle text-[11px] font-bold uppercase tracking-wide text-white">Important</span>}{r.title}</p>
             {r.detail && <p className="mt-1 whitespace-pre-line text-[15px] text-ink/80">{r.detail}</p>}
+            {r.upload && <div className="mt-3 print:hidden">
+              {r.upload.kind === "PASSPORT" && "passports" in r.upload ? <ul className="space-y-2">{r.upload.passports.map((p) => (
+                <li key={p.travelerId} className="rounded-lg bg-white p-3">
+                  <p className="font-semibold">{p.name}</p>
+                  {p.state === "RECEIVED" ? <p className="text-sm font-semibold text-[#17663A]">✓ Received, thank you</p>
+                    : p.state === "CHECKING" ? <p className="text-sm font-semibold text-[#14545B]">Received. We're checking it.</p>
+                    : <>{p.state === "REJECTED" && <p className="text-sm font-semibold text-red-700">We couldn't accept the last one: {p.reason}</p>}
+                      <RequestUpload bookingRef={b.ref} token={token} requestId={r.id} travelerId={p.travelerId} kind="PASSPORT" label="passport" again={p.state === "REJECTED"} /></>}
+                </li>))}</ul>
+              : "state" in r.upload && (r.upload.state === "CHECKING" ? <p className="rounded-lg bg-white p-3 text-sm font-semibold text-[#14545B]">Received. We're checking it and will confirm shortly.</p>
+                : <>{r.upload.state === "REJECTED" && <p className="mb-1 text-sm font-semibold text-red-700">We couldn't accept the last one: {r.upload.reason}</p>}
+                  <RequestUpload bookingRef={b.ref} token={token} requestId={r.id} kind={r.upload.kind} label={r.upload.kind === "PAYMENT_PROOF" ? "payment receipt" : "file"} again={r.upload.state === "REJECTED"} currency={b.currency} /></>)}
+            </div>}
           </li>))}</ul>
-        <div className="mt-4 print:hidden"><WhatsAppButton href={waLink(`Hi Egypt Knight, about my booking ${b.ref}: `)} label="Send it on WhatsApp" /></div>
+        <p className="mt-4 text-sm text-ink/70 print:hidden">Prefer WhatsApp? <a href={waLink(`Hi Egypt Knight, about my booking ${b.ref}: `)} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Send it to us there</a> instead.</p>
       </section>}
       {mode === "confirmation" && <p className="mt-2 text-sm text-ink/65">Keep this ID. You can track your booking any time at <b>/track</b> with your ID and email.</p>}
 

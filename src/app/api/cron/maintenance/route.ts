@@ -18,6 +18,7 @@ export async function GET(req: Request) {
   if (days > 0) {
     const cutoff = new Date(now - days * 86400_000).toISOString().slice(0, 10);
     out.passportFilesDeleted = Number((await client.execute({ sql: "delete from traveler_files where booking_id in (select id from bookings where travel_date < ?)", args: [cutoff] })).rowsAffected);
+    out.customerUploadsCleared = Number((await client.execute({ sql: "delete from customer_uploads where booking_id in (select id from bookings where travel_date < ?)", args: [cutoff] })).rowsAffected);
     out.passportNumbersCleared = Number((await client.execute({ sql: "update travelers set passport_number = null where passport_number is not null and booking_id in (select id from bookings where travel_date < ?)", args: [cutoff] })).rowsAffected);
   }
   out.at = new Date(now).toISOString();

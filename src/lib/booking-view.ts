@@ -3,6 +3,8 @@ import { asc, eq } from "drizzle-orm";
 import { parseJson } from "./format";
 import { signDoc } from "./booking-token";
 import { openRequests, requestText, type CustomerRequest } from "./customer-requests";
+import { uploadKindFor, passportStates, singleUploadState } from "./customer-uploads";
+import { uploadsForBooking, travelersWithPassport } from "./uploads";
 
 export async function loadBooking(ref: string) {
   const [row] = await db.select({ b: s.bookings, tour: s.tours, dest: s.destinations, c: s.customers })
@@ -20,8 +22,15 @@ export async function loadBooking(ref: string) {
   const addons = parseJson<{ name: string; price: number; unit: string }[]>(row.b.addonsJson, []);
   const due = Math.max(0, Math.round((row.b.total - paid) * 100) / 100);
   // What we still need from the customer: open requests only, important first; a balance request disappears once paid.
+  // Each open request says what the customer can upload for it and where that stands (customer-uploads.ts).
+  const [uploads, travelerRows] = requests.length ? await Promise.all([uploadsForBooking(row.b.id), travelersWithPassport(row.b.id)]) : [[], []];
   const open = openRequests<CustomerRequest>(requests.map((r): CustomerRequest => ({ id: r.id, kind: r.kind, text: r.text, important: r.important, dueDate: r.dueDate, status: r.status, createdAt: r.createdAt.getTime() })), due)
-    .map((r) => ({ id: r.id, important: r.important, ...requestText(r, { balance: due, currency: row.b.currency, travelDate: row.b.travelDate, travelers: row.b.adults + row.b.children + row.b.infants, ref: row.b.ref }) }));
+    .map((r) => {
+      const raw = requests.find((x) => x.id === r.id)!; const kind = uploadKindFor(raw);
+      const upload = kind === "PASSPORT" ? { kind, passports: passportStates(travelerRows, uploads) }
+        : kind ? { kind, ...singleUploadState(r.id, uploads) } : null;
+      return { id: r.id, important: r.important, ...requestText(r, { balance: due, currency: row.b.currency, travelDate: row.b.travelDate, travelers: row.b.adults + row.b.children + row.b.infants, ref: row.b.ref }), upload };
+    });
   return { ...row, payments, events, travelers, docs, paid, addons, due, requests: open };
 }
 export type LoadedBooking = NonNullable<Awaited<ReturnType<typeof loadBooking>>>;

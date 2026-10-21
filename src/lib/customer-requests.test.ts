@@ -30,5 +30,10 @@ test("new request is checked", () => {
   assert.equal(parseRequest({ kind: "NOTE", text: "" }).ok, false);
   assert.equal(parseRequest({ kind: "WHATEVER" }).ok, false);
   assert.equal(parseRequest({ kind: "BALANCE", dueDate: "2026-02-30" }).ok, false);
-  assert.deepEqual(parseRequest({ kind: "PASSPORTS", important: true, dueDate: "2026-12-01" }), { ok: true, value: { kind: "PASSPORTS", text: "", important: true, dueDate: "2026-12-01" } });
+  assert.deepEqual(parseRequest({ kind: "PASSPORTS", important: true, dueDate: "2026-12-01" }), { ok: true, value: { kind: "PASSPORTS", text: "", important: true, dueDate: "2026-12-01", needsUpload: false } });
+});
+
+test("a note can ask for a file; passports and receipts never need the tick", () => {
+  assert.equal((parseRequest({ kind: "NOTE", text: "Signed waiver", needsUpload: true }) as { value: { needsUpload: boolean } }).value.needsUpload, true);
+  assert.equal((parseRequest({ kind: "BALANCE", needsUpload: true }) as { value: { needsUpload: boolean } }).value.needsUpload, false);
 });

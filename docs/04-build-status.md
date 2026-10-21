@@ -437,3 +437,16 @@ Asked for by the tour operator: a place to tell the customer what is still neede
 - **Customer's booking page:** a "What we need from you" box right under the booking ID, important items first in red with the word "Important". The balance item shows the live amount still to pay and disappears by itself once it is paid.
 - **Fixed on that page:** the payment line said "You chose a 0% deposit ($0)" on orders made by the team; it now says only what is true (paid in full, the deposit to pay, or that we'll send how to pay). Documents show the newest invoice and itinerary; earlier versions are folded under "Earlier versions" instead of listed as if all current.
 - Rules and wording in `src/lib/customer-requests.ts` (unit tested). Database: new table `booking_requests`, created on the next start.
+
+## Customer uploads: ask → upload → check → confirm, all in one loop (October 2026)
+What we ask for is now uploaded by the customer and lands in the right place once staff confirm it. Rules in `src/lib/customer-uploads.ts` (unit tested); storage and review in `src/lib/uploads.ts`.
+- **Customer's booking page:** each request has its own upload. **Passport copies:** one slot per traveler, by name, each showing Received ✓ / We're checking it / Not accepted: <reason> (with Upload again). **Remaining balance:** upload the payment receipt (and optionally the amount paid). **Note:** staff can tick "Customer uploads a file" for anything else (a signed form, a visa). Photo or PDF up to 4 MB; big phone photos are made smaller first. Only the booking's private link can upload; uploads are limited per address and per booking.
+- **Stored safely:** files are checked by their real type (not the name), photos are re-saved without hidden location data, and everything is encrypted (AES-256-GCM) like passport scans. A new upload for the same traveler or receipt replaces one still waiting.
+- **Staff are told:** an email to the staff alert addresses ("To check: … uploaded passport for …", logged on System status), and the order shows "📎 N uploads from the customer to check" in the Orders list.
+- **Order window, What we need from the customer → To check:** View each file (staff only, every view in the audit log), then **Confirm** or **Send back…** with a reason the customer reads.
+  - Confirmed **passport** → saved straight into that traveler's **Passport** section (Travelers tab). The encrypted file is moved, not stored twice.
+  - Confirmed **receipt** → staff confirm the amount (filled in with what the customer said, never more than is still due) and the **payment is recorded**, so the balance, status, invoice and Finance follow. The receipt is kept as the record.
+  - Confirmed **file** → its note is complete.
+  - **Sent back** → the file is deleted at once; the customer sees the reason and can upload again.
+- **Requests close by themselves:** passports when every traveler has one in the Passport section; the balance when it is fully paid. Every step is in the order's history.
+- Database: new table `customer_uploads`, and `booking_requests.needs_upload`, added on the next start. Customer files of past trips are deleted by the nightly job with the same retention setting as passport scans.

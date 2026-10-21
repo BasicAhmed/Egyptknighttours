@@ -50,6 +50,7 @@ CREATE TABLE `booking_requests` (
 	`important` integer DEFAULT false NOT NULL,
 	`due_date` text,
 	`status` text DEFAULT 'OPEN' NOT NULL,
+	`needs_upload` integer DEFAULT false NOT NULL,
 	`created_by_id` text,
 	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
 	`done_at` integer,
@@ -249,6 +250,29 @@ CREATE TABLE `customer_rewards` (
 );
 --> statement-breakpoint
 CREATE INDEX `customer_rewards_customer_idx` ON `customer_rewards` (`customer_id`);--> statement-breakpoint
+CREATE TABLE `customer_uploads` (
+	`id` text PRIMARY KEY NOT NULL,
+	`booking_id` text NOT NULL,
+	`request_id` text,
+	`traveler_id` text,
+	`kind` text NOT NULL,
+	`filename` text NOT NULL,
+	`mime` text NOT NULL,
+	`size` integer NOT NULL,
+	`data` blob NOT NULL,
+	`customer_note` text DEFAULT '' NOT NULL,
+	`amount` real,
+	`status` text DEFAULT 'PENDING' NOT NULL,
+	`reject_reason` text,
+	`reviewed_by_id` text,
+	`reviewed_at` integer,
+	`traveler_file_id` text,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `customer_uploads_booking_idx` ON `customer_uploads` (`booking_id`);--> statement-breakpoint
+CREATE INDEX `customer_uploads_status_idx` ON `customer_uploads` (`status`);--> statement-breakpoint
 CREATE TABLE `customers` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text,

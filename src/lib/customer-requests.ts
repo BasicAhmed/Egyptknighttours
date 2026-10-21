@@ -8,7 +8,7 @@ export const REQUEST_KINDS = ["PASSPORTS", "BALANCE", "NOTE"] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 export const REQUEST_KIND_LABEL: Record<RequestKind, string> = { PASSPORTS: "Passport copies", BALANCE: "Remaining balance", NOTE: "Note" };
 
-export type CustomerRequest = { id: string; kind: string; text: string; important: boolean; dueDate: string | null; status: string; createdAt: number };
+export type CustomerRequest = { id: string; kind: string; text: string; important: boolean; dueDate: string | null; status: string; createdAt: number; needsUpload?: boolean };
 export type RequestContext = { balance: number; currency: string; travelDate: string; travelers: number; ref: string };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,11 +27,11 @@ export function requestText(r: Pick<CustomerRequest, "kind" | "text" | "dueDate"
   const extra = r.text.trim();
   if (r.kind === "PASSPORTS") return {
     title: "Passport copies",
-    detail: [`Please send a clear photo of the passport photo page for ${c.travelers > 1 ? `each of the ${c.travelers} travelers` : "the traveler"}${by ? ` by ${by}` : ""}. Reply to our email or send them on WhatsApp.`, extra].filter(Boolean).join(" "),
+    detail: [`Please send a clear photo of the passport photo page for ${c.travelers > 1 ? `each of the ${c.travelers} travelers` : "the traveler"}${by ? ` by ${by}` : ""}. Upload them on your booking page, one for each traveler.`, extra].filter(Boolean).join(" "),
   };
   if (r.kind === "BALANCE") return {
     title: `Remaining balance: ${money(c.balance, c.currency)}`,
-    detail: [`Please pay ${money(c.balance, c.currency)}${by ? ` by ${by}` : ""}${before != null && before > 0 ? ` (${before} days before your trip)` : ""}. Use your booking ID ${c.ref} as the payment reference.`, extra].filter(Boolean).join(" "),
+    detail: [`Please pay ${money(c.balance, c.currency)}${by ? ` by ${by}` : ""}${before != null && before > 0 ? ` (${before} days before your trip)` : ""}. Use your booking ID ${c.ref} as the payment reference, then upload your receipt on your booking page.`, extra].filter(Boolean).join(" "),
   };
   const [first, ...rest] = extra.split("\n");
   return { title: first.trim() || "Note from our team", detail: [rest.join("\n").trim(), by ? `Please by ${by}.` : ""].filter(Boolean).join(" ") };
@@ -45,7 +45,7 @@ export function openRequests<T extends Pick<CustomerRequest, "kind" | "status" |
 }
 
 // Checks a new request from the order window. Returns the cleaned request or the reason, in plain words.
-export function parseRequest(input: { kind?: unknown; text?: unknown; important?: unknown; dueDate?: unknown }): { ok: true; value: { kind: RequestKind; text: string; important: boolean; dueDate: string | null } } | { ok: false; message: string } {
+export function parseRequest(input: { kind?: unknown; text?: unknown; important?: unknown; dueDate?: unknown; needsUpload?: unknown }): { ok: true; value: { kind: RequestKind; text: string; important: boolean; dueDate: string | null; needsUpload: boolean } } | { ok: false; message: string } {
   const kind = String(input.kind ?? "") as RequestKind;
   if (!REQUEST_KINDS.includes(kind)) return { ok: false, message: "Choose what you need from the customer." };
   const text = String(input.text ?? "").trim();
@@ -53,5 +53,7 @@ export function parseRequest(input: { kind?: unknown; text?: unknown; important?
   if (kind === "NOTE" && !text) return { ok: false, message: "Write the note for the customer." };
   const due = String(input.dueDate ?? "").trim();
   if (due && !(ISO.test(due) && new Date(due + "T00:00:00Z").toISOString().slice(0, 10) === due)) return { ok: false, message: "Choose a real date, or leave it empty." };
-  return { ok: true, value: { kind, text, important: input.important === true || input.important === "on" || input.important === "true", dueDate: due || null } };
+  const yes = (v: unknown) => v === true || v === "on" || v === "true";
+  // Passports and receipts are always uploaded; a note asks for a file only when staff tick it.
+  return { ok: true, value: { kind, text, important: yes(input.important), dueDate: due || null, needsUpload: kind === "NOTE" ? yes(input.needsUpload) : false } };
 }

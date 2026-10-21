@@ -127,8 +127,23 @@ export const bookingRequests = sqliteTable("booking_requests", {
   text: text("text").notNull().default(""), important: integer("important", { mode: "boolean" }).notNull().default(false),
   dueDate: text("due_date"), // YYYY-MM-DD, optional
   status: text("status").notNull().default("OPEN"), // OPEN DONE
+  needsUpload: integer("needs_upload", { mode: "boolean" }).notNull().default(false), // a note the customer answers with a file
   createdById: text("created_by_id"), createdAt: createdAt(), doneAt: integer("done_at", { mode: "timestamp" }),
 }, (t) => [index("booking_requests_booking_idx").on(t.bookingId)]);
+
+// A file the customer uploaded from their booking page, waiting for staff to check it (lib/customer-uploads.ts).
+// Encrypted like passport scans. A confirmed passport moves into traveler_files and its bytes are cleared here; a rejected
+// file's bytes are cleared at once; a confirmed payment receipt is kept as the record of that payment.
+export const customerUploads = sqliteTable("customer_uploads", {
+  id: id(), bookingId: text("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  requestId: text("request_id"), travelerId: text("traveler_id"),
+  kind: text("kind").notNull(), // PASSPORT PAYMENT_PROOF FILE
+  filename: text("filename").notNull(), mime: text("mime").notNull(), size: integer("size").notNull(), data: blob("data", { mode: "buffer" }).notNull(),
+  customerNote: text("customer_note").notNull().default(""), amount: real("amount"), // the amount the customer says they paid
+  status: text("status").notNull().default("PENDING"), // PENDING APPROVED REJECTED
+  rejectReason: text("reject_reason"), reviewedById: text("reviewed_by_id"), reviewedAt: integer("reviewed_at", { mode: "timestamp" }),
+  travelerFileId: text("traveler_file_id"), createdAt: createdAt(),
+}, (t) => [index("customer_uploads_booking_idx").on(t.bookingId), index("customer_uploads_status_idx").on(t.status)]);
 
 export const settings = sqliteTable("settings", { key: text("key").primaryKey(), value: text("value").notNull().default("") });
 

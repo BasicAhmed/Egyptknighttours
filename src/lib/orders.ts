@@ -10,8 +10,9 @@ import { signGuide, signReview } from "./booking-token";
 import { prepaidVia } from "./order-rules";
 import { styleSwitchFor, type StyleSwitch } from "./order-style";
 import type { CustomerRequest } from "./customer-requests";
+import { uploadsForBooking, type UploadInfo } from "./uploads";
 
-export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; itinerarySentAt: number | null; hotel: string; guideName: string; passports: number };
+export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; itinerarySentAt: number | null; toCheck: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
 export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string; payLink: string };
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
@@ -37,6 +38,8 @@ export type Order = {
   activity: Activity[]; templates: { id: string; name: string }[]; methods: string[]; defaults: { currency: string; dueNow: number; deadline: string };
   // What the customer still has to send or do (lib/customer-requests.ts), and the usual days-before-travel for the balance.
   customerRequests: CustomerRequest[]; balanceDaysBefore: number;
+  // Files the customer uploaded from their booking page, newest first (no file bytes). PENDING ones wait for staff to check.
+  customerUploads: UploadInfo[];
   trackUrl: string; guideUrl: string; reviewUrl: string | null; companyName: string; welcomeMessage: string; travelers: Traveler[]; guides: Guide[]; ops: Ops;
 };
 
@@ -49,11 +52,12 @@ export async function listOrders(limit = 300): Promise<OrderRow[]> {
     invSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'INVOICE' and sent_at is not null)`,
     its: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY')`,
     itSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null)`,
+    toCheck: sql<number>`(select count(*) from customer_uploads where booking_id = ${s.bookings.id} and status = 'PENDING')`,
     itSentAt: sql<number | null>`(select max(sent_at) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null)`,
     passports: sql<number>`(select count(distinct traveler_id) from traveler_files where booking_id = ${s.bookings.id} and kind = 'PASSPORT')`,
     guide: sql<string>`coalesce((select name from tour_guides where id = ${s.bookings.guideId}), '')`,
   }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(limit);
-  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.b.guestName || r.c.name, email: r.c.email ?? "", whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, source: r.b.source || "WEBSITE", total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), itinerarySentAt: r.itSentAt != null ? Number(r.itSentAt) * 1000 : null, hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
+  return rows.map((r) => ({ id: r.b.id, ref: r.b.ref, status: r.b.status, title: r.b.titleOverride || r.tour, name: r.b.guestName || r.c.name, email: r.c.email ?? "", whatsapp: r.c.whatsapp || r.c.phone || "", country: r.c.country || "", travelDate: r.b.travelDate, pax: r.b.adults + r.b.children + r.b.infants, isPrivate: r.b.isPrivate, source: r.b.source || "WEBSITE", total: r.b.total, paid: Number(r.paid), currency: r.b.currency, createdAt: r.b.createdAt.getTime(), invoices: Number(r.invoices), invoiceSent: Number(r.invSent), itineraries: Number(r.its), itinerarySent: Number(r.itSent), itinerarySentAt: r.itSentAt != null ? Number(r.itSentAt) * 1000 : null, toCheck: Number(r.toCheck), hotel: r.b.hotel ?? "", guideName: r.guide ?? "", passports: Number(r.passports) }));
 }
 
 const EVENT_TEXT = (type: string, note: string | null) => {
@@ -113,7 +117,8 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const signatureName = g["company.signatureName"] || "the Egypt Knight Tours team";
   const trackUrl = `${origin}/track/${b.ref}?t=${signRef(b.ref)}`;
   const customerRequests: CustomerRequest[] = (await db.select().from(s.bookingRequests).where(eq(s.bookingRequests.bookingId, b.id)).orderBy(asc(s.bookingRequests.createdAt)))
-    .map((r): CustomerRequest => ({ id: r.id, kind: r.kind, text: r.text, important: r.important, dueDate: r.dueDate, status: r.status, createdAt: r.createdAt.getTime() }));
+    .map((r): CustomerRequest => ({ id: r.id, kind: r.kind, text: r.text, important: r.important, dueDate: r.dueDate, status: r.status, createdAt: r.createdAt.getTime(), needsUpload: r.needsUpload }));
+  const customerUploads = (await uploadsForBooking(b.id)).sort((x, y) => y.createdAt - x.createdAt);
   const people = [b.adults && `${b.adults} adult${b.adults > 1 ? "s" : ""}`, b.children && `${b.children} child${b.children > 1 ? "ren" : ""}`, b.infants && `${b.infants} infant${b.infants > 1 ? "s" : ""}`].filter(Boolean).join(", ");
   const guidesBlock = destGuides.length ? `\n\nA couple of reads that might help before you arrive:\n${destGuides.map((x) => `• ${x.title}: ${origin}/egypt-travel-guide/${x.slug}`).join("\n")}` : "";
   const upsellBlock = upsellTours.length ? `\n\nWhile you're with us, you might also enjoy:\n${upsellTours.map((x) => `• ${x.title}: ${origin}/tours/${x.slug}`).join("\n")}` : "";
@@ -127,7 +132,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
     documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}`, payLink: d.kind === "INVOICE" ? parseJson<{ payLink?: string }>(d.data, {}).payLink || "" : "" })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
-    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, customerRequests, balanceDaysBefore: Number(g["invoice.balanceDaysBefore"]) || 21, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
+    defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, customerRequests, customerUploads, balanceDaysBefore: Number(g["invoice.balanceDaysBefore"]) || 21, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,
     travelers: [...travelerRows].sort((a, z) => ["ADULT", "CHILD", "INFANT"].indexOf(a.type) - ["ADULT", "CHILD", "INFANT"].indexOf(z.type)).map((t) => ({ id: t.id, name: t.fullName, type: t.type, age: t.age, nationality: t.nationality ?? "", dob: t.dob ?? "", passportNumber: decryptText(t.passportNumber), passportExpiry: t.passportExpiry ?? "", notes: t.notes ?? "", files: fileRows.filter((f) => f.travelerId === t.id).map((f) => ({ id: f.id, kind: f.kind, filename: f.filename, mime: f.mime, size: f.size, createdAt: f.createdAt.getTime() })) })),
     guides: guideRows.filter((x) => x.active || x.id === b.guideId).map((x) => ({ id: x.id, name: x.name, phone: x.phone, languages: x.languages, active: x.active })),

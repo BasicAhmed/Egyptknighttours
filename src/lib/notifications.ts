@@ -13,7 +13,7 @@ const dateLong = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("en
 // The one place every notification email actually goes through — logs the attempt (success or failure) so the team can
 // check whether something was actually sent, instead of just hoping it was. Never throws: a logging problem must never
 // break the booking, payment or status change that triggered it.
-export type NotifyType = "NEW_BOOKING" | "NEW_LEAD" | "PAYMENT_COMPLETE" | "ORDER_CANCELLED" | "CORPORATE_PAYMENT_COMPLETE" | "CORPORATE_CANCELLED" | "REVIEW_INVITE" | "STAFF_NEW_ORDER";
+export type NotifyType = "NEW_BOOKING" | "NEW_LEAD" | "PAYMENT_COMPLETE" | "ORDER_CANCELLED" | "CORPORATE_PAYMENT_COMPLETE" | "CORPORATE_CANCELLED" | "REVIEW_INVITE" | "STAFF_NEW_ORDER" | "CUSTOMER_UPLOAD";
 export async function notify(type: NotifyType, to: string | string[], subject: string, html: string, text: string, opts: { replyTo?: string; bookingId?: string; corporateRequestId?: string } = {}) {
   const recipient = Array.isArray(to) ? to.join(", ") : to;
   const res = await sendEmail({ to, subject, html, text, replyTo: opts.replyTo });
@@ -119,4 +119,15 @@ export async function notifyCorporateCancelled(requestId: string, origin: string
     const sub = paid > 0 ? `This request was cancelled after ${money(paid, r.currency)} was already paid — check whether a refund is owed.` : "This request was cancelled. Nothing had been paid on it yet.";
     await notify("CORPORATE_CANCELLED", to, `Cancelled: ${r.ref} — ${r.companyName}`, staffCard(`${r.ref} was cancelled`, sub, rows, "Open the request", `${origin}/admin/corporate/${r.id}`), staffText(`${r.ref} was cancelled — ${sub}`, rows, "Open the request", `${origin}/admin/corporate/${r.id}`), { corporateRequestId: r.id });
   } catch (e) { console.error("notifyCorporateCancelled failed", e instanceof Error ? e.message : e); }
+}
+
+// A customer uploaded something from their booking page (passport, receipt, file): staff should check it.
+export async function notifyCustomerUpload(bookingId: string, what: string, origin: string = SITE) {
+  try {
+    const [row] = await db.select({ b: s.bookings, c: s.customers }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, bookingId)); if (!row) return;
+    const g = await getSettings(); const to = staffAlertEmails(g); if (!to.length) return;
+    const name = row.b.guestName || row.c.name; const url = `${origin}/admin?open=${row.b.id}`;
+    const rows: [string, string][] = [["Booking", row.b.ref], ["Customer", name], ["Uploaded", what], ["Travel date", row.b.travelDate]];
+    await notify("CUSTOMER_UPLOAD", to, `To check: ${name} uploaded ${what} (${row.b.ref})`, staffCard(`${name} uploaded ${what}`, "Open the order, check it, then confirm it or send it back with a reason.", rows, "Open the order", url), staffText(`${name} uploaded ${what}`, rows, "Open the order", url), { bookingId: row.b.id });
+  } catch (e) { console.error("notifyCustomerUpload failed", e instanceof Error ? e.message : e); }
 }
