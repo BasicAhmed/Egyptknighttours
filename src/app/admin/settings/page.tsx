@@ -9,6 +9,8 @@ import ImageField from "@/components/ImageField";
 import { saveTestimonial, deleteTestimonial, bulkAddTestimonials, saveGuide, deleteGuide, bulkAddGuides, saveRedirect, deleteRedirect, bulkAddRedirects } from "../site-actions";
 import { resolveLegacy } from "@/lib/legacy-server";
 import FormKeeper from "@/components/FormKeeper";
+import { usageSummary } from "@/lib/ai/budget";
+import { aiConfigured } from "@/lib/ai/claude";
 export const dynamic = "force-dynamic";
 type M = typeof s.paymentMethods.$inferSelect;
 
@@ -33,15 +35,16 @@ function MethodForm({ m }: { m?: M }) {
   );
 }
 export default async function Settings({ searchParams }: { searchParams: Promise<{ n?: string; e?: string; tab?: string }> }) {
-  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects", "referral"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
+  await requireStaff("settings"); const sp = await searchParams; if (sp.tab === "system") redirect("/admin/system"); const tab = ["company", "wording", "website", "reviews", "guides", "redirects", "referral", "ai"].includes(String(sp.tab)) ? String(sp.tab) : "payment";
   const g = await getSettings();
   const methods = await db.select().from(s.paymentMethods).orderBy(asc(s.paymentMethods.sortOrder), asc(s.paymentMethods.createdAt));
   const T = ({ k, label, rows = 4 }: { k: string; label: string; rows?: number }) => <div className="sm:col-span-2"><label className="label" htmlFor={`t-${k}`}>{label}</label><textarea id={`t-${k}`} name={k} rows={rows} defaultValue={g[k]} className="input" /></div>;
-  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["referral", "Referral program"], ["wording", "Invoice wording"], ["system", "System status"]];
+  const tabs: [string, string][] = [["payment", "Payment details"], ["company", "Company info"], ["website", "Website"], ["reviews", "Reviews"], ["guides", "Tour guides"], ["redirects", "Redirects"], ["referral", "Referral program"], ["ai", "AI assistant"], ["wording", "Invoice wording"], ["system", "System status"]];
   const redirectRows = tab === "redirects" ? await db.select().from(s.redirects).orderBy(desc(s.redirects.createdAt)).limit(500) : [];
   const testPath = tab === "redirects" ? String((sp as Record<string, string | undefined>).t ?? "").trim() : "";
   const testResult = testPath ? await resolveLegacy(testPath) : null;
   const guidesList = tab === "guides" ? await db.select().from(s.tourGuides).orderBy(asc(s.tourGuides.name)) : [];
+  const aiUse = tab === "ai" ? await usageSummary().catch(() => null) : null; const aiKey = aiConfigured();
   const reviews = tab === "reviews" ? await db.select().from(s.testimonials).orderBy(asc(s.testimonials.sortOrder), asc(s.testimonials.createdAt)) : [];
   return (
     <div>
@@ -97,6 +100,15 @@ export default async function Settings({ searchParams }: { searchParams: Promise
           <F name="site.videoUrl" label="Homepage video (YouTube link)" v={g["site.videoUrl"]} /><F name="site.videoStart" label="Video starts at (seconds)" type="number" v={g["site.videoStart"]} />
           <F name="site.mapQuery" label="Map location (address or place name)" v={g["site.mapQuery"]} /><F name="site.mapLink" label="Google Maps link (for the Open in Maps button)" v={g["site.mapLink"]} />
           <div className="sm:col-span-2"><F name="site.hours" label="Opening hours text" v={g["site.hours"]} /></div></>}
+        {tab === "ai" && <>
+          <p className="text-sm text-ink/65 sm:col-span-2">Everything starts switched off. The assistant uses Claude (Anthropic). Set <b>ANTHROPIC_API_KEY</b> in Vercel first; {aiKey ? <b className="text-[#17663A]">the key is set.</b> : <b className="text-red-700">the key is not set yet.</b>}</p>
+          <label className="block"><span className="label">Customer AI trip planner (Plan my trip page)</span><select name="ai.customer" defaultValue={g["ai.customer"]} className="input"><option value="off">Off</option><option value="on">On</option></select></label>
+          <label className="block"><span className="label">Staff assistant (Assistant page)</span><select name="ai.staff" defaultValue={g["ai.staff"]} className="input"><option value="off">Off</option><option value="on">On</option></select></label>
+          <F name="ai.dailyCapUsd" label="Daily spending limit, all AI together (USD)" type="number" v={g["ai.dailyCapUsd"]} />
+          <label className="block"><span className="label">Model for the trip planner</span><select name="ai.itineraryModel" defaultValue={g["ai.itineraryModel"]} className="input"><option value="haiku">Claude Haiku 5.5 (cheapest, recommended)</option><option value="sonnet">Claude Sonnet 5.5 (better plans, about 20× the cost)</option></select></label>
+          {aiUse && <div className="rounded-xl bg-ink/[.04] p-3 text-sm sm:col-span-2"><p className="font-semibold">Spend</p>
+            <p>Today: <b>${aiUse.today.cost.toFixed(3)}</b> ({aiUse.today.requests} requests) of the ${g["ai.dailyCapUsd"] || 1} daily limit.</p>
+            <p>This month: planner <b>${(aiUse.month.CUSTOMER?.cost ?? 0).toFixed(2)}</b> ({aiUse.month.CUSTOMER?.requests ?? 0} requests), staff <b>${(aiUse.month.STAFF?.cost ?? 0).toFixed(2)}</b> ({aiUse.month.STAFF?.requests ?? 0} requests).</p></div>}</>}
         {tab === "wording" && <>
           <F name="invoice.depositDeadlineDays" label="Days to pay a deposit or full amount" type="number" v={g["invoice.depositDeadlineDays"]} /><F name="invoice.balanceDaysBefore" label="Balance due (days before travel)" type="number" v={g["invoice.balanceDaysBefore"]} />
           <T k="invoice.paymentTerms" label="Payment terms (one per line)" /><T k="invoice.documents" label="Documents to send (one per line)" rows={3} />

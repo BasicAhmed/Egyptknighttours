@@ -388,6 +388,40 @@ export const orderAlertsSeen = sqliteTable("order_alerts_seen", {
   id: id(), userId: text("user_id").notNull(), bookingId: text("booking_id").notNull(), createdAt: createdAt(),
 }, (t) => [uniqueIndex("order_alerts_seen_uq").on(t.userId, t.bookingId), index("order_alerts_seen_created_idx").on(t.createdAt)]);
 
+// ---------- AI assistant (lib/ai) ----------
+// One chat: a customer planning a trip (CUSTOMER) or a staff member using the assistant (STAFF). The whole conversation is
+// kept on the server, so the browser only ever sends the next message and can't rewrite what was said. Customer chats are
+// deleted after 90 days by the nightly job.
+export const aiConversations = sqliteTable("ai_conversations", {
+  id: id(), scope: text("scope").notNull(), // CUSTOMER STAFF
+  userId: text("user_id"), ipHash: text("ip_hash"),
+  messages: text("messages").notNull().default("[]"), // the Claude message list (JSON)
+  draft: text("draft"), // CUSTOMER: the checked itinerary draft (JSON)
+  bookingId: text("booking_id"), // CUSTOMER: the order made from it, once sent
+  turns: integer("turns").notNull().default(0), costUsd: real("cost_usd").notNull().default(0),
+  createdAt: createdAt(), updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => [index("ai_conversations_updated_idx").on(t.updatedAt)]);
+// Spend per day (Cairo date) and per scope, checked against the daily cap before every call to Claude.
+export const aiUsage = sqliteTable("ai_usage", {
+  day: text("day").notNull(), scope: text("scope").notNull(), requests: integer("requests").notNull().default(0),
+  inputTokens: integer("input_tokens").notNull().default(0), outputTokens: integer("output_tokens").notNull().default(0), costUsd: real("cost_usd").notNull().default(0),
+}, (t) => [uniqueIndex("ai_usage_day_scope_uq").on(t.day, t.scope)]);
+// Something the staff assistant wants to do. Nothing happens until the staff member presses Confirm; the browser only
+// sends this id, so what runs is exactly what was shown (checked again when it runs).
+export const aiActions = sqliteTable("ai_actions", {
+  id: id(), conversationId: text("conversation_id").notNull(), userId: text("user_id").notNull(),
+  kind: text("kind").notNull(), // SEND_EMAIL CREATE_ITINERARY ADD_REQUEST ADD_NOTE SET_STATUS
+  payload: text("payload").notNull(), summary: text("summary").notNull(),
+  status: text("status").notNull().default("PENDING"), // PENDING DONE CANCELLED FAILED
+  result: text("result").notNull().default(""), createdAt: createdAt(), decidedAt: integer("decided_at", { mode: "timestamp" }),
+}, (t) => [index("ai_actions_conversation_idx").on(t.conversationId)]);
+// The 6-digit code that proves a customer's email is real before the AI planner makes an order. Only a hash is stored.
+export const aiVerifications = sqliteTable("ai_verifications", {
+  id: id(), conversationId: text("conversation_id").notNull(), email: text("email").notNull(), codeHash: text("code_hash").notNull(),
+  contact: text("contact").notNull(), // name, phone, travel date, travelers (JSON), used when the code is right
+  attempts: integer("attempts").notNull().default(0), expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(), usedAt: integer("used_at", { mode: "timestamp" }), createdAt: createdAt(),
+}, (t) => [index("ai_verifications_email_idx").on(t.email)]);
+
 // Every notification email attempt — success or failure — so the team can actually verify one went out, not just hope it did.
 export const notificationLog = sqliteTable("notification_log", {
   id: id(), type: text("type").notNull(), // NEW_BOOKING NEW_LEAD PAYMENT_COMPLETE ORDER_CANCELLED CORPORATE_PAYMENT_COMPLETE CORPORATE_CANCELLED

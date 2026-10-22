@@ -21,6 +21,58 @@ CREATE TABLE `analytics_events` (
 );
 --> statement-breakpoint
 CREATE INDEX `analytics_name_idx` ON `analytics_events` (`name`,`created_at`);--> statement-breakpoint
+CREATE TABLE `ai_conversations` (
+	`id` text PRIMARY KEY NOT NULL,
+	`scope` text NOT NULL,
+	`user_id` text,
+	`ip_hash` text,
+	`messages` text DEFAULT '[]' NOT NULL,
+	`draft` text,
+	`booking_id` text,
+	`turns` integer DEFAULT 0 NOT NULL,
+	`cost_usd` real DEFAULT 0 NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`updated_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `ai_conversations_updated_idx` ON `ai_conversations` (`updated_at`);--> statement-breakpoint
+CREATE TABLE `ai_usage` (
+	`day` text NOT NULL,
+	`scope` text NOT NULL,
+	`requests` integer DEFAULT 0 NOT NULL,
+	`input_tokens` integer DEFAULT 0 NOT NULL,
+	`output_tokens` integer DEFAULT 0 NOT NULL,
+	`cost_usd` real DEFAULT 0 NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `ai_usage_day_scope_uq` ON `ai_usage` (`day`,`scope`);--> statement-breakpoint
+CREATE TABLE `ai_actions` (
+	`id` text PRIMARY KEY NOT NULL,
+	`conversation_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`kind` text NOT NULL,
+	`payload` text NOT NULL,
+	`summary` text NOT NULL,
+	`status` text DEFAULT 'PENDING' NOT NULL,
+	`result` text DEFAULT '' NOT NULL,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL,
+	`decided_at` integer
+);
+--> statement-breakpoint
+CREATE INDEX `ai_actions_conversation_idx` ON `ai_actions` (`conversation_id`);--> statement-breakpoint
+CREATE TABLE `ai_verifications` (
+	`id` text PRIMARY KEY NOT NULL,
+	`conversation_id` text NOT NULL,
+	`email` text NOT NULL,
+	`code_hash` text NOT NULL,
+	`contact` text NOT NULL,
+	`attempts` integer DEFAULT 0 NOT NULL,
+	`expires_at` integer NOT NULL,
+	`used_at` integer,
+	`created_at` integer DEFAULT (unixepoch()) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `ai_verifications_email_idx` ON `ai_verifications` (`email`);--> statement-breakpoint
 CREATE TABLE `audit_logs` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text,

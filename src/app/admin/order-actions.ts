@@ -10,6 +10,7 @@ import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocu
 import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
 import { newBookingRef } from "@/lib/booking";
 import { syncTravelers } from "@/lib/travelers";
+import { ensureCustomTour } from "@/lib/custom-tour";
 import { encryptText } from "@/lib/crypto";
 import { BOOKING_STATUS } from "@/lib/validation";
 import { changeOrderStyle } from "@/lib/order-style";
@@ -122,12 +123,6 @@ const newSchema = z.object({
   adults: z.coerce.number().int().min(1).max(200), children: z.coerce.number().int().min(0).max(200), currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/),
   hotel: z.string().trim().max(200).optional().default(""), notes: z.string().trim().max(1000).optional().default(""),
 });
-async function ensureCustomTour() {
-  const [ex] = await db.select().from(s.tours).where(eq(s.tours.slug, "custom-experience")); if (ex) return ex.id;
-  const [d] = await db.select().from(s.destinations).limit(1);
-  const [t] = await db.insert(s.tours).values({ slug: "custom-experience", title: "Custom experience", shortDescription: "Created by staff for a specific customer.", longDescription: "Custom experience created by staff.", destinationId: d.id, category: "MULTI_DAY", price: 0, status: "ARCHIVED", isPrivateAvailable: true }).returning();
-  return t.id;
-}
 // Customer card edit: fix or add the email / WhatsApp later. Still needs at least one; an email already used by another customer is refused.
 // Customer card edit: every detail can be corrected after the order is made. Email or WhatsApp — at least one stays required;
 // an email already used by another customer is refused. The name is THIS order's guest name (two orders can share an email but be

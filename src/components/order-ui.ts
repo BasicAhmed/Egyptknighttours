@@ -16,7 +16,7 @@ export const waUrl = (phone: string, text: string) => `https://wa.me/${phone.rep
 
 export type Focus = "invoice" | "payment" | "itinerary";
 export type Next = { label: string; focus: Focus; href?: string } | null;
-export const SOURCE_LABEL: Record<string, string> = { WEBSITE: "Website", WHATSAPP: "WhatsApp", EMAIL: "Email", PHONE: "Phone", VIATOR: "Viator" };
+export const SOURCE_LABEL: Record<string, string> = { WEBSITE: "Website", AI: "AI planner", WHATSAPP: "WhatsApp", EMAIL: "Email", PHONE: "Phone", VIATOR: "Viator" };
 // The single most useful thing to do next for an order, so staff never have to think about the process.
 export function nextStep(r: Pick<OrderRow, "status" | "invoices" | "itineraries" | "itinerarySent" | "total" | "id">): Next {
   const st = stageOf(r.status);

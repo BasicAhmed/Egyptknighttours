@@ -14,6 +14,10 @@ export async function GET(req: Request) {
   out.analyticsPruned = Number((await client.execute({ sql: "delete from analytics_events where created_at < ?", args: [Math.floor((now - 400 * 86400_000) / 1000)] })).rowsAffected);
   // "New order" alerts only look back 7 days, so who-saw-what older than 30 days is never read again.
   out.orderAlertsPruned = Number((await client.execute({ sql: "delete from order_alerts_seen where created_at < ?", args: [Math.floor((now - 30 * 86400_000) / 1000)] })).rowsAffected);
+  // AI: customer chats after 90 days, staff chats after 180, used or expired email codes after a day, old suggestions after 30 days.
+  out.aiChatsPruned = Number((await client.execute({ sql: "delete from ai_conversations where (scope = 'CUSTOMER' and updated_at < ?) or (scope = 'STAFF' and updated_at < ?)", args: [Math.floor((now - 90 * 86400_000) / 1000), Math.floor((now - 180 * 86400_000) / 1000)] })).rowsAffected);
+  out.aiCodesPruned = Number((await client.execute({ sql: "delete from ai_verifications where expires_at < ?", args: [Math.floor((now - 86400_000) / 1000)] })).rowsAffected);
+  out.aiActionsPruned = Number((await client.execute({ sql: "delete from ai_actions where created_at < ?", args: [Math.floor((now - 30 * 86400_000) / 1000)] })).rowsAffected);
   const days = Number((await getSettings())["privacy.passportRetentionDays"]) || 0;
   if (days > 0) {
     const cutoff = new Date(now - days * 86400_000).toISOString().slice(0, 10);

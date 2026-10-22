@@ -456,3 +456,6 @@ What we ask for is now uploaded by the customer and lands in the right place onc
 - Settings → Website: **Trustpilot page link** and **Trustpilot business ID** (filled in; change them there, no code needed).
 - Post-trip review page: **Review us on Trustpilot** is one of the review buttons, and Trustpilot is a platform customers can tick to unlock their referral code.
 - Security headers allow `widget.trustpilot.com` (script, frame). Privacy policy mentions the box.
+
+## AI assistant with Claude (October 2026, branch `ai-agent`)
+Customer AI trip planner and staff assistant that can act (with Confirm). Off by default; Haiku 5.5; daily spending limit. Full description, safety rules and how to try it on a preview copy: `docs/07-ai-assistant.md`.
