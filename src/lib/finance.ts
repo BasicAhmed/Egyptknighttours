@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { r2 } from "./pricing";
 import { getSettings, usdAmount } from "./settings";
 
@@ -48,26 +48,39 @@ export async function monthlyFinance(m: FinanceMonth): Promise<FinanceReport> {
   for (const [id, row] of byTour) { row.profit = r2(row.revenue - row.cost); row.margin = row.revenue > 0 ? r2((row.profit / row.revenue) * 100) : null; row.bookings = new Set(rows.filter((r) => r.tourId === id).map((r) => r.bookingId)).size; byTour.set(id, row); }
 
   // Corporate requests are a second revenue channel, folded into the same totals above using the same cash-basis, proportional-cost
-  // logic: each payment's share of the cost is whatever fraction of the request's total price that payment covers.
+  // logic: each payment's share of the cost is whatever fraction of the request's total price that payment covers. Money
+  // beyond the total (a partner's credit) covers no extra cost, so it never makes the cost bigger than the request's cost.
   // The request's cost and price come from moneyFor() in corporate.ts, the same rules the request page and the invoice use
   // (percentage pricing, cancelled services not charged), so Finance can never work out a different total.
   const crows0 = await db.select({
-    amount: s.corporatePayments.amount, currency: s.corporateRequests.currency, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
+    id: s.corporatePayments.id, amount: s.corporatePayments.amount, currency: s.corporateRequests.currency, requestId: s.corporatePayments.requestId, ref: s.corporateRequests.ref, companyName: s.corporateRequests.companyName,
     pricingMode: s.corporateRequests.pricingMode, servicePercent: s.corporateRequests.servicePercent,
   }).from(s.corporatePayments).innerJoin(s.corporateRequests, eq(s.corporatePayments.requestId, s.corporateRequests.id))
     .where(and(eq(s.corporatePayments.status, "PAID"), gte(s.corporatePayments.createdAt, from), lt(s.corporatePayments.createdAt, to)));
   const { moneyFor } = await import("./corporate");
   const reqMoney = await moneyFor([...new Map<string, { id: string; pricingMode: string; servicePercent: number | null }>(crows0.map((r) => [r.requestId, { id: r.requestId, pricingMode: r.pricingMode, servicePercent: r.servicePercent }] as const)).values()]);
+  // How much of the price each payment covers, oldest payment first across the request's whole life (not just this period).
+  const covered = new Map<string, number>();
+  const reqIds = [...new Set(crows0.map((r) => r.requestId))];
+  if (reqIds.length) {
+    const all = await db.select({ id: s.corporatePayments.id, requestId: s.corporatePayments.requestId, amount: s.corporatePayments.amount }).from(s.corporatePayments)
+      .where(and(eq(s.corporatePayments.status, "PAID"), inArray(s.corporatePayments.requestId, reqIds))).orderBy(asc(s.corporatePayments.createdAt), asc(s.corporatePayments.id));
+    const before = new Map<string, number>();
+    for (const p of all) {
+      const price = reqMoney.get(p.requestId)?.price ?? 0; const b = before.get(p.requestId) ?? 0;
+      covered.set(p.id, Math.min(p.amount, Math.max(0, price - b))); before.set(p.requestId, b + p.amount);
+    }
+  }
   const crows = crows0.map((r) => {
     const m = reqMoney.get(r.requestId)!;
-    return { requestId: r.requestId, ref: r.ref, companyName: r.companyName, amount: usdAmount(r.amount, r.currency, g), totalCost: usdAmount(m.cost, r.currency, g), totalPrice: usdAmount(m.price, r.currency, g) };
+    return { requestId: r.requestId, ref: r.ref, companyName: r.companyName, amount: usdAmount(r.amount, r.currency, g), covers: usdAmount(covered.get(r.id) ?? r.amount, r.currency, g), totalCost: usdAmount(m.cost, r.currency, g), totalPrice: usdAmount(m.price, r.currency, g) };
   });
 
   let corporateRevenue = 0, corporateCost = 0; const seenRequests = new Set<string>();
   const byCorporate = new Map<string, CorporateFinanceRow>();
   for (const p of crows) {
     const amount = r2(p.amount); corporateRevenue += amount; seenRequests.add(p.requestId);
-    const share = p.totalPrice > 0 ? r2(p.totalCost * (amount / p.totalPrice)) : 0; corporateCost += share;
+    const share = p.totalPrice > 0 ? r2(p.totalCost * (Math.min(p.covers, p.totalPrice) / p.totalPrice)) : 0; corporateCost += share;
     const row = byCorporate.get(p.requestId) ?? { requestId: p.requestId, ref: p.ref, companyName: p.companyName, revenue: 0, cost: 0, profit: 0, margin: null };
     row.revenue = r2(row.revenue + amount); row.cost = r2(row.cost + share); byCorporate.set(p.requestId, row);
   }

@@ -456,3 +456,13 @@ What we ask for is now uploaded by the customer and lands in the right place onc
 - Settings → Website: **Trustpilot page link** and **Trustpilot business ID** (filled in; change them there, no code needed).
 - Post-trip review page: **Review us on Trustpilot** is one of the review buttons, and Trustpilot is a platform customers can tick to unlock their referral code.
 - Security headers allow `widget.trustpilot.com` (script, frame). Privacy policy mentions the box.
+
+## Partner requests: extra payments and invoice payment details (Oct 2026)
+- A payment bigger than what is due is now recorded as received. The extra shows as the partner's credit on the request,
+  the board and the invoice ("Credit in your favour"). Payments after full payment also count. The old 1,000,000 cap is
+  now 100,000,000 (EGP totals can be large). The "paid in full" email only goes the first time it becomes paid.
+- Finance: money beyond a request's total covers no extra cost, so cost and profit stay right.
+- Invoice → "Payment details on the invoice": tick which bank accounts / methods show, per request. By default only the
+  methods in the request's currency (or with no currency) are ticked. Before, an EGP invoice with no EGP method fell
+  back to showing every account (for example the EUR bank).
+- "Generate invoice" only shows once the request has services, so an empty invoice can't be sent by mistake.

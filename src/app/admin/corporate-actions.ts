@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema as s } from "@/db";
 import { requireStaff, PERMS, type Session } from "@/lib/auth";
 import {
-  newCorporateRef, loadCorporateRequest, logCorporate, normalizeServiceType, businessDay, servicePrices, requestTotals, paymentProblem, fmt,
+  newCorporateRef, loadCorporateRequest, logCorporate, normalizeServiceType, businessDay, servicePrices, requestTotals, paymentProblem, extraOf, invoiceMethodsValue, fmt,
   REQUEST_STATUS, REQUEST_STATUS_LABEL, SERVICE_STATUS, PRICING_MODES, PRICING_MODE_LABEL, CORPORATE_CURRENCIES, SERVICE_TYPE_LABEL, PRICE_UNITS, PRICE_UNIT_LABEL, isPerPerson,
 } from "@/lib/corporate";
 
@@ -67,7 +67,9 @@ export async function updateCorporateRequest(id: string, fd: FormData) {
   const carried = before.services.map((sv, i) => (isPerPerson(sv) ? before.lines[i].unit : before.prices[i]) || sv.price);
   const nextServices = carry ? before.services.map((sv, i) => ({ ...sv, price: carried[i] })) : before.services;
   const nextTotal = requestTotals(nextServices, d.pricingMode, d.servicePercent).price;
-  if (pricingChanged && before.paid > 0 && nextTotal < before.paid - 0.005)
+  // Only a change that lowers the total below what was paid is stopped. A partner who paid extra (credit) can still have
+  // the pricing changed upwards.
+  if (pricingChanged && before.paid > 0 && nextTotal < before.paid - 0.005 && nextTotal < before.totals.price - 0.005)
     return go(page(id), `That would make the total ${fmt(nextTotal, d.currency)}, less than the ${fmt(before.paid, d.currency)} already paid. Remove or correct a payment first.`, true);
 
   await db.transaction(async (tx) => {
@@ -183,20 +185,24 @@ export async function deleteCorporateService(id: string, requestId: string) {
 export async function addCorporatePayment(requestId: string, fd: FormData) {
   const u = await requireStaff("corporate");
   const before = await mustLoad(requestId); const r = before.request;
-  const p = z.object({ amount: z.coerce.number().max(1_000_000), method: z.string().trim().max(40).optional().default("Bank transfer"), note: z.string().trim().max(300).optional().default("") }).safeParse(Object.fromEntries(fd.entries()));
+  const p = z.object({ amount: z.coerce.number().finite(), method: z.string().trim().max(40).optional().default("Bank transfer"), note: z.string().trim().max(300).optional().default("") }).safeParse(Object.fromEntries(fd.entries()));
   if (!p.success) return go(page(requestId), "Enter a valid amount.", true);
   const amount = Math.round(p.data.amount * 100) / 100;
   const problem = paymentProblem({ status: r.status, price: before.totals.price, paid: before.paid, amount, currency: r.currency });
   if (problem) return go(page(requestId), problem, true);
   await db.insert(s.corporatePayments).values({ requestId, amount, method: p.data.method || "Bank transfer", status: "PAID", note: p.data.note });
   await audit(u.uid, "CREATE", "corporate_payment", requestId);
+  const extra = extraOf(before.totals.price, before.paid, amount);
   const after = await loadCorporateRequest(requestId);
   const left = after?.balance ?? 0;
-  await logCorporate(requestId, "PAYMENT_ADDED", `${fmt(amount, r.currency)} · ${p.data.method}${p.data.note ? ` · ${p.data.note}` : ""}. ${left > 0.005 ? `${fmt(left, r.currency)} still due` : "Paid in full"}`, u);
+  const state = left > 0.005 ? `${fmt(left, r.currency)} still due` : left < -0.005 ? `Paid in full, ${fmt(-left, r.currency)} credit` : "Paid in full";
+  await logCorporate(requestId, "PAYMENT_ADDED", `${fmt(amount, r.currency)} · ${p.data.method}${p.data.note ? ` · ${p.data.note}` : ""}. ${state}`, u);
   done(requestId);
-  // Only the moment it reaches fully paid is worth an email, not every partial payment.
-  if (left <= 0.005) { const { notifyCorporatePaymentComplete } = await import("@/lib/notifications"); await notifyCorporatePaymentComplete(requestId); }
-  return go(page(requestId), left > 0.005 ? `Payment recorded. ${fmt(left, r.currency)} still due.` : "Payment recorded. The request is paid in full.");
+  // Only the moment it becomes fully paid is worth an email: not every partial payment, and not extra money after that.
+  if (before.balance > 0.005 && left <= 0.005) { const { notifyCorporatePaymentComplete } = await import("@/lib/notifications"); await notifyCorporatePaymentComplete(requestId); }
+  return go(page(requestId), left > 0.005 ? `Payment recorded. ${fmt(left, r.currency)} still due.`
+    : extra > 0 ? `Payment recorded. It is ${fmt(extra, r.currency)} more than was due, so ${r.companyName} now has ${fmt(-left, r.currency)} credit. It shows on the invoice.`
+    : "Payment recorded. The request is paid in full.");
 }
 
 // Undo a payment entered by mistake (wrong amount, wrong request) or returned to the partner. The row is kept as VOID for
@@ -219,13 +225,21 @@ export async function removeCorporatePayment(paymentId: string, requestId: strin
 // request's internal notes, so nothing written for the team ends up on a document the partner receives.
 export async function saveCorporateInvoiceNotes(id: string, fd: FormData) {
   const u = await requireStaff("corporate");
-  const data = await mustLoad(id);
-  const p = z.object({ invoiceNotes: z.string().trim().max(2000, "Invoice notes can be up to 2,000 characters.").optional().default("") }).safeParse(Object.fromEntries(fd.entries()));
+  const data = await mustLoad(id); const r = data.request;
+  const p = z.object({ invoiceNotes: z.string().trim().max(2000, "Invoice notes can be up to 2,000 characters.").optional().default("") }).safeParse({ invoiceNotes: fd.get("invoiceNotes") ?? undefined });
   if (!p.success) return go(page(id), p.error.issues[0]?.message ?? "Check the invoice notes.", true);
-  if (p.data.invoiceNotes === data.request.invoiceNotes) return go(page(id), "Invoice notes unchanged");
-  await db.update(s.corporateRequests).set({ invoiceNotes: p.data.invoiceNotes }).where(eq(s.corporateRequests.id, id));
-  await audit(u.uid, "UPDATE_INVOICE_NOTES", "corporate_request", id);
-  await logCorporate(id, "INVOICE_NOTES", p.data.invoiceNotes ? "Updated" : "Cleared", u);
+  // The payment method ticks (only when the form showed them). Ids are checked against the real, active methods.
+  let methods = r.invoiceMethods ?? null;
+  if (fd.get("methodsShown") === "1") {
+    const { activeMethods } = await import("@/lib/invoice");
+    methods = invoiceMethodsValue(await activeMethods(), fd.getAll("method").map(String), r.currency);
+  }
+  const notesChanged = p.data.invoiceNotes !== r.invoiceNotes, methodsChanged = methods !== (r.invoiceMethods ?? null);
+  if (!notesChanged && !methodsChanged) return go(page(id), "Invoice unchanged");
+  await db.update(s.corporateRequests).set({ invoiceNotes: p.data.invoiceNotes, invoiceMethods: methods }).where(eq(s.corporateRequests.id, id));
+  await audit(u.uid, "UPDATE_INVOICE", "corporate_request", id);
+  if (notesChanged) await logCorporate(id, "INVOICE_NOTES", p.data.invoiceNotes ? "Updated" : "Cleared", u);
+  if (methodsChanged) await logCorporate(id, "INVOICE_METHODS", methods == null ? `Back to the ${r.currency} methods` : methods === "[]" ? "No payment details on the invoice" : "Changed which payment details are on the invoice", u);
   done(id);
-  return go(page(id), "Invoice notes saved");
+  return go(page(id), "Invoice saved");
 }

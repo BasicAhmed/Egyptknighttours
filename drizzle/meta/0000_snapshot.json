@@ -1322,6 +1322,13 @@
           "autoincrement": false,
           "default": "''"
         },
+        "invoice_methods": {
+          "name": "invoice_methods",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "status": {
           "name": "status",
           "type": "text",

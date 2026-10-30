@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff, PERMS } from "@/lib/auth";
 import {
-  loadCorporateRequest, isCharged, isSettled, isPerPerson, fmt as money, BUSINESS_TZ, PRICE_UNIT_LABEL,
+  loadCorporateRequest, isCharged, isSettled, isPerPerson, fmt as money, BUSINESS_TZ, PRICE_UNIT_LABEL, pickInvoiceMethods, MAX_PAYMENT,
   SERVICE_TYPES, SERVICE_TYPE_LABEL, SERVICE_STATUS, SERVICE_STATUS_LABEL, REQUEST_STATUS, REQUEST_STATUS_LABEL, PRICING_MODE_LABEL, CORPORATE_CURRENCIES, EVENT_LABEL,
 } from "@/lib/corporate";
 import {
@@ -14,6 +14,7 @@ import Notice from "@/components/Notice";
 import ConfirmButton from "@/components/ConfirmButton";
 import CopyButton from "@/components/CopyButton";
 import FormKeeper from "@/components/FormKeeper";
+import { activeMethods } from "@/lib/invoice";
 export const dynamic = "force-dynamic";
 
 const F = ({ name, label, def, req, type = "text", cls = "", max, hint }: { name: string; label: string; def?: string | number | null; req?: boolean; type?: string; cls?: string; max?: number; hint?: string }) => (
@@ -51,6 +52,9 @@ export default async function CorporateDetail({ params, searchParams }: { params
   const canFinance = PERMS.finance.includes(u.role);
   const data = await loadCorporateRequest(id); if (!data) notFound();
   const { request: r, services, lines, totals: t, payments, removedPayments, events, paid, balance } = data;
+  const allMethods = await activeMethods();
+  const onInvoice = new Set(pickInvoiceMethods(allMethods, r.invoiceMethods, r.currency).map((m) => m.id));
+  const chargedCount = services.filter(isCharged).length;
   const cur = r.currency;
   const pctMode = r.pricingMode === "PERCENTAGE";
   const cancelled = r.status === "CANCELLED";
@@ -99,10 +103,10 @@ export default async function CorporateDetail({ params, searchParams }: { params
         <h2 id="pay-h" className="font-display text-lg font-bold">Payment</h2>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
           <p className="text-sm text-ink/65">Paid <b className="text-ink">{money(paid, cur)}</b> of {money(t.price, cur)}</p>
-          <p className={`font-display text-xl font-extrabold ${overpaid ? "text-red-700" : settled ? "text-[#17663A]" : ""}`}>{overpaid ? `Overpaid by ${money(-balance, cur)}` : settled ? "Paid in full" : t.price > 0 ? `${money(balance, cur)} due` : "No services priced yet"}</p>
+          <p className={`font-display text-xl font-extrabold ${overpaid ? "text-[#6B4708]" : settled ? "text-[#17663A]" : ""}`}>{overpaid ? `${money(-balance, cur)} credit` : settled ? "Paid in full" : t.price > 0 ? `${money(balance, cur)} due` : "No services priced yet"}</p>
         </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className={`h-full rounded-full transition-all ${overpaid ? "bg-red-600" : "bg-gold-500"}`} style={{ width: `${barPct}%` }} /></div>
-        {overpaid && <p className="mt-2 text-sm text-red-800">The total went down after payments were recorded. Refund or credit the difference to {r.companyName}, then remove or correct the payment that is too much.</p>}
+        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-ink/10"><div className={`h-full rounded-full transition-all ${overpaid ? "bg-[#17663A]" : "bg-gold-500"}`} style={{ width: `${barPct}%` }} /></div>
+        {overpaid && <p className="mt-2 rounded-xl bg-gold-500/15 p-3 text-sm text-[#6B4708]"><b>{r.companyName} has {money(-balance, cur)} credit.</b> They paid more than the total. Use it on their next request or refund it. If a payment was typed wrong, remove it and record the right amount.</p>}
 
         {payments.length > 0 && <ul className="mt-3 divide-y divide-ink/10 text-sm">{payments.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -113,8 +117,8 @@ export default async function CorporateDetail({ params, searchParams }: { params
           </li>))}
         </ul>}
 
-        {!cancelled && t.price > 0 && balance > 0.005 ? <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
-          <F name="amount" label={`Amount received (${cur})`} type="number" req def={balance} max={balance} hint={`Up to ${money(balance, cur)}`} />
+        {!cancelled && t.price > 0 ? <form action={addCorporatePayment.bind(null, r.id)} className="mt-4 grid gap-3 sm:grid-cols-3"><FormKeeper />
+          <F name="amount" label={`Amount received (${cur})`} type="number" req def={balance > 0.005 ? balance : undefined} max={MAX_PAYMENT} hint={balance > 0.005 ? `${money(balance, cur)} is due. Got more? Enter the full amount: the extra is kept as credit.` : "Already paid in full. Anything more is kept as credit."} />
           <div><label className="label" htmlFor="cp-method">Method</label><select id="cp-method" name="method" defaultValue="Bank transfer" className="input !py-2"><option>Bank transfer</option><option>Cash</option><option>Card</option><option>Other</option></select></div>
           <F name="note" label="Note (team only)" />
           <div className="sm:col-span-3"><button className="btn btn-primary !min-h-[44px]">Record payment</button></div>
@@ -128,14 +132,26 @@ export default async function CorporateDetail({ params, searchParams }: { params
       <section id="invoice" className="card mt-5 scroll-mt-20 p-5" aria-labelledby="inv-h">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="inv-h" className="font-display text-lg font-bold">Invoice</h2>
-          <a className="btn btn-primary !min-h-[44px]" href={`/api/admin/preview/corporate-invoice/${r.id}`} target="_blank" rel="noopener noreferrer">Generate invoice</a>
+          {chargedCount > 0 ? <a className="btn btn-primary !min-h-[44px]" href={`/api/admin/preview/corporate-invoice/${r.id}`} target="_blank" rel="noopener noreferrer">Generate invoice</a>
+            : <span className="text-sm font-semibold text-ink/65">Add the services below first, then generate the invoice.</span>}
         </div>
         <p className="mt-1 text-sm text-ink/65">Lists every charged service with its price and the total{paid > 0 ? `, then the ${money(paid, cur)} already paid and ${settled || overpaid ? "that it is paid in full" : `the ${money(balance, cur)} still due`}` : ", the payments received and the balance due"}. Cost, profit and team notes are never on it.</p>
         <form action={saveCorporateInvoiceNotes.bind(null, r.id)} className="mt-3"><FormKeeper />
           <label className="label" htmlFor="cr-inv-notes">Notes on the invoice</label>
           <textarea id="cr-inv-notes" name="invoiceNotes" rows={3} maxLength={2000} defaultValue={r.invoiceNotes} placeholder="e.g. Please pay the balance by 15 November. Prices include entrance fees." className="input !py-2" />
           <p className="mt-1 text-xs text-ink/65">The partner sees these. Notes for the team go in the request details below.</p>
-          <button className="btn btn-dark mt-2 !min-h-[42px] !py-2">Save invoice notes</button>
+          <fieldset className="mt-4"><legend className="label">Payment details on the invoice</legend>
+            <input type="hidden" name="methodsShown" value="1" />
+            {allMethods.length ? <div className="grid gap-2 sm:grid-cols-2">{allMethods.map((m) => (
+              <label key={m.id} className="flex cursor-pointer items-start gap-2 rounded-xl border border-ink/15 bg-white p-3 has-[:checked]:border-ink">
+                <input type="checkbox" name="method" value={m.id} defaultChecked={onInvoice.has(m.id)} className="mt-1" />
+                <span><span className="block font-semibold">{m.label}</span><span className="text-sm text-ink/65">{m.currency || "Any currency"}{m.currency && m.currency.toUpperCase() !== cur.toUpperCase() ? ` · not ${cur}` : ""}</span></span>
+              </label>))}</div>
+              : <p className="text-sm text-ink/65">No payment methods yet. Add them in Settings → Payment methods.</p>}
+            {allMethods.length > 0 && onInvoice.size === 0 && <p className="mt-2 text-sm text-[#6B4708]">No payment details are ticked, so the invoice says "Contact us directly for payment details".</p>}
+            <p className="mt-1 text-xs text-ink/65">Untick an account to take it off this invoice. Until you change it, the {cur} ones are ticked.</p>
+          </fieldset>
+          <button className="btn btn-dark mt-3 !min-h-[42px] !py-2">Save invoice</button>
         </form>
       </section>
 

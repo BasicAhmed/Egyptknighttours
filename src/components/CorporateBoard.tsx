@@ -43,7 +43,7 @@ export default function CorporateBoard({ rows }: { rows: CorpRow[] }) {
               <div className="min-w-0 text-sm text-ink/70">
                 <p>{r.serviceDate ? new Date(r.serviceDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "No date set"}</p>
                 <p className="text-ink/65">{r.serviceCount} service{r.serviceCount === 1 ? "" : "s"}{r.price > 0 ? ` · ${fmt(r.paid, r.currency)} of ${fmt(r.price, r.currency)}` : " · not priced yet"}</p>
-                {r.status !== "CANCELLED" && r.price > 0 && (r.balance > 0.005 ? <p className="font-semibold text-ink">{fmt(r.balance, r.currency)} due</p> : r.balance < -0.005 ? <p className="font-semibold text-red-700">Overpaid by {fmt(-r.balance, r.currency)}</p> : <p className="font-semibold text-[#17663A]">Paid in full</p>)}
+                {r.status !== "CANCELLED" && r.price > 0 && (r.balance > 0.005 ? <p className="font-semibold text-ink">{fmt(r.balance, r.currency)} due</p> : r.balance < -0.005 ? <p className="font-semibold text-[#17663A]">Paid · {fmt(-r.balance, r.currency)} credit</p> : <p className="font-semibold text-[#17663A]">Paid in full</p>)}
               </div>
               <span className={`justify-self-start rounded-full px-3 py-1 text-xs font-bold sm:justify-self-end ${STATUS_TONE[r.status] ?? "bg-ink/10 text-ink/70"}`}>{REQUEST_STATUS_LABEL[r.status] ?? r.status}</span>
             </Link>
