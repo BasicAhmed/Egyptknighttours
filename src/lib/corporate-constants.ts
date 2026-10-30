@@ -68,14 +68,34 @@ export const balanceOf = (price: number, paid: number) => cent(price - paid);
 export const isSettled = (price: number, paid: number) => price > 0 && balanceOf(price, paid) <= 0.005;
 
 // Can this payment be recorded? One rule for the form and the server. Returns the reason in plain words, or "".
+// A partner sometimes sends more than the invoice (rounding, bank fees, money for the next trip). That is recorded as it
+// arrived: the extra shows as the partner's credit on the request and the invoice, never refused.
+export const MAX_PAYMENT = 100_000_000;
 export function paymentProblem(o: { status: string; price: number; paid: number; amount: number; currency: string }): string {
   if (o.status === "CANCELLED") return "This request is cancelled. Set it back to another status before recording a payment.";
   if (!(o.price > 0)) return "Price the services first: there is nothing to pay yet.";
   if (!(o.amount > 0)) return "Enter a payment amount above zero.";
-  const left = balanceOf(o.price, o.paid);
-  if (left <= 0.005) return "This request is already paid in full.";
-  if (o.amount > left + 0.005) return `That is more than the ${fmt(left, o.currency)} still due. Record ${fmt(left, o.currency)}, or update the services first.`;
+  if (o.amount > MAX_PAYMENT) return `That amount is too large. Check it and enter it in ${o.currency}.`;
   return "";
+}
+// How much of a new payment goes beyond what is due (0 when it doesn't). Used for the message after recording it.
+export const extraOf = (price: number, paid: number, amount: number) => Math.max(0, cent(amount - Math.max(0, balanceOf(price, paid))));
+
+// Which payment methods the partner invoice shows. Staff tick them per request (saved = JSON list of ids). Until they do,
+// the methods in the request's currency (or with no currency) are shown. Never silently the other currencies' accounts:
+// an EGP invoice must not show the euro bank account unless someone ticked it.
+export function pickInvoiceMethods<M extends { id: string; currency?: string | null }>(all: M[], saved: string | null | undefined, currency: string): M[] {
+  if (saved != null && saved !== "") {
+    let ids: unknown = null; try { ids = JSON.parse(saved); } catch { ids = null; }
+    if (Array.isArray(ids)) { const set = new Set(ids.map(String)); return all.filter((m) => set.has(m.id)); }
+  }
+  return all.filter((m) => !m.currency || m.currency.toUpperCase() === currency.toUpperCase());
+}
+// What to save: null when the ticks are exactly the default, so the request keeps following its currency.
+export function invoiceMethodsValue<M extends { id: string; currency?: string | null }>(all: M[], ticked: string[], currency: string): string | null {
+  const keep = all.filter((m) => ticked.includes(m.id)).map((m) => m.id);
+  const def = pickInvoiceMethods(all, null, currency).map((m) => m.id);
+  return keep.length === def.length && keep.every((x, i) => x === def[i]) ? null : JSON.stringify(keep);
 }
 export const fmt = (n: number, c: string) => new Intl.NumberFormat("en-US", { style: "currency", currency: c, minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(n);
 
@@ -83,7 +103,7 @@ export const fmt = (n: number, c: string) => new Intl.NumberFormat("en-US", { st
 export const EVENT_LABEL: Record<string, string> = {
   CREATED: "Request created", UPDATED: "Details changed", STATUS: "Status changed", PRICING: "Pricing changed", CURRENCY: "Currency changed",
   SERVICE_ADDED: "Service added", SERVICE_UPDATED: "Service changed", SERVICE_REMOVED: "Service removed",
-  PAYMENT_ADDED: "Payment recorded", PAYMENT_REMOVED: "Payment removed", INVOICE_NOTES: "Invoice notes changed",
+  PAYMENT_ADDED: "Payment recorded", PAYMENT_REMOVED: "Payment removed", INVOICE_NOTES: "Invoice notes changed", INVOICE_METHODS: "Invoice payment details changed",
 };
 
 // The business runs on Cairo time: a payment recorded at 01:00 in Cairo belongs to that Cairo day, not the previous UTC day.

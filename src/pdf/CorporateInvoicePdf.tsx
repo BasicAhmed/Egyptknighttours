@@ -103,7 +103,7 @@ export default function CorporateInvoicePdf({ d }: { d: CorporateInvoiceData }) 
           <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>{d.paid > 0 ? "Please contact us about the amount already paid." : "Nothing is due on this invoice."}</Text>
         </View> : settled ? <View wrap={false} style={[s.card, { marginTop: 16, backgroundColor: C.cream, borderColor: C.cream2 }]}>
           <Text style={{ fontFamily: F.head, fontWeight: 800, fontSize: 12, color: C.green }}>Paid in full — thank you</Text>
-          <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>Nothing more is due on this invoice.</Text>
+          <Text style={{ marginTop: 3, fontSize: 9, color: C.muted }}>{d.credit > 0 ? `Nothing more is due. You paid ${money(d.credit, d.currency)} extra: it is kept as credit in your favour.` : "Nothing more is due on this invoice."}</Text>
         </View> : <View style={{ marginTop: 16 }}>
           <Text style={s.eyebrow}>How to pay{d.paid > 0 ? ` the balance of ${money(d.balance, d.currency)}` : ""}</Text>
           {d.methods.length ? d.methods.map((m) => (

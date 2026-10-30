@@ -32,6 +32,8 @@ const COLUMNS = [
   { table: "itineraries", name: "show_price", ddl: "integer" },
   // Partner (corporate) invoice notes, printed on the invoice. Optional.
   { table: "corporate_requests", name: "invoice_notes", ddl: "text NOT NULL DEFAULT ''" },
+  // Which payment methods a partner invoice shows (JSON list of ids). Empty = the methods in the request's currency.
+  { table: "corporate_requests", name: "invoice_methods", ddl: "text" },
   // Partner services priced per person (× people) or for the whole service. Existing services stay "whole service".
   { table: "corporate_services", name: "price_unit", ddl: "text NOT NULL DEFAULT 'TOTAL'" },
   // Tours that run on set dates only. Existing tours: none, so they stay bookable any day.

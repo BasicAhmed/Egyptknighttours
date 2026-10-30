@@ -348,6 +348,7 @@ export const corporateRequests = sqliteTable("corporate_requests", {
   serviceDate: text("service_date"), location: text("location").notNull().default(""),
   notes: text("notes").notNull().default(""), requirements: text("requirements").notNull().default(""),
   invoiceNotes: text("invoice_notes").notNull().default(""), // printed on the partner's invoice; `notes` above stays internal
+  invoiceMethods: text("invoice_methods"), // JSON list of payment method ids shown on the invoice; null = the ones in the request's currency
   status: text("status").notNull().default("NEW"), // NEW CONFIRMED IN_PROGRESS COMPLETED CANCELLED
   currency: text("currency").notNull().default("USD"),
   // How the selling price is worked out: ITEMIZED (each service has its own price, summed — the original model) or

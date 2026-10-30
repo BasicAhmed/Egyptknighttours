@@ -459,3 +459,12 @@ What we ask for is now uploaded by the customer and lands in the right place onc
 
 ## AI assistant with Claude (October 2026, branch `ai-agent`)
 Customer AI trip planner and staff assistant that can act (with Confirm). Off by default; Haiku 5.5; daily spending limit. Full description, safety rules and how to try it on a preview copy: `docs/07-ai-assistant.md`.
+## Partner requests: extra payments and invoice payment details (Oct 2026)
+- A payment bigger than what is due is now recorded as received. The extra shows as the partner's credit on the request,
+  the board and the invoice ("Credit in your favour"). Payments after full payment also count. The old 1,000,000 cap is
+  now 100,000,000 (EGP totals can be large). The "paid in full" email only goes the first time it becomes paid.
+- Finance: money beyond a request's total covers no extra cost, so cost and profit stay right.
+- Invoice → "Payment details on the invoice": tick which bank accounts / methods show, per request. By default only the
+  methods in the request's currency (or with no currency) are ticked. Before, an EGP invoice with no EGP method fell
+  back to showing every account (for example the EUR bank).
+- "Generate invoice" only shows once the request has services, so an empty invoice can't be sent by mistake.

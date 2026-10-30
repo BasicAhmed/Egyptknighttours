@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { servicePrices, requestTotals, paymentProblem, balanceOf, isSettled, normalizeServiceType, businessDay } from "./corporate-constants";
+import { servicePrices, requestTotals, paymentProblem, balanceOf, isSettled, normalizeServiceType, businessDay, extraOf, pickInvoiceMethods, invoiceMethodsValue } from "./corporate-constants";
 
 const sum = (a: number[]) => Math.round(a.reduce((x, y) => x + y, 0) * 100) / 100;
 const sv = (cost: number, price = 0, status = "PENDING") => ({ cost, price, status });
@@ -49,13 +49,15 @@ test("payment rules: one place decides what can be recorded", () => {
   const base = { status: "CONFIRMED", price: 180, paid: 100, currency: "USD" };
   assert.equal(paymentProblem({ ...base, amount: 80 }), "");
   assert.equal(paymentProblem({ ...base, amount: 50 }), "");
-  assert.match(paymentProblem({ ...base, amount: 80.5 }), /more than the \$80 still due/);
+  assert.equal(paymentProblem({ ...base, amount: 80.5 }), ""); // more than due is recorded; the extra is credit
+  assert.equal(paymentProblem({ ...base, amount: 211_988 }), "");
   assert.match(paymentProblem({ ...base, amount: 0 }), /above zero/);
   assert.match(paymentProblem({ ...base, amount: -5 }), /above zero/);
   assert.match(paymentProblem({ ...base, status: "CANCELLED", amount: 10 }), /cancelled/);
   assert.match(paymentProblem({ ...base, price: 0, paid: 0, amount: 10 }), /Price the services first/);
-  assert.match(paymentProblem({ ...base, paid: 180, amount: 10 }), /already paid in full/);
-  assert.match(paymentProblem({ ...base, currency: "EGP", amount: 500 }), /EGP/);
+  assert.equal(paymentProblem({ ...base, paid: 180, amount: 10 }), ""); // money after full payment still counts
+  assert.match(paymentProblem({ ...base, amount: 200_000_000 }), /too large/);
+  assert.match(paymentProblem({ ...base, currency: "EGP", amount: 200_000_000 }), /EGP/);
 });
 test("service types are stored as one code whatever the wording", () => {
   assert.equal(normalizeServiceType("Transfer"), "TRANSFER");
@@ -89,4 +91,26 @@ test("percentage pricing works per person too, and lines still add up", () => {
   const t = requestTotals(s, "PERCENTAGE", 12.5); const lines = serviceLines(s, "PERCENTAGE", 12.5);
   assert.equal(t.cost, 119.98); assert.equal(sum(lines.map((l) => l.line)), t.price);
   assert.equal(lines[0].unit, 37.5); assert.equal(lines[2].line, 0);
+});
+
+test("the extra above what is due becomes credit", () => {
+  assert.equal(extraOf(169612, 0, 211988), 42376);
+  assert.equal(extraOf(100, 40, 60), 0);
+  assert.equal(extraOf(100, 40, 50), 0);
+  assert.equal(extraOf(100, 120, 10), 10); // already overpaid: all of it is extra
+});
+
+test("invoice payment methods: currency by default, staff ticks after", () => {
+  const all = [{ id: "egp", currency: "EGP" }, { id: "eur", currency: "EUR" }, { id: "cash", currency: null }];
+  assert.deepEqual(pickInvoiceMethods(all, null, "EGP").map((m) => m.id), ["egp", "cash"]);
+  assert.deepEqual(pickInvoiceMethods(all, null, "USD").map((m) => m.id), ["cash"]); // never the EUR/EGP accounts by surprise
+  assert.deepEqual(pickInvoiceMethods(all, '["eur"]', "EGP").map((m) => m.id), ["eur"]);
+  assert.deepEqual(pickInvoiceMethods(all, "[]", "EGP"), []);
+  assert.deepEqual(pickInvoiceMethods(all, "not json", "EGP").map((m) => m.id), ["egp", "cash"]);
+  assert.deepEqual(pickInvoiceMethods(all, '["gone"]', "EGP"), []); // a deleted method just drops off
+  assert.equal(invoiceMethodsValue(all, ["egp", "cash"], "EGP"), null);
+  assert.equal(invoiceMethodsValue(all, ["cash", "egp"], "EGP"), null);
+  assert.equal(invoiceMethodsValue(all, ["egp"], "EGP"), '["egp"]');
+  assert.equal(invoiceMethodsValue(all, [], "EGP"), "[]");
+  assert.equal(invoiceMethodsValue(all, ["egp", "hacked"], "EGP"), '["egp"]');
 });

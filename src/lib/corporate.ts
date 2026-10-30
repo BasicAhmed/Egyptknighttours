@@ -4,7 +4,7 @@ import { r2 } from "./pricing";
 // Server-only data access lives in this file; the plain labels/lists and the money rules live in corporate-constants.ts so a
 // client component (and the unit tests) can import just those without pulling in server-only code (db, next/headers, next/cache).
 export * from "./corporate-constants";
-import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, serviceLines, requestTotals, balanceOf, isCharged, businessDay } from "./corporate-constants";
+import { SERVICE_TYPE_LABEL, REQUEST_STATUS_LABEL, serviceLines, requestTotals, balanceOf, isCharged, businessDay, pickInvoiceMethods } from "./corporate-constants";
 
 export async function newCorporateRef() {
   let ref = ""; let n = 1000 + Math.floor(Math.random() * 9000);
@@ -73,7 +73,8 @@ export async function buildCorporateInvoiceData(id: string) {
   if (!data) return null;
   const { request: r, services, lines, totals: t, payments, paid, balance } = data;
   const g = await getSettings();
-  const [methods, company] = await Promise.all([activeMethods(r.currency), Promise.resolve(companyFrom(g))]);
+  // Only the methods ticked for this request (default: the ones in its currency). Never every account as a fallback.
+  const [methods, company] = await Promise.all([activeMethods().then((all) => pickInvoiceMethods(all, r.invoiceMethods, r.currency)), Promise.resolve(companyFrom(g))]);
   return {
     ref: r.ref, issuedAt: businessDay(new Date()), currency: r.currency, status: REQUEST_STATUS_LABEL[r.status] ?? r.status, cancelled: r.status === "CANCELLED",
     company, bill: { name: r.companyName, contact: r.companyContact, email: r.companyEmail, phone: r.companyPhone },
