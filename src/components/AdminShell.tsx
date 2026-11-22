@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 const I = (d: string) => <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={d} /></svg>;
 const ICON = {
+  residence: "M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z",
   orders: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 14H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2z",
   inquiries: "M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z",
   tours: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
@@ -19,9 +20,9 @@ const ICON = {
   calendar: "M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 16H5V10h14v10zM7 12h5v5H7v-5z",
   settings: "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
 };
-const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inquiries"], ["Tours", "/admin/tours", "tours"], ["Itineraries", "/admin/itineraries", "itineraries"], ["Calendar", "/admin/calendar", "calendar"], ["Assistant", "/admin/assistant", "assistant"], ["Reports", "/admin/reports", "reports"], ["Finance", "/admin/finance", "finance"], ["Referrals", "/admin/referrals", "referrals"], ["Corporate", "/admin/corporate", "corporate"], ["Staff", "/admin/staff", "staff"], ["Settings", "/admin/settings", "settings"]] as const;
+const NAV = [["Orders", "/admin", "orders"], ["Inquiries", "/admin/leads", "inquiries"], ["Tours", "/admin/tours", "tours"], ["Itineraries", "/admin/itineraries", "itineraries"], ["Calendar", "/admin/calendar", "calendar"], ["Reports", "/admin/reports", "reports"], ["Finance", "/admin/finance", "finance"], ["Referrals", "/admin/referrals", "referrals"], ["Corporate", "/admin/corporate", "corporate"], ["Royal Nile", "/admin/royal-nile", "residence"], ["Assistant", "/admin/assistant", "assistant"], ["Staff", "/admin/staff", "staff"], ["Settings", "/admin/settings", "settings"]] as const;
 // The desktop menu is grouped by what staff are doing, so the daily work sits apart from the occasional admin.
-const GROUPS: [string, string[]][] = [["Daily work", ["orders", "calendar", "inquiries", "corporate", "assistant"]], ["What you sell", ["tours", "itineraries"]], ["Business", ["reports", "finance", "referrals"]], ["Admin", ["staff", "settings"]]];
+const GROUPS: [string, string[]][] = [["Daily work", ["orders", "calendar", "inquiries", "corporate", "residence", "assistant"]], ["What you sell", ["tours", "itineraries"]], ["Business", ["reports", "finance", "referrals"]], ["Admin", ["staff", "settings"]]];
 
 export default function AdminShell({ user, logout, credit, creditLight, badges = {}, children }: { user: { name: string; role: string }; logout: () => Promise<void>; credit?: React.ReactNode; creditLight?: React.ReactNode; badges?: Record<string, number>; children: React.ReactNode }) {
   const path = usePathname() ?? "";
@@ -29,7 +30,7 @@ export default function AdminShell({ user, logout, credit, creditLight, badges =
   useEffect(() => { setMoreOpen(false); setMeOpen(false); }, [path]);
   const items = NAV.filter(([, , k]) => {
     if (k === "staff") return user.role === "SUPER_ADMIN";
-    if (k === "corporate" || k === "assistant") return ["SUPER_ADMIN", "MANAGER", "SALES", "TOUR_OPERATOR"].includes(user.role);
+    if (k === "corporate" || k === "residence" || k === "assistant") return ["SUPER_ADMIN", "MANAGER", "SALES", "TOUR_OPERATOR"].includes(user.role);
     return (k !== "settings" && k !== "finance" && k !== "referrals") || ["SUPER_ADMIN", "MANAGER"].includes(user.role);
   });
   const badge = (h: string, cls: string) => (badges[h] ? <span className={cls}><span aria-hidden="true">{badges[h] > 99 ? "99+" : badges[h]}</span><span className="sr-only"> {badges[h]} waiting</span></span> : null);

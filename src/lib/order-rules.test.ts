@@ -129,3 +129,15 @@ test("booked means the customer said yes", () => {
   assert.equal(isBooked("PENDING", "WHATSAPP"), false, "staff order still being priced");
   for (const s of ["ITINERARY_SENT", "QUOTE_SENT", "INQUIRY", "CANCELLED"]) assert.equal(isBooked(s, "WEBSITE"), false, s);
 });
+
+import { customerDocs, isLiveDoc } from "./order-rules";
+test("customer sees only the newest sent invoice and itinerary, never deleted ones", () => {
+  const at = (n: number) => new Date(Date.UTC(2026, 10, n));
+  const d = (id: string, kind: string, version: number, sent: number | null, status = "SENT") => ({ id, kind, version, status, sentAt: sent ? at(sent) : null, createdAt: at(version) });
+  const docs = [d("i1", "INVOICE", 1, 13), d("i2", "INVOICE", 2, 20), d("i3", "INVOICE", 3, 16), d("t1", "ITINERARY", 1, 13), d("t2", "ITINERARY", 2, 14), d("t3", "ITINERARY", 3, null, "GENERATED")];
+  assert.deepEqual(customerDocs(docs).map((x) => x.id), ["t2", "i3"]); // i2 resent later still isn't the newest; t3 not sent yet
+  docs[2].status = "VOID";
+  assert.deepEqual(customerDocs(docs).map((x) => x.id), ["t2", "i2"]); // deleting the newest shows the one before
+  assert.deepEqual(customerDocs([]), []);
+  assert.equal(isLiveDoc({ status: "VOID" }), false); assert.equal(isLiveDoc({ status: "SENT" }), true);
+});

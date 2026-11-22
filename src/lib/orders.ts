@@ -7,14 +7,14 @@ import { linkOrigin } from "./origin";
 import { BOOKING_STATUS_LABEL } from "./validation";
 import { decryptText } from "./crypto";
 import { signGuide, signReview } from "./booking-token";
-import { prepaidVia } from "./order-rules";
+import { prepaidVia, customerDocs } from "./order-rules";
 import { styleSwitchFor, type StyleSwitch } from "./order-style";
 import type { CustomerRequest } from "./customer-requests";
 import { uploadsForBooking, type UploadInfo } from "./uploads";
 
 export type OrderRow = { id: string; ref: string; status: string; title: string; name: string; email: string; whatsapp: string; country: string; travelDate: string; pax: number; isPrivate: boolean; source: string; total: number; paid: number; currency: string; createdAt: number; invoices: number; invoiceSent: number; itineraries: number; itinerarySent: number; itinerarySentAt: number | null; toCheck: number; hotel: string; guideName: string; passports: number };
 export type Activity = { at: number; kind: "created" | "status" | "payment" | "doc" | "note"; text: string };
-export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string; payLink: string };
+export type OrderDoc = { id: string; kind: string; number: string; sentAt: number | null; sentTo: string | null; sentVia: string | null; amount: number | null; currency: string; createdAt: number; shareUrl: string; payLink: string; shownToCustomer: boolean };
 export type TravelerFile = { id: string; kind: string; filename: string; mime: string; size: number; createdAt: number };
 export type Traveler = { id: string; name: string; type: string; age: number | null; nationality: string; dob: string; passportNumber: string; passportExpiry: string; notes: string; files: TravelerFile[] };
 export type Guide = { id: string; name: string; phone: string; languages: string; active: boolean };
@@ -48,12 +48,12 @@ export async function listOrders(limit = 300): Promise<OrderRow[]> {
   const rows = await db.select({
     b: s.bookings, tour: s.tours.title, c: s.customers,
     paid: sql<number>`(select coalesce(sum(amount),0) from payments where booking_id = ${s.bookings.id} and status = 'PAID')`,
-    invoices: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'INVOICE')`,
-    invSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'INVOICE' and sent_at is not null)`,
-    its: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY')`,
-    itSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null)`,
+    invoices: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'INVOICE' and status != 'VOID')`,
+    invSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'INVOICE' and sent_at is not null and status != 'VOID')`,
+    its: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and status != 'VOID')`,
+    itSent: sql<number>`(select count(*) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null and status != 'VOID')`,
     toCheck: sql<number>`(select count(*) from customer_uploads where booking_id = ${s.bookings.id} and status = 'PENDING')`,
-    itSentAt: sql<number | null>`(select max(sent_at) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null)`,
+    itSentAt: sql<number | null>`(select max(sent_at) from documents where booking_id = ${s.bookings.id} and kind = 'ITINERARY' and sent_at is not null and status != 'VOID')`,
     passports: sql<number>`(select count(distinct traveler_id) from traveler_files where booking_id = ${s.bookings.id} and kind = 'PASSPORT')`,
     guide: sql<string>`coalesce((select name from tour_guides where id = ${s.bookings.guideId}), '')`,
   }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).orderBy(desc(s.bookings.createdAt)).limit(limit);
@@ -81,7 +81,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const [main, payments, docs, events, docEvents, its, templates, methods, g, travelerRows, fileRows, guideRows] = await Promise.all([
     db.select({ b: s.bookings, tour: s.tours, dest: s.destinations, c: s.customers }).from(s.bookings).innerJoin(s.tours, eq(s.bookings.tourId, s.tours.id)).innerJoin(s.destinations, eq(s.tours.destinationId, s.destinations.id)).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, id)),
     db.select().from(s.payments).where(eq(s.payments.bookingId, id)).orderBy(desc(s.payments.createdAt)),
-    db.select().from(s.documents).where(eq(s.documents.bookingId, id)).orderBy(desc(s.documents.createdAt)),
+    db.select().from(s.documents).where(and(eq(s.documents.bookingId, id), ne(s.documents.status, "VOID"))).orderBy(desc(s.documents.createdAt)),
     db.select().from(s.bookingEvents).where(eq(s.bookingEvents.bookingId, id)).orderBy(desc(s.bookingEvents.createdAt)),
     db.select({ e: s.documentEvents, kind: s.documents.kind, number: s.documents.number }).from(s.documentEvents).innerJoin(s.documents, eq(s.documentEvents.documentId, s.documents.id)).where(eq(s.documents.bookingId, id)),
     db.select({ id: s.itineraries.id, name: s.itineraries.name, status: s.itineraries.status }).from(s.itineraries).where(eq(s.itineraries.bookingId, id)).orderBy(desc(s.itineraries.updatedAt)),
@@ -93,6 +93,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     db.select().from(s.tourGuides).orderBy(asc(s.tourGuides.name)),
   ]);
   const row = main[0]; if (!row) return null;
+  const shown = new Set(customerDocs<typeof s.documents.$inferSelect>(docs).map((d) => d.id)); // what the customer's booking page shows
   const { b, tour, dest, c } = row;
   // Two related tours (an upsell) and up to two destination guides, for the welcome message — same destination as
   // this booking, excluding the booked tour itself, published only.
@@ -105,7 +106,8 @@ export async function loadOrder(id: string): Promise<Order | null> {
   const activity: Activity[] = [
     ...events.map((e) => ({ at: e.createdAt.getTime(), kind: (e.type === "NOTE" ? "note" : e.type === "CREATED" ? "created" : "status") as Activity["kind"], text: EVENT_TEXT(e.type, e.note) })),
     ...payments.filter((p) => p.status === "PAID").map((p) => ({ at: p.createdAt.getTime(), kind: "payment" as const, text: `Payment received: ${new Intl.NumberFormat("en-US", { style: "currency", currency: b.currency }).format(p.amount)} (${p.provider})` })),
-    ...docEvents.map((d) => ({ at: d.e.createdAt.getTime(), kind: "doc" as const, text: DOC_EVENT_TEXT(d.e.type, d.kind, d.number, d.e.note) })),
+    // A deletion is already in the order history with who did it (deleteDocument), so its document event isn't repeated.
+    ...docEvents.filter((d) => d.e.type !== "DELETED").map((d) => ({ at: d.e.createdAt.getTime(), kind: "doc" as const, text: DOC_EVENT_TEXT(d.e.type, d.kind, d.number, d.e.note) })),
   ].sort((a, z) => z.at - a.at);
   const depTarget = b.payMode === "FULL" ? b.total : b.payMode === "DEPOSIT" ? Math.min(b.total, b.deposit) : 0;
   const dueNow = b.payMode === "FULL" || paid >= depTarget - 0.005 ? balance : Math.round((depTarget - paid) * 100) / 100;
@@ -130,7 +132,7 @@ export async function loadOrder(id: string): Promise<Order | null> {
     addons: parseJson(b.addonsJson, []), subtotal: b.subtotal, discount: b.discount, total: b.total, deposit: b.deposit, payMode: b.payMode, currency: b.currency, paid, balance, source: b.source ?? "", createdAt: b.createdAt.getTime(), titleOverride: b.titleOverride ?? "", costTotal: b.costTotal,
     prepaidVia: prepaidVia(b.source), pickup: { meetingPoint: b.meetingPoint, details: b.pickupInfo, defaults: { meetingPoint: tour.meetingPoint ?? "", details: tour.pickupInfo ?? "" } }, styleSwitch: await styleSwitchFor(b, tour),
     payments: payments.filter((p) => p.status === "PAID").map((p) => ({ id: p.id, amount: p.amount, method: p.provider, note: p.providerRef ?? "", status: p.status, at: p.createdAt.getTime() })),
-    documents: docs.map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}`, payLink: d.kind === "INVOICE" ? parseJson<{ payLink?: string }>(d.data, {}).payLink || "" : "" })),
+    documents: docs.map((d) => ({ shownToCustomer: shown.has(d.id), id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt ? d.sentAt.getTime() : null, sentTo: d.sentTo, sentVia: d.sentVia, amount: d.amount, currency: d.currency, createdAt: d.createdAt.getTime(), shareUrl: `${origin}/api/documents/${d.id}/pdf?t=${signDoc(d.id)}`, payLink: d.kind === "INVOICE" ? parseJson<{ payLink?: string }>(d.data, {}).payLink || "" : "" })),
     itineraries: its, activity, templates, methods: methods.map((m) => m.label),
     defaults: { currency: b.currency, dueNow, deadline: day(depDays) }, customerRequests, customerUploads, balanceDaysBefore: Number(g["invoice.balanceDaysBefore"]) || 21, trackUrl, guideUrl: `${origin}/guide/${b.id}?t=${signGuide(b.id)}`,
     reviewUrl: b.status === "COMPLETED" ? `${origin}/review/${b.ref}?t=${signReview(b.ref)}` : null, companyName: g["company.name"] || "us", welcomeMessage,

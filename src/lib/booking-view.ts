@@ -1,5 +1,6 @@
 import { db, schema as s } from "@/db";
 import { asc, eq } from "drizzle-orm";
+import { customerDocs } from "./order-rules";
 import { parseJson } from "./format";
 import { signDoc } from "./booking-token";
 import { openRequests, requestText, type CustomerRequest } from "./customer-requests";
@@ -17,7 +18,8 @@ export async function loadBooking(ref: string) {
     db.select().from(s.travelers).where(eq(s.travelers.bookingId, row.b.id)),
     db.select().from(s.bookingRequests).where(eq(s.bookingRequests.bookingId, row.b.id)),
   ]);
-  const docs = (await db.select().from(s.documents).where(eq(s.documents.bookingId, row.b.id))).filter((d) => d.sentAt).map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt as Date, url: `/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` }));
+  // Only the newest sent itinerary and invoice (customerDocs): older versions and deleted ones are not shown to the customer.
+  const docs = customerDocs<typeof s.documents.$inferSelect>(await db.select().from(s.documents).where(eq(s.documents.bookingId, row.b.id))).map((d) => ({ id: d.id, kind: d.kind, number: d.number, sentAt: d.sentAt as Date, url: `/api/documents/${d.id}/pdf?t=${signDoc(d.id)}` }));
   const paid = payments.filter((p) => p.status === "PAID").reduce((a, p) => a + p.amount, 0);
   const addons = parseJson<{ name: string; price: number; unit: string }[]>(row.b.addonsJson, []);
   const due = Math.max(0, Math.round((row.b.total - paid) * 100) / 100);
