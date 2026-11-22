@@ -10,7 +10,8 @@ import { saveSettings, DEFAULTS } from "@/lib/settings";
 import { getSettings } from "@/lib/settings";
 import { blankItinerary, reid } from "@/lib/itinerary-templates";
 import { createItineraryRecord, canLinkBooking, unlinkOthers } from "@/lib/itineraries";
-import { calcSellPrice } from "@/lib/pricing";
+import { itineraryPrice } from "@/lib/pricing";
+import { syncTravelers } from "@/lib/travelers";
 import { cleanImageRef } from "@/lib/media";
 import { invalidate } from "@/lib/cache";
 import { parseJson, money } from "@/lib/format";
@@ -71,6 +72,10 @@ export async function saveItinerary(id: string, payload: string) {
   const p = z.object({
     name: z.string().trim().min(1).max(120), description: str(300), bookingId: z.string().max(60).nullable().optional(), content: contentSchema,
     costPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(), marginPercent: z.coerce.number().min(0).max(500).nullable().optional(),
+    // Cost per child, when a child's price differs from an adult's (null = same as an adult). Adults / children: the linked
+    // order's travelers, edited right here so the price and the people it is for are set together.
+    childCostPrice: z.coerce.number().min(0).max(10_000_000).nullable().optional(),
+    adults: z.coerce.number().int().min(0).max(200).optional(), children: z.coerce.number().int().min(0).max(200).optional(),
     currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     force: z.boolean().optional(),
     // "Show price to customer" on this itinerary: true or false once staff chose, null to follow the order (off for an order prepaid
@@ -78,7 +83,7 @@ export async function saveItinerary(id: string, payload: string) {
     showPrice: z.boolean().nullable().optional(),
   }).safeParse(raw);
   if (!p.success) return { ok: false, message: p.error.issues.slice(0, 2).map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") };
-  const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null;
+  const costPrice = p.data.costPrice ?? null; const marginPercent = p.data.marginPercent ?? null; const childCostPrice = p.data.childCostPrice ?? null;
   const priced = costPrice != null && marginPercent != null;
   // A Viator booking already has a settled price paid through Viator — the itinerary is just the trip plan for it, never the pricing mechanism.
   const isViatorBooking = p.data.bookingId ? isPrepaid((await db.select({ source: s.bookings.source }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)))[0]?.source) : false;
@@ -86,20 +91,25 @@ export async function saveItinerary(id: string, payload: string) {
   if (p.data.bookingId && !priced && !isViatorBooking) return { ok: false, message: "Enter the cost and the profit margin to price this order — there is no manual price." };
   const content = clean(p.data.content);
   let bookingNote = "";
-  // Cost and margin are always per person. unitPrice is what one traveler pays; total is unitPrice × the travelers on the linked order.
+  // Cost and margin are per person: adults pay the adult price, children the child price (the same unless one is entered).
+  // total = adults × adult price + children × child price on the linked order (itineraryPrice in pricing.ts).
   // Unlinked (a template, quick PDF, or website-tour itinerary): price in whatever currency was chosen for it, USD by default.
-  let unitPrice: number | null = null; let total: number | null = null; let travelers = 1; let currency = p.data.currency || "USD"; let orderCurrency: string | null = null; let bookingStatus: string | null = null; let paidSoFar = 0;
+  let total: number | null = null; let adults = 1, children = 0; let currency = p.data.currency || "USD"; let orderCurrency: string | null = null; let bookingStatus: string | null = null; let paidSoFar = 0;
 
   if (priced && p.data.bookingId && !isViatorBooking) {
     const [b] = await db.select({ currency: s.bookings.currency, status: s.bookings.status, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
-    if (b) { orderCurrency = b.currency; currency = p.data.currency || b.currency; bookingStatus = b.status; travelers = Math.max(1, b.adults + b.children); }
+    if (b) { orderCurrency = b.currency; currency = p.data.currency || b.currency; bookingStatus = b.status; adults = p.data.adults ?? b.adults; children = p.data.children ?? b.children; }
+    if (adults < 1) return { ok: false, message: "An order needs at least 1 adult." };
     const [row] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, p.data.bookingId), eq(s.payments.status, "PAID")));
     paidSoFar = row?.paid ?? 0;
     if (orderCurrency && currency !== orderCurrency && paidSoFar > 0) return { ok: false, message: `Payments are already recorded on this order in ${orderCurrency}, so its currency can't change to ${currency}. Remove those payments first, or keep ${orderCurrency}.` };
   }
   // A prepaid (Viator) order is never repriced here, but if staff switch "Show price to customer" on, the price line must still count its real travelers.
-  if (priced && p.data.bookingId && isViatorBooking) { const [b] = await db.select({ adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)); if (b) travelers = Math.max(1, b.adults + b.children); }
-  if (priced) { unitPrice = calcSellPrice(costPrice!, marginPercent!); total = Math.round(unitPrice * travelers * 100) / 100; }
+  if (priced && p.data.bookingId && isViatorBooking) { const [b] = await db.select({ adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId)); if (b) { adults = b.adults; children = b.children; } }
+  const fmtC = (n: number) => money(n, currency);
+  const price = priced ? itineraryPrice({ cost: costPrice!, childCost: childCostPrice, margin: marginPercent!, adults, children, fmt: fmtC }) : null;
+  if (price) total = price.total;
+  const people = price ? price.lines.map((l) => l.label.split(" × ")[0]).join(" + ") : "";
 
   // Repricing a cancelled or completed trip, or one that already has money paid on it, needs a clear "are you sure" — it is easy to do by
   // accident (editing an old itinerary as a starting point) and the change is otherwise silent.
@@ -108,22 +118,26 @@ export async function saveItinerary(id: string, payload: string) {
     if (bookingStatus === "CANCELLED") reasons.push("this order is cancelled");
     if (bookingStatus === "COMPLETED") reasons.push("this trip is already marked completed");
     if (paidSoFar > 0) reasons.push(`${money(paidSoFar, currency)} has already been paid on it`);
-    if (reasons.length) return { ok: false, needsConfirm: true, message: `This will change the price on an order where ${reasons.join(" and ")}. The total for ${travelers} traveler${travelers === 1 ? "" : "s"} will become ${money(total!, currency)}. Update it anyway?` };
+    if (reasons.length) return { ok: false, needsConfirm: true, message: `This will change the price on an order where ${reasons.join(" and ")}. The total for ${people} will become ${money(total!, currency)}. Update it anyway?` };
   }
 
   if (priced) {
     content.priceLabel = p.data.bookingId
-      ? `${money(unitPrice!, currency)} per person — ${money(total!, currency)} total for ${travelers} traveler${travelers === 1 ? "" : "s"}`
-      : `${money(unitPrice!, currency)} per person`;
+      ? `${price!.lines.map((l) => l.label).join(" + ")} = ${money(total!, currency)} total`
+      : price!.perPerson;
     if (p.data.bookingId && !isViatorBooking) {
-      const [before] = await db.select({ total: s.bookings.total }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
-      await db.update(s.bookings).set({ currency, subtotal: total!, total: total!, costTotal: Math.round(costPrice! * travelers * 100) / 100 }).where(eq(s.bookings.id, p.data.bookingId));
-      if (before && before.total !== total) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Price changed from ${money(before.total, currency)} to ${money(total!, currency)} via the itinerary (${money(costPrice!, currency)} per person cost, ${marginPercent}% margin, ${travelers} traveler${travelers === 1 ? "" : "s"}) by ${u.email ?? u.uid}.` });
+      const [before] = await db.select({ total: s.bookings.total, adults: s.bookings.adults, children: s.bookings.children }).from(s.bookings).where(eq(s.bookings.id, p.data.bookingId));
+      await db.update(s.bookings).set({ currency, subtotal: total!, total: total!, costTotal: price!.costTotal, adults, children, priceLines: JSON.stringify(price!.lines) }).where(eq(s.bookings.id, p.data.bookingId));
+      if (before && (before.adults !== adults || before.children !== children)) {
+        await syncTravelers(p.data.bookingId);
+        await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Travelers changed from ${before.adults} adult(s), ${before.children} child(ren) to ${adults} adult(s), ${children} child(ren) via the itinerary by ${u.email ?? u.uid}.` });
+      }
+      if (before && before.total !== total) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Price changed from ${money(before.total, currency)} to ${money(total!, currency)} via the itinerary (${price!.lines.map((l) => l.label).join(" + ")}; cost ${money(costPrice!, currency)} per adult${price!.split ? `, ${money(childCostPrice!, currency)} per child` : ""}, ${marginPercent}% margin) by ${u.email ?? u.uid}.` });
       if (orderCurrency && orderCurrency !== currency) await db.insert(s.bookingEvents).values({ bookingId: p.data.bookingId, type: "NOTE", note: `Currency changed from ${orderCurrency} to ${currency} via the itinerary by ${u.email ?? u.uid}.` });
-      bookingNote = ` The linked order's total is now ${money(total!, currency)} (${money(unitPrice!, currency)} per person × ${travelers}).`;
+      bookingNote = ` The linked order's total is now ${money(total!, currency)} (${price!.lines.map((l) => l.label).join(" + ")}).`;
     }
   }
-  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, currency: p.data.bookingId ? null : currency, ...(p.data.showPrice !== undefined ? { showPrice: p.data.showPrice } : {}), updatedAt: new Date() }).where(eq(s.itineraries.id, id));
+  await db.update(s.itineraries).set({ name: p.data.name, description: p.data.description, bookingId: p.data.bookingId || null, content: JSON.stringify(content), costPrice, marginPercent, childCostPrice, currency: p.data.bookingId ? null : currency, ...(p.data.showPrice !== undefined ? { showPrice: p.data.showPrice } : {}), updatedAt: new Date() }).where(eq(s.itineraries.id, id));
   await audit(u.uid, "UPDATE", "itinerary", id); return { ok: true, message: bookingNote ? `Saved.${bookingNote}` : "Saved" };
 }
 export async function duplicateItinerary(id: string) {

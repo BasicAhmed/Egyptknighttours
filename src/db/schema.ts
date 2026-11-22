@@ -110,6 +110,7 @@ export const bookings = sqliteTable("bookings", {
   meetingPoint: text("meeting_point"), pickupInfo: text("pickup_info"),
   // What the office asks the guide to collect on the day. The only money a guide sheet ever shows, and only when filled in.
   guideCollectAmount: real("guide_collect_amount"), guideCollectNote: text("guide_collect_note"),
+  priceLines: text("price_lines"), // JSON lines that make up the total ("2 adults × €600"), set by a priced itinerary; printed on invoices
   createdAt: createdAt(),
 }, (t) => [index("bookings_customer_idx").on(t.customerId), index("bookings_tour_idx").on(t.tourId), index("bookings_status_idx").on(t.status), index("bookings_travel_idx").on(t.travelDate), index("bookings_created_idx").on(t.createdAt)]);
 
@@ -166,6 +167,7 @@ export const itineraries = sqliteTable("itineraries", {
   content: text("content").notNull(), createdById: text("created_by_id").references(() => users.id),
   // What this specific trip costs and the profit margin on it. Every itinerary can have its own, since the same tour can cost differently for different guests.
   costPrice: real("cost_price"), marginPercent: real("margin_percent"),
+  childCostPrice: real("child_cost_price"), // cost per child when it differs from an adult's; null = same as an adult
   // Only meaningful when there is no bookingId: an itinerary linked to a real order always prices in that order's own
   // currency instead. Lets a template, quick PDF, or website-tour itinerary be priced in something other than USD.
   currency: text("currency"),

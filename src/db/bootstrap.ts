@@ -30,6 +30,8 @@ const COLUMNS = [
   { table: "bookings", name: "meeting_point", ddl: "text" }, { table: "bookings", name: "pickup_info", ddl: "text" },
   { table: "bookings", name: "guide_collect_amount", ddl: "real" }, { table: "bookings", name: "guide_collect_note", ddl: "text" },
   { table: "itineraries", name: "show_price", ddl: "integer" },
+  // A different price per child on an itinerary, and the lines an order's total is made of (printed on its invoices).
+  { table: "itineraries", name: "child_cost_price", ddl: "real" }, { table: "bookings", name: "price_lines", ddl: "text" },
   // Partner (corporate) invoice notes, printed on the invoice. Optional.
   { table: "corporate_requests", name: "invoice_notes", ddl: "text NOT NULL DEFAULT ''" },
   // Which payment methods a partner invoice shows (JSON list of ids). Empty = the methods in the request's currency.
