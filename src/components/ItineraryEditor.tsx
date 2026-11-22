@@ -6,10 +6,11 @@ import { blk, day as newDay, suggestHook, uid } from "@/lib/itinerary-templates"
 import ImageField from "./ImageField";
 import type { Block, BlockType, Day, ItineraryContent } from "@/pdf/types";
 import { prepaidVia, showPriceToCustomer } from "@/lib/order-rules";
+import { itineraryPrice } from "@/lib/pricing";
 
 const TYPES: [BlockType, string][] = [["ACTIVITY", "Activity"], ["TOUR", "Tour"], ["TRANSFER", "Airport transfer"], ["TRANSPORT", "Transportation"], ["FLIGHT", "Flight"], ["HOTEL", "Hotel"], ["MEAL", "Restaurant / meal"], ["FREE_TIME", "Free time"], ["MEETING_POINT", "Meeting point"], ["GUIDE", "Guide information"], ["INFO", "Important information"], ["NOTE", "Notes"]];
-type Init = { name: string; description: string; bookingId: string | null; costPrice: number | null; marginPercent: number | null; showPrice?: boolean | null; content: ItineraryContent };
-type BookingOpt = { id: string; label: string; travelers: number; currency?: string; source?: string };
+type Init = { name: string; description: string; bookingId: string | null; costPrice: number | null; marginPercent: number | null; childCostPrice?: number | null; showPrice?: boolean | null; content: ItineraryContent };
+type BookingOpt = { id: string; label: string; travelers: number; adults?: number; children?: number; currency?: string; source?: string };
 const lines = (v: string) => v.split("\n").map((x) => x.trim()).filter(Boolean);
 const swap = <T,>(a: T[], i: number, j: number) => { if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
 const In = ({ label, value, onChange, ph, type = "text", cls = "" }: { label: string; value: string; onChange: (v: string) => void; ph?: string; type?: string; cls?: string }) => (
@@ -37,11 +38,21 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [bookingId, setBookingId] = useState(initial.bookingId ?? "");
   const [cost, setCost] = useState(initial.costPrice != null ? String(initial.costPrice) : ""); const [margin, setMargin] = useState(initial.marginPercent != null ? String(initial.marginPercent) : "");
   const [curr, setCurr] = useState(currency); // starts as the linked order's currency (or USD); changing it on a linked order changes that order's currency too
-  const priced = cost !== "" && margin !== "" && Number(cost) >= 0 && Number(margin) >= 0;
-  const unitCalc = priced ? Math.round(Number(cost) * (1 + Number(margin) / 100) * 100) / 100 : null;
-  const travelers = bookings.find((b) => b.id === bookingId)?.travelers ?? 1;
-  const totalCalc = unitCalc != null ? Math.round(unitCalc * travelers * 100) / 100 : null;
+  // A child's cost only when it differs from an adult's (blank = same price as an adult).
+  const [childCost, setChildCost] = useState(initial.childCostPrice != null ? String(initial.childCostPrice) : "");
+  // The linked order's adults and children, editable here: saving sets them on the order together with the price.
+  const opt = (bid: string) => bookings.find((b) => b.id === bid);
+  const [adultsN, setAdultsN] = useState(String(opt(initial.bookingId ?? "")?.adults ?? 1));
+  const [childrenN, setChildrenN] = useState(String(opt(initial.bookingId ?? "")?.children ?? 0));
+  useEffect(() => { const b = opt(bookingId); setAdultsN(String(b?.adults ?? 1)); setChildrenN(String(b?.children ?? 0)); }, [bookingId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const priced = cost !== "" && margin !== "" && Number(cost) >= 0 && Number(margin) >= 0 && (childCost === "" || Number(childCost) >= 0);
   const fmt = (n: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: curr, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
+  const adultsNum = Math.max(0, Math.floor(Number(adultsN) || 0)), childrenNum = Math.max(0, Math.floor(Number(childrenN) || 0));
+  const calc = priced ? itineraryPrice({ cost: Number(cost), childCost: childCost === "" ? null : Number(childCost), margin: Number(margin), adults: bookingId ? adultsNum : 1, children: bookingId ? childrenNum : 0, fmt }) : null;
+  const unitCalc = calc ? calc.adultPrice : null;
+  const childCalc = priced ? Math.round((childCost === "" ? Number(cost) : Number(childCost)) * (1 + Number(margin) / 100) * 100) / 100 : null;
+  const travelers = Math.max(1, adultsNum + childrenNum);
+  const totalCalc = calc ? calc.total : null;
   // "Show price to customer": staff's own choice for this itinerary (true / false), or null while it simply follows the order
   // (off for an order prepaid through a marketplace such as Viator, on otherwise). Only the customer's copy changes; the price
   // stays here, on the order and in Finance.
@@ -55,14 +66,14 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
   const [dayOpen, setDayOpen] = useState<Record<string, boolean>>({});
   const [pending, start] = useTransition();
   // What is on screen vs. what was last saved, so the bar can say "Unsaved changes" and warn before the page is left.
-  const snap = JSON.stringify([name, desc, bookingId, cost, margin, curr, c, showChoice]);
+  const snap = JSON.stringify([name, desc, bookingId, cost, margin, curr, c, showChoice, childCost, adultsN, childrenN]);
   const [savedSnap, setSavedSnap] = useState(snap); const dirty = snap !== savedSnap;
   useEffect(() => { if (!dirty) return; const h = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener("beforeunload", h); return () => window.removeEventListener("beforeunload", h); }, [dirty]);
   const upd = (fn: (n: ItineraryContent) => void) => setC((p) => { const n = structuredClone(p); fn(n); return n; });
   const updDay = (i: number, fn: (d: Day) => void) => upd((n) => fn(n.days[i]));
 
   async function save(force = false): Promise<boolean> {
-    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), currency: curr, force, showPrice: showChoice }));
+    const r = await saveItinerary(id, JSON.stringify({ name, description: desc, bookingId: bookingId || null, content: c, costPrice: cost === "" ? null : Number(cost), marginPercent: margin === "" ? null : Number(margin), childCostPrice: childCost === "" ? null : Number(childCost), ...(bookingId && !market ? { adults: adultsNum, children: childrenNum } : {}), currency: curr, force, showPrice: showChoice }));
     if (!r.ok && r.needsConfirm) { if (window.confirm(r.message)) return save(true); setMsg({ t: "Not saved — the order was left as it was.", err: true }); return false; }
     setMsg({ t: r.message, err: !r.ok }); if (r.ok) setSavedSnap(snap); return r.ok;
   }
@@ -102,7 +113,7 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
         <p className="mt-2.5 text-[13.5px] text-white/65">{linked ? <>For order <Link href={`/admin?open=${linked.id}`} className="font-semibold text-white underline decoration-gold-500 decoration-2 underline-offset-4">{linked.label.split(" · ").slice(0, 2).join(", ")}</Link></> : isTemplate ? "A reusable plan. Start new itineraries from it." : "Not linked to an order."}</p>
         <div className="mt-3 grid grid-cols-3 gap-2 text-center">
           <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none">{c.durationDays ?? c.days.length}</p><p className="mt-1 text-[11.5px] text-white/60">days</p></div>
-          <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none">{unitCalc != null ? fmt(unitCalc) : "–"}</p><p className="mt-1 text-[11.5px] text-white/60">per person</p></div>
+          <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none">{unitCalc != null ? fmt(unitCalc) : "–"}</p><p className="mt-1 text-[11.5px] text-white/60">{calc?.split ? `per adult · ${fmt(calc.childPrice)} child` : "per person"}</p></div>
           <div className="rounded-xl bg-white/[.08] px-2 py-2.5"><p className="font-display text-[19px] font-extrabold leading-none text-gold-500">{linked && totalCalc != null ? fmt(totalCalc) : "–"}</p><p className="mt-1 text-[11.5px] text-white/60">{linked ? `total, ${travelers} traveler${travelers === 1 ? "" : "s"}` : "order total"}</p></div>
         </div>
       </div>
@@ -193,18 +204,28 @@ export default function ItineraryEditor({ id, isTemplate, status, initial, booki
 
       <div hidden={tab !== "price"} className="space-y-5">
         <Panel id="price" title="Price settings" openState={open} setOpenState={setOpen}>
-          <p className="text-sm text-ink/65">Cost and price are always <b>per person</b>. Adding or removing a traveler on the linked order multiplies the total automatically — nothing to recalculate by hand.</p>
+          <p className="text-sm text-ink/65">Cost and price are <b>per person</b>. If children pay less (or more), enter a cost per child too. Infants travel free.</p>
           <div className="mt-3"><label className="label" htmlFor="ip-curr">Currency</label><select id="ip-curr" className="input !w-auto !py-2" value={curr} onChange={(e) => setCurr(e.target.value)}>{Array.from(new Set(["USD", "EUR", "GBP", "EGP", "AED", "SAR", "QAR", "KWD", "CAD", "AUD", "CHF", "ZAR", curr])).map((c2) => <option key={c2}>{c2}</option>)}</select>{bookingId && <p className="mt-1 text-xs text-ink/65">Saving also sets the linked order's currency to {curr}. Prices are not converted — enter the cost in {curr}.</p>}</div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div><label className="label" htmlFor="ip-cost">Cost per person ({curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div><label className="label" htmlFor="ip-cost">Cost per adult ({curr}, no profit)</label><input id="ip-cost" type="number" min={0} step="any" className="input !py-2" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="hotel, guide, driver, entrance fees" /></div>
+            <div><label className="label" htmlFor="ip-child">Cost per child ({curr}) <span className="font-normal text-ink/60">optional</span></label><input id="ip-child" type="number" min={0} step="any" className="input !py-2" value={childCost} onChange={(e) => setChildCost(e.target.value)} placeholder={cost ? `Same as an adult (${cost})` : "Same as an adult"} /></div>
             <div><label className="label" htmlFor="ip-margin">Profit margin (% added on top of cost)</label><input id="ip-margin" type="number" min={0} step="any" className="input !py-2" value={margin} onChange={(e) => setMargin(e.target.value)} /></div>
-            <div><span className="label">Price per person</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><span className="label">Price per adult</span><p className="input flex items-center !py-2 font-semibold">{unitCalc != null ? fmt(unitCalc) : "—"}</p></div>
+              <div><span className="label">Price per child</span><p className="input flex items-center !py-2 font-semibold">{childCalc != null ? fmt(childCalc) : "—"}</p></div>
+            </div>
           </div>
+          {bookingId && !market && <div className="mt-3 grid grid-cols-2 gap-3 sm:max-w-sm">
+            <div><label className="label" htmlFor="ip-adults">Adults</label><input id="ip-adults" type="number" min={1} max={200} step={1} className="input !py-2" value={adultsN} onChange={(e) => setAdultsN(e.target.value)} /></div>
+            <div><label className="label" htmlFor="ip-children">Children</label><input id="ip-children" type="number" min={0} max={200} step={1} className="input !py-2" value={childrenN} onChange={(e) => setChildrenN(e.target.value)} /></div>
+            <p className="col-span-2 -mt-1 text-xs text-ink/65">The people on the order. Saving updates the order too.</p>
+          </div>}
           {bookingId && market ? <p className="mt-3 text-xs text-ink/65">This order was paid through {market}, so its total stays as it was entered on the order. The cost and margin here are for your own records and are never applied to it.</p> : bookingId ? (
             <div className="mt-4 rounded-2xl bg-ink p-4 text-white">
-              <div className="flex items-end justify-between gap-3"><div><p className="text-[13px] text-white/60">Order total</p><p className="font-display text-[30px] font-extrabold leading-none text-gold-500">{totalCalc != null ? fmt(totalCalc) : "–"}</p></div><p className="text-right text-[13.5px] text-white/70">{unitCalc != null ? fmt(unitCalc) : "–"} × {travelers} traveler{travelers === 1 ? "" : "s"}</p></div>
-              {priced && <p className="mt-3 border-t border-white/10 pt-3 text-[13.5px] text-white/70">Your profit: <b className="text-white">{fmt(Math.round((unitCalc! - Number(cost)) * travelers * 100) / 100)}</b> ({fmt(Math.round((unitCalc! - Number(cost)) * 100) / 100)} per person)</p>}
-              <p className="mt-2 text-[12.5px] text-white/50">Saving sets this as the order's total.</p>
+              <div className="flex items-end justify-between gap-3"><div><p className="text-[13px] text-white/60">Order total</p><p className="font-display text-[30px] font-extrabold leading-none text-gold-500">{totalCalc != null ? fmt(totalCalc) : "–"}</p></div><div className="text-right text-[13.5px] text-white/70">{calc ? calc.lines.map((l) => <p key={l.label}>{l.label}</p>) : <p>–</p>}</div></div>
+              {calc && <p className="mt-3 border-t border-white/10 pt-3 text-[13.5px] text-white/70">Your profit: <b className="text-white">{fmt(Math.round((calc.total - calc.costTotal) * 100) / 100)}</b>{!calc.split && ` (${fmt(Math.round((calc.adultPrice - Number(cost)) * 100) / 100)} per person)`}</p>}
+              {adultsNum < 1 && <p className="mt-2 text-[13px] font-semibold text-red-300">An order needs at least 1 adult.</p>}
+              <p className="mt-2 text-[12.5px] text-white/50">Saving sets this as the order's total. The invoice shows these same lines.</p>
             </div>
           ) : <p className="mt-3 text-xs text-ink/65">Fills in the price line on the PDF. Link this itinerary to an order in the Booking tab to also set its total automatically.</p>}
           {!isTemplate && !showPrice && <p className="mt-3 rounded-xl bg-[#2A5C8A]/10 p-3 text-[13.5px] font-semibold text-[#2A5C8A]">The customer does not see this price{market ? `: this order was paid through ${market}` : ""}. It is for your own records. You can change that in the Send step.</p>}

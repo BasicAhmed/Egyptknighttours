@@ -475,3 +475,13 @@ What we ask for is now uploaded by the customer and lands in the right place onc
   every list, counts and the calendar, its old link stops working, and its number is never reused. The order history
   says who deleted it. If the order was "Invoiced" / "Itinerary sent" and nothing like that is left, the status is
   worked out again.
+
+## Itineraries: different price for children (Nov 2026)
+- Price step: "Cost per adult", optional "Cost per child" (blank = same as an adult), one margin. Shows price per adult
+  and per child. Infants free.
+- For a linked order, Adults and Children can be set right in the Price step; saving updates the order (and its
+  traveler list) with the price. Total = adults × adult price + children × child price (itineraryPrice in pricing.ts).
+- The order keeps the lines (bookings.price_lines) and the invoice prints them: "Trip: 2 adults × €600",
+  "Trip: 2 children × €550". If the order is later repriced or travelers change another way, the invoice falls back
+  to one line, so it is never wrong (tripLines).
+- The itinerary PDF price line says the same ("2 adults × €600 + 2 children × €550 = €2,300 total").

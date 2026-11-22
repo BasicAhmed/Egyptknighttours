@@ -727,6 +727,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "price_lines": {
+          "name": "price_lines",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -2696,6 +2703,13 @@
         },
         "margin_percent": {
           "name": "margin_percent",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "child_cost_price": {
+          "name": "child_cost_price",
           "type": "real",
           "primaryKey": false,
           "notNull": false,

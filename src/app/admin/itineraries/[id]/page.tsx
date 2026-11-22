@@ -33,8 +33,8 @@ export default async function EditItinerary({ params, searchParams }: { params: 
       <Link href={it.isTemplate ? "/admin/itineraries?tab=templates" : "/admin/itineraries"} className="mb-3 inline-block text-sm font-semibold text-ink/65 hover:text-ink">← Itineraries</Link>
       <div className="mt-3"><Notice n={sp.n} e={sp.e} /></div>
       {sp.flow && flowTip[sp.flow] && <div className="mb-4 mt-3 rounded-2xl bg-gold-500/15 p-3.5 text-sm text-ink/80">{flowTip[sp.flow]}</div>}
-      <ItineraryEditor id={it.id} isTemplate={it.isTemplate} status={it.status} currency={linkedCurrency} initial={{ name: it.name, description: it.description, bookingId: it.bookingId, costPrice: it.costPrice, marginPercent: it.marginPercent, showPrice: it.showPrice, content: parseJson<ItineraryContent>(it.content, null as never) }}
-        bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}`, travelers: Math.max(1, b.adults + b.children), currency: b.currency, source: b.source ?? "" }))}
+      <ItineraryEditor id={it.id} isTemplate={it.isTemplate} status={it.status} currency={linkedCurrency} initial={{ name: it.name, description: it.description, bookingId: it.bookingId, costPrice: it.costPrice, marginPercent: it.marginPercent, childCostPrice: it.childCostPrice, showPrice: it.showPrice, content: parseJson<ItineraryContent>(it.content, null as never) }}
+        bookings={bookings.map((b) => ({ id: b.id, label: `${b.ref} · ${b.name} · ${b.date}`, travelers: Math.max(1, b.adults + b.children), adults: b.adults, children: b.children, currency: b.currency, source: b.source ?? "" }))}
         docs={docs.map((d) => ({ id: d.id, number: d.number, sent: d.sentAt ? d.sentAt.toISOString().slice(0, 10) : null, created: d.createdAt.toISOString().slice(0, 10) }))} />
       {canTour && (
         <section className="mt-6 rounded-2xl border border-gold-600/40 bg-gold-500/10 p-5">
