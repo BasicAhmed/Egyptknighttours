@@ -16,7 +16,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!staff && !verifyDoc(id, url.searchParams.get("t"))) return new NextResponse("Not found", { status: 404 });
   if (!rateLimit("pdf:" + clientIp(req.headers), 40, 60_000)) return new NextResponse("Too many requests", { status: 429 });
   const [doc] = await db.select().from(s.documents).where(eq(s.documents.id, id));
-  if (!doc) return new NextResponse("Not found", { status: 404 });
+  if (!doc || (!staff && doc.status === "VOID")) return new NextResponse("Not found", { status: 404 }); // a deleted document's link stops working
   if (!staff && !doc.sentAt) return new NextResponse("Not found", { status: 404 }); // customers only see documents that were sent to them
   return pdfResponse(() => renderDocument(doc), `${doc.number}.pdf`, url.searchParams.get("inline") === "1");
 }

@@ -79,8 +79,8 @@ export async function calendarFeed(range: Range, viewer: Viewer, o: FeedOptions 
       (select coalesce(sum(p.amount), 0) from payments p where p.booking_id = b.id and p.status = 'PAID') as paid,
       (select coalesce(sum(json_extract(x.value, '$.amount')), 0) from json_each(d.data, '$.extras') x) as extras
       from documents d join bookings b on b.id = d.booking_id join customers c on c.id = b.customer_id
-      where d.kind = 'INVOICE' and ${INVOICE_DEADLINE} between ? and ? and b.status not in ('PAID', 'COMPLETED', 'CANCELLED')
-        and not exists (select 1 from documents n where n.booking_id = d.booking_id and n.kind = 'INVOICE' and (n.version > d.version or (n.version = d.version and n.created_at > d.created_at)))`, [from, to]);
+      where d.kind = 'INVOICE' and d.status != 'VOID' and ${INVOICE_DEADLINE} between ? and ? and b.status not in ('PAID', 'COMPLETED', 'CANCELLED')
+        and not exists (select 1 from documents n where n.booking_id = d.booking_id and n.kind = 'INVOICE' and n.status != 'VOID' and (n.version > d.version or (n.version = d.version and n.created_at > d.created_at)))`, [from, to]);
     for (const r of due) {
       if (isPrepaid(S(r.source)) || !isISO(S(r.day))) continue;
       const owed = Math.max(0, N(r.total) + (S(r.invCurrency) === S(r.currency) ? N(r.extras) : 0)), balance = Math.round((owed - N(r.paid)) * 100) / 100; if (balance <= 0.005) continue;

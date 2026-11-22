@@ -466,3 +466,12 @@ What we ask for is now uploaded by the customer and lands in the right place onc
   methods in the request's currency (or with no currency) are ticked. Before, an EGP invoice with no EGP method fell
   back to showing every account (for example the EUR bank).
 - "Generate invoice" only shows once the request has services, so an empty invoice can't be sent by mistake.
+
+## Booking page shows only the agreed documents; delete wrong versions (Nov 2026)
+- The customer's booking page lists only the newest sent itinerary and the newest sent invoice (newest version made,
+  not the last one resent). The "Earlier versions" list is gone.
+- Order → Invoice / Itinerary: each sent PDF says whether it is "On the customer's booking page" or an older version.
+  New "Delete" button (with a confirm) for a wrong or replaced version. It is kept as VOID for the record: hidden from
+  every list, counts and the calendar, its old link stops working, and its number is never reused. The order history
+  says who deleted it. If the order was "Invoiced" / "Itinerary sent" and nothing like that is left, the status is
+  worked out again.

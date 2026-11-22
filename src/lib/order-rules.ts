@@ -184,3 +184,19 @@ export function isBooked(status: string, source?: string | null): boolean {
   if ((BOOKED_STATUSES as readonly string[]).includes(status)) return true;
   return status === "PENDING" && (source ?? "WEBSITE") === "WEBSITE"; // a website checkout is the customer booking it
 }
+
+// ---------- Invoices and itineraries the customer sees ----------
+// A document deleted by staff (wrong, or replaced after the customer asked for changes) is kept as VOID for the record: it
+// is never listed anywhere, never counted, and its old link stops working. Numbers are still counted with it, so a new
+// version never reuses a deleted number.
+export const DOC_VOID = "VOID";
+export const isLiveDoc = (d: { status?: string | null }) => d.status !== DOC_VOID;
+// The customer's booking page shows only the newest sent invoice and the newest sent itinerary: the one agreed on.
+// Newest = the latest version made (not the latest resent), so resending an old version doesn't bring it back to the top.
+export function customerDocs<D extends { kind: string; status?: string | null; sentAt: Date | null; version: number; createdAt: Date }>(docs: D[]): D[] {
+  const sent = docs.filter((d) => isLiveDoc(d) && d.sentAt)
+    .sort((a, b) => b.version - a.version || b.createdAt.getTime() - a.createdAt.getTime());
+  const out: D[] = [];
+  for (const d of sent) if (!out.some((x) => x.kind === d.kind)) out.push(d);
+  return out.sort((a, b) => (a.kind === "ITINERARY" ? 0 : 1) - (b.kind === "ITINERARY" ? 0 : 1));
+}

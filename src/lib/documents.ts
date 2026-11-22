@@ -1,5 +1,5 @@
 import { db, schema as s } from "@/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { buildInvoiceData, type InvoiceOptions } from "./invoice";
 import { BUILDER_NAME } from "./builder";
 import { getSettings, companyFrom } from "./settings";
@@ -100,8 +100,8 @@ export async function createItineraryDocument(itineraryId: string, userId: strin
 }
 
 export async function emailDocument(docId: string, userId: string, toOverride?: string) {
-  const [doc] = await db.select().from(s.documents).where(eq(s.documents.id, docId));
-  if (!doc) return { ok: false as const, message: "Document not found" };
+  const [doc] = await db.select().from(s.documents).where(and(eq(s.documents.id, docId), ne(s.documents.status, "VOID")));
+  if (!doc) return { ok: false as const, message: "This document was deleted. Make a new one if the customer needs it." };
   let to = toOverride ?? "", name = "there";
   if (doc.bookingId) {
     const [c] = await db.select({ c: s.customers, b: s.bookings }).from(s.bookings).innerJoin(s.customers, eq(s.bookings.customerId, s.customers.id)).where(eq(s.bookings.id, doc.bookingId));
@@ -134,7 +134,7 @@ export async function emailDocument(docId: string, userId: string, toOverride?: 
 async function afterItinerarySent(doc: typeof s.documents.$inferSelect) {
   if (doc.kind !== "ITINERARY" || !doc.bookingId) return;
   const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, doc.bookingId)); if (!b) return;
-  const [{ inv }] = await db.select({ inv: sql<number>`count(*)` }).from(s.documents).where(and(eq(s.documents.bookingId, b.id), eq(s.documents.kind, "INVOICE")));
+  const [{ inv }] = await db.select({ inv: sql<number>`count(*)` }).from(s.documents).where(and(eq(s.documents.bookingId, b.id), eq(s.documents.kind, "INVOICE"), ne(s.documents.status, "VOID")));
   const [{ paid }] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, b.id), eq(s.payments.status, "PAID")));
   const showsPrice = parseJson<{ showPrice?: boolean }>(doc.data, {}).showPrice !== false;
   const next = statusAfterItinerarySent({ status: b.status, showsPrice, invoices: Number(inv), paid: Number(paid), source: b.source });
@@ -142,7 +142,8 @@ async function afterItinerarySent(doc: typeof s.documents.$inferSelect) {
 }
 
 export async function markDocumentSent(docId: string, userId: string, via: string) {
-  await db.update(s.documents).set({ status: "SENT", sentAt: new Date(), sentVia: via }).where(eq(s.documents.id, docId));
+  const done = await db.update(s.documents).set({ status: "SENT", sentAt: new Date(), sentVia: via }).where(and(eq(s.documents.id, docId), ne(s.documents.status, "VOID"))).returning({ id: s.documents.id });
+  if (!done.length) return; // deleted meanwhile: nothing to mark
   await db.insert(s.documentEvents).values({ documentId: docId, type: "MARKED_SENT", note: via, userId });
   const [d] = await db.select().from(s.documents).where(eq(s.documents.id, docId));
   if (d?.itineraryId) await db.update(s.itineraries).set({ status: "SENT" }).where(eq(s.itineraries.id, d.itineraryId));
@@ -167,7 +168,7 @@ export async function recordPayment(bookingId: string, userId: string, o: { amou
 
 // Whether an order has an invoice, and whether an itinerary was sent: the documents part of statusFromProgress.
 export async function docProgress(bookingId: string) {
-  const docs = await db.select({ kind: s.documents.kind, sentAt: s.documents.sentAt }).from(s.documents).where(eq(s.documents.bookingId, bookingId));
+  const docs = await db.select({ kind: s.documents.kind, sentAt: s.documents.sentAt }).from(s.documents).where(and(eq(s.documents.bookingId, bookingId), ne(s.documents.status, "VOID")));
   return { hasInvoice: docs.some((d) => d.kind === "INVOICE"), itinerarySent: docs.some((d) => d.kind === "ITINERARY" && d.sentAt != null) };
 }
 
@@ -191,5 +192,25 @@ export async function voidPayment(bookingId: string, paymentId: string, userName
 }
 
 export async function bookingDocuments(bookingId: string) {
-  return db.select().from(s.documents).where(eq(s.documents.bookingId, bookingId)).orderBy(desc(s.documents.createdAt));
+  return db.select().from(s.documents).where(and(eq(s.documents.bookingId, bookingId), ne(s.documents.status, "VOID"))).orderBy(desc(s.documents.createdAt));
+}
+
+// Delete an invoice or itinerary PDF made by mistake or replaced after the customer asked for changes. It is kept as VOID for
+// the record (like a removed payment): hidden from staff lists and the customer's booking page, its link stops working, and
+// the number is not used again. The order's status and the calendar then follow the documents that are left.
+export async function deleteDocument(bookingId: string, docId: string, user: { uid: string; name: string }) {
+  const [doc] = await db.select().from(s.documents).where(and(eq(s.documents.id, docId), eq(s.documents.bookingId, bookingId), ne(s.documents.status, "VOID")));
+  if (!doc) return null;
+  await db.update(s.documents).set({ status: "VOID" }).where(eq(s.documents.id, doc.id));
+  await db.insert(s.documentEvents).values({ documentId: doc.id, type: "DELETED", note: doc.sentAt ? "Was sent to the customer" : "Never sent", userId: user.uid });
+  const what = doc.kind === "INVOICE" ? "Invoice" : "Itinerary";
+  await db.insert(s.bookingEvents).values({ bookingId, type: "NOTE", note: `${what} ${doc.number} deleted by ${user.name}${doc.sentAt ? " (it had been sent; the customer no longer sees it)" : ""}` });
+  // "Invoiced" with no invoice left, or "Itinerary sent" with no sent itinerary left, is no longer true: work it out again.
+  const [b] = await db.select().from(s.bookings).where(eq(s.bookings.id, bookingId));
+  if (b && ["INVOICED", ITINERARY_SENT].includes(b.status)) {
+    const [{ paid }] = await db.select({ paid: sql<number>`coalesce(sum(amount), 0)` }).from(s.payments).where(and(eq(s.payments.bookingId, bookingId), eq(s.payments.status, "PAID")));
+    const next = statusFromProgress({ total: b.total, paid: Number(paid), ...(await docProgress(bookingId)) });
+    if (next !== b.status) await setBookingStatus(bookingId, next);
+  }
+  return doc;
 }

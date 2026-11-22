@@ -10,14 +10,6 @@ import { prepaidVia, resolvePickup, styleLabel } from "@/lib/order-rules";
 
 const nice = (iso: string) => new Date(iso + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const short = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-// The newest invoice and the newest itinerary are what the customer needs; versions sent before are kept, folded away.
-type Doc = LoadedBooking["docs"][number];
-function latestDocs(docs: Doc[]) {
-  const sorted = [...docs].sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
-  const latest: Doc[] = []; const older: Doc[] = [];
-  for (const d of sorted) (latest.some((x) => x.kind === d.kind) ? older : latest).push(d);
-  return { latest, older };
-}
 // One true sentence under the payment box. (It used to say "You chose a 0% deposit ($0)" on orders made by our team.)
 function paymentNote(b: LoadedBooking["b"], paid: number, due: number) {
   if (!(b.total > 0)) return "We'll confirm your price soon.";
@@ -130,10 +122,7 @@ export default function BookingView({ data, token, mode }: { data: LoadedBooking
       </div>
 
       {data.docs.length > 0 && <section className="mt-6 rounded-2xl border border-ink/15 p-5 print:hidden"><h2 className="font-display text-lg font-bold">Your documents</h2>
-        <ul className="mt-3 divide-y divide-ink/10 text-sm">{latestDocs(data.docs).latest.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/65">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul>
-        {latestDocs(data.docs).older.length > 0 && <details className="mt-2 text-sm"><summary className="cursor-pointer text-ink/65">Earlier versions ({latestDocs(data.docs).older.length})</summary>
-          <ul className="mt-1 divide-y divide-ink/10">{latestDocs(data.docs).older.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2 text-ink/70"><span>{d.kind === "INVOICE" ? "Invoice" : "Itinerary"} {d.number} · {short(d.sentAt)}</span><a href={d.url} className="font-semibold underline">Download</a></li>)}</ul>
-        </details>}</section>}
+        <ul className="mt-3 divide-y divide-ink/10 text-sm">{data.docs.map((d) => <li key={d.id} className="flex items-center justify-between gap-3 py-2.5"><span><span className="font-semibold">{d.kind === "INVOICE" ? "Invoice" : "Itinerary"}</span> <span className="text-ink/65">{d.number} · {short(d.sentAt)}</span></span><a href={d.url} className="btn btn-outline !min-h-[38px] !py-1.5">Download PDF</a></li>)}</ul></section>}
 
       <div className="mt-8 flex flex-wrap gap-3 print:hidden">
         <WhatsAppButton href={wa} label="Message us about this booking" />

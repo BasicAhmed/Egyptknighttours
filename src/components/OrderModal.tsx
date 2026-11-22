@@ -9,7 +9,7 @@ import { ordersSeen } from "@/app/admin/alert-actions";
 import { STATUS_LABEL, STATUS_OPTIONS, PILL, SOURCE_LABEL, stageOf, money, shortDate, ago, waUrl, daysUntil, type Focus } from "./order-ui";
 import { TravelersPanel, OpsPanel, completeness } from "./OrderPeople";
 import { RequestsPanel } from "./OrderRequests";
-import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
+import { orderSetStyle, orderRemovePayment, orderUpdateCustomer, orderSyncTravelers, orderSetStatus, orderAddPayment, orderAddNote, orderCreateInvoice, orderEmailDoc, orderMarkSent, orderDeleteDoc, orderCreateItinerary, orderItineraryPdf, orderUpdate } from "@/app/admin/order-actions";
 import type { Order, OrderRow } from "@/lib/orders";
 import { orderPickup, styleLabel, cleanPaymentLink } from "@/lib/order-rules";
 
@@ -209,10 +209,13 @@ function DocList({ o, kind, run, busy }: { o: Order; kind: "INVOICE" | "ITINERAR
     <ul className="space-y-2">{docs.map((d) => (
       <li key={d.id} className="rounded-xl border border-ink/10 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{d.number}{d.amount != null && kind === "INVOICE" && <span className="font-normal text-ink/65"> · due {money(d.amount, d.currency)}</span>}</p>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${d.sentAt ? "bg-[#DFF3E6] text-[#17663A]" : "bg-ink/10 text-ink/65"}`}>{d.sentAt ? `Sent ${ago(d.sentAt)}${d.sentVia ? ` · ${d.sentVia.toLowerCase()}` : ""}` : "Not sent yet"}</span></div>
+        {d.sentAt ? <p className={`mt-1 text-xs ${d.shownToCustomer ? "font-semibold text-[#17663A]" : "text-ink/60"}`}>{d.shownToCustomer ? "✓ On the customer's booking page" : `Older version: not on the customer's booking page`}</p> : null}
         <div className="mt-2 flex flex-wrap gap-2"><a className={Small} target="_blank" rel="noopener noreferrer" href={`/api/documents/${d.id}/pdf?inline=1`}>Preview</a><a className={Small} href={`/api/documents/${d.id}/pdf`}>Download</a>
           {o.customer.email && <button className="btn btn-dark !min-h-[38px] !py-1.5 !px-3 !text-[13px]" disabled={busy} onClick={() => run(() => orderEmailDoc(o.id, d.id))}>{d.sentAt ? "Resend email" : "Email"}</button>}
           {phone && <a className="btn btn-wa !min-h-[38px] !py-1.5 !px-3 !text-[13px]" target="_blank" rel="noopener noreferrer" href={waUrl(phone, `Hi ${o.customer.name.split(" ")[0]}, here's your ${kind === "INVOICE" ? "invoice" : "itinerary"} from Egypt Knight: ${d.shareUrl}${d.payLink ? `\n\nPay online by card: ${d.payLink}` : ""}`)} onClick={() => { if (!d.sentAt) void run(() => orderMarkSent(o.id, d.id, "WHATSAPP")); }}>Send on WhatsApp</a>}
-          {!d.sentAt && <button className={Small} disabled={busy} onClick={() => run(() => orderMarkSent(o.id, d.id, "MANUAL"))}>Mark as sent</button>}</div></li>))}</ul>
+          {!d.sentAt && <button className={Small} disabled={busy} onClick={() => run(() => orderMarkSent(o.id, d.id, "MANUAL"))}>Mark as sent</button>}
+          <button className="ml-auto self-center text-xs font-semibold text-red-700 underline disabled:opacity-50" disabled={busy}
+            onClick={() => { if (window.confirm(`Delete ${d.number}?${d.sentAt ? " The customer won't see it any more and its link will stop working." : ""} Use this for a wrong or replaced version. It stays in the order's history.`)) void run(() => orderDeleteDoc(o.id, d.id)); }}>Delete</button></div></li>))}</ul>
   );
 }
 function ItinCreate({ o, busy, onCreate, onImported }: { o: Order; busy: boolean; onCreate: (t: string, name: string) => void; onImported: (id: string) => void }) {

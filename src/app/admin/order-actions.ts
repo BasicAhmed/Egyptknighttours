@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth";
 import { loadOrder, type Order } from "@/lib/orders";
-import { createInvoiceDocument, createItineraryDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus, voidPayment } from "@/lib/documents";
+import { createInvoiceDocument, createItineraryDocument, deleteDocument, emailDocument, markDocumentSent, recordPayment, setBookingStatus, voidPayment } from "@/lib/documents";
 import { createItineraryRecord, canLinkBooking } from "@/lib/itineraries";
 import { newBookingRef } from "@/lib/booking";
 import { syncTravelers } from "@/lib/travelers";
@@ -67,6 +67,12 @@ export async function orderEmailDoc(id: string, docId: string, to?: string): Pro
   if (to && !z.string().email().safeParse(to).success) return { ok: false, message: "That email address isn't valid" };
   const r = await emailDocument(docId, u.uid, to || undefined); await audit(u.uid, "EMAIL", "document", docId);
   return done(id, r.ok ? r.message : `${r.message} Use Send on WhatsApp or Download instead.`, r.ok);
+}
+export async function orderDeleteDoc(id: string, docId: string): Promise<R> {
+  const u = await requireStaff("documents");
+  const d = await deleteDocument(id, String(docId), { uid: u.uid, name: u.name || u.email }); if (!d) return { ok: false, message: "That document was already deleted." };
+  await audit(u.uid, "DELETE", "document", d.id);
+  return done(id, `${d.kind === "INVOICE" ? "Invoice" : "Itinerary"} ${d.number} deleted.${d.sentAt ? " The customer no longer sees it, and its link stopped working." : ""}`);
 }
 export async function orderMarkSent(id: string, docId: string, via: string): Promise<R> {
   const u = await requireStaff("documents"); await markDocumentSent(docId, u.uid, via === "WHATSAPP" ? "WHATSAPP" : "MANUAL");
